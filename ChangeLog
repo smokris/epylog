@@ -2,6 +2,7 @@ Epylog-1.0.1
 	* Tiny fixes with Cyrus handling routines in logins, which made them
 	  not work.
 	* Automatically detect python version during .spec building.
+    * Cleaned up trojans.list so it's less ugly
 	
 Epylog-1.0
 	* Out with 1.0 already!
