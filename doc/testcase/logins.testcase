@@ -21,3 +21,4 @@ Apr 16 00:45:31 src@monserv sshd[13904]: Accepted password for root from 192.168
 Apr 16 00:45:31 src@monserv sshd(pam_unix)[13904]: session opened for user root by (uid=0)
 Sep 22 21:52:44 jabber perl: pam_krb5: authentication fails for `mess'
 Sep 22 21:54:43 jabber perl: pam_krb5: authentication succeeds for `messicar'
+Sep 25 13:29:59 acpub/acpub gdm[1227]: pam_krb5afs: authentication succeeds for `dof2'

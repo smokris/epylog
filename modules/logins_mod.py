@@ -118,7 +118,7 @@ class logins_mod(InternalModule):
         self.pam_failure_more_re = rc('(\S+)\smore\sauthentication\sfailures')
         self.pam_baduser_re = rc('\sbad\susername\s\[(.*)\]')
         self.pam_chelper_re = rc('password\sfor\s\[(.*)\]')
-        self.pam_krb5_re = rc("^(\S+)\[*\d*\]*:\spam_krb5\S*:\sauth.*\sfor\s`(\S+)'")
+        self.pam_krb5_re = rc("^(\S+?)\[*\d*\]*:\spam_krb5\S*:\sauth.*\sfor\s`(\S+)'")
         self.xinetd_start_re = rc('START:\s*(\S*)\s')
         self.sshd_open_ruser_re = rc('Accepted\s(\S*)\sfor\s(\S*)\sfrom\s(\S*)\sport\s\d*\sruser\s(\S*)\s*(\S*)')
         self.sshd_open_re = rc('Accepted\s(\S*)\sfor\s(\S*)\sfrom\s(\S*)\sport\s\d+\s*(\S*)')
