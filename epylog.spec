@@ -12,7 +12,7 @@
 Summary:        New logs analyzer and parser.
 Name:           epylog
 Version:        1.0
-Release:        0.%{_pyver}
+Release:        1.%{_pyver}
 Epoch:          0
 License:        GPL
 Group:          Applications/System
