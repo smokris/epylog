@@ -7,7 +7,7 @@
 
 Summary: New logs analyzer and parser.
 Name: epylog
-Version: 0.8.10
+Version: 0.8.11
 Release: 1
 License: GPL
 Group: Applications/System
@@ -144,6 +144,10 @@ popd
 %doc doc/*
 
 %changelog
+* Thu Feb 27 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.8.11-1
+- Small changes to logrotation modules, allowing them to specify
+  a full path to a rotated file.
+
 * Wed Feb 26 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.8.10-1
 - Ported some modules from DULog.
 

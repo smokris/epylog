@@ -457,7 +457,20 @@ class Log:
         logger = self.logger
         logger.put(5, '>Log.__get_rotname_by_ix')
         logger.put(5, 'ix=%d' % ix)
-        rotname = re.sub(re.compile('\[|\]'), '', self.entry)
+        if re.compile('\[/').search(self.entry):
+            ##
+            # Full filename specified in the brackets:
+            # e.g. /var/log/messages[/var/log/rotated/messages.#.gz]
+            #
+            rot_m = re.compile('\[(.*?)\]').search(self.entry)
+            try:
+                rotname = rot_m.group(1)
+            except:
+                msg = ('Could not figure out the rotated filename in "%s"'
+                       % self.entry)
+                raise epylog.ConfigError(msg, logger)
+        else:
+            rotname = re.sub(re.compile('\[|\]'), '', self.entry)
         rotname = re.sub(re.compile('#'), str(ix), rotname)
         logger.put(5, 'rotname=%s' % rotname)
         logger.put(5, '<Log.__get_rotname_by_ix')
