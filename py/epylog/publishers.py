@@ -219,7 +219,7 @@ class MailPublisher:
         if self.format != 'html':
             tempfile.tempdir = self.tmpprefix
             logger.puthang(3, 'Creating a plaintext format of the report')
-            htmlfile = tempfile.mktemp('HTML')
+            htmlfile = tempfile.mktemp('.html')
             tfh = open(htmlfile, 'w')
             tfh.write(html_report)
             tfh.close()
