@@ -210,12 +210,10 @@ class mail_mod(InternalModule):
         sys, msg, mult = self.get_smm(linemap)
         id = self._get_qmail_id(msg)
         delid = self._get_qmail_delid(msg)
-        print 'id=%s, delid=%s' % (id, delid)
         try: to = self.qmail_startdev_re.search(msg).group(1)
         except: to = 'unknown'
         extra = (self.delidref, delid)
         restuple = self._mk_restuple(sys, id, to=to, extra=extra)
-        print restuple
         return {restuple: mult}
 
     def qmail_delivery(self, linemap):
@@ -228,7 +226,6 @@ class mail_mod(InternalModule):
         except: status = self.warning
         extra = (self.delidid, 1)
         restuple = self._mk_restuple(sys, delid, status=status, extra=extra)
-        print restuple
         return {restuple: mult}
 
     ##
@@ -308,7 +305,6 @@ class mail_mod(InternalModule):
             if extralst is not None:
                 if extralst[0] == self.procmail: extra = self.procmail
                 elif extralst[0] == self.delidref:
-                    print 'idref: %s' % extralst[1]
                     delids[extralst[1]] = (system, id)
                 elif extralst[0] == self.delidid:
                     delivs[id] = status
@@ -331,7 +327,6 @@ class mail_mod(InternalModule):
                 try: delid, key = delids.popitem()
                 except: break
                 if key in msgdict:
-                    print key
                     msgdict[key][4].append(delivs[delid])
                     
         ##
