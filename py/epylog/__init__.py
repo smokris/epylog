@@ -15,6 +15,7 @@ from log import LogTracker
 VERSION = 'Epylog-0.9.0'
 CHUNK_SIZE = 8192
 GREP_LINES = 10000
+QUEUE_LIMIT = 500
 LOG_SPLIT_RE = re.compile(r'(.{15,15}) (\S+) (.*)$')
 SYSLOG_NG_STRIP = re.compile(r'.*[@/]')
 MESSAGE_REPEATED_RE = re.compile(r'last message repeated (\S+) times')
@@ -121,24 +122,13 @@ class Epylog:
         #
         try:
             threads = config.getint('main', 'threads')
-            athreads = config.getint('main', 'active_threads')
             if threads < 2:
                 logger.put(0, 'Threads set to less than 2, fixing')
                 threads = 2
-            if athreads < 1:
-                logger.put(0, 'Active threads set to less than 1, fixing')
-                athreads = 1
-            if athreads > threads:
-                logger.put(0, 'Config sets more active threads than total')
-                logger.put(0, 'Setting active threads equaling total threads')
-                athreads = threads
             self.threads = threads
-            self.athreads = athreads
         except:
-            self.threads = 100
-            self.athreads = 50
+            self.threads = 50
         logger.put(5, 'threads=%d' % self.threads)
-        logger.put(5, 'athreads=%d' % self.athreads)
         ##
         # Initialize the Report object
         #
@@ -299,37 +289,172 @@ class Epylog:
                 except KeyError: logmap[log.entry] = [module]
         logger.put(5, 'logmap follows')
         logger.put(5, logmap)
-        semaphore = threading.BoundedSemaphore(value=self.athreads)
+        pq = ProcessingQueue(QUEUE_LIMIT, logger)
+        logger.put(5, 'Starting the consumer threads')
+        threads = []
+        for i in range(0, self.threads):
+            t = ConsumerThread(pq, logger)
+            t.start()
+            threads.append(t)
         for entry in logmap.keys():
             logger.puthang(1, 'Processing Log: %s' % entry)
             log = self.logtracker.getlog(entry)
             matched = 0
             while 1:
                 logger.put(5, 'Getting next line from "%s"' % entry)
-                while threading.activeCount() - 1 > self.threads:
-                    time.sleep(0.01)
                 try:
-                    line, stamp, sys, msg, mult = log.nextline()
+                    linemap = log.nextline()
                 except FormatError: continue
                 except OutOfRangeError: break
                 logger.put(5, 'We have the following:')
-                logger.put(5, 'stamp=%d' % stamp)
-                logger.put(5, 'sys=%s' % sys)
-                logger.put(5, 'msg=%s' % msg)
-                logger.put(5, 'mult=%d' % mult)
+                logger.put(5, 'line=%s' % linemap['line'])
+                logger.put(5, 'stamp=%d' % linemap['stamp'])
+                logger.put(5, 'system=%s' % linemap['system'])
+                logger.put(5, 'message=%s' % linemap['message'])
+                logger.put(5, 'multiplier=%d' % linemap['multiplier'])
                 for module in logmap[entry]:
                     logger.put(5, 'Matching module "%s"' % module.name)
-                    match = module.invoke_internal_module(line, stamp, sys,
-                                                          msg, mult, semaphore)
-                    matched += match
-                    if match and not self.multimatch:
-                        logger.put(5, 'Match. Not matching other modules')
-                        break
+                    handler = module.message_match(linemap['message'])
+                    if handler is not None:
+                        matched += 1
+                        pq.put_linemap(linemap, handler, module)
+                        if not self.multimatch:
+                            logger.put(5, 'multimatch is not set')
+                            logger.put(5, 'Not matching other modules')
+                            break
             logger.put(1, '%d lines matched' % matched)
             logger.endhang(1)
+        logger.put(5, 'Notifying the threads that they may die now')
+        pq.tell_threads_to_quit(threads)
+        logger.put(5, 'Waiting for threads to die')
+        for t in threads: t.join()
         logger.put(5, 'Finished all matching, now finalizing')
         for module in modules:
             logger.put(5, 'Finalizing "%s"' % module.name)
-            module.finalize_processing()
+            try:
+                rs = pq.get_resultset(module)
+                module.finalize_processing(rs)
+            except KeyError:
+                module.no_report()
         logger.endhang(1)
         logger.put(5, '<Epylog._process_internal_modules')
+
+class ProcessingQueue:
+    def __init__(self, limit, logger):
+        self.logger = logger
+        self.mon = threading.RLock()
+        self.iw = threading.Condition(self.mon)
+        self.ow = threading.Condition(self.mon)
+        self.lineq = []
+        self.resultsets = {}
+        self.limit = limit
+        self.working = 1
+
+    def put_linemap(self, linemap, handler, module):
+        self.mon.acquire()
+        while len(self.lineq) >= self.limit:
+            self.logger.put(5, 'Line queue is full, waiting...')
+            self.ow.wait()
+        self.lineq.append([linemap, handler, module])
+        self.iw.notify()
+        self.mon.release()
+
+    def get_linemap(self):
+        logger = self.logger
+        self.mon.acquire()
+        while not self.lineq and self.working:
+            logger.put(5, 'Line queue is empty, waiting...')
+            self.iw.wait()
+        if self.working:
+            item = self.lineq.pop(0)
+            self.ow.notify()
+        else: item = None
+        self.mon.release()
+        return item
+
+    def put_result(self, line, result, module):
+        self.mon.acquire()
+        try: self.resultsets[module].add(result)
+        except KeyError:
+            self.resultsets[module] = ResultSet()
+            self.resultsets[module].add(result)
+        module.put_filtered(line)
+        self.mon.release()
+
+    def get_resultset(self, module):
+        return self.resultsets[module]
+    
+    def tell_threads_to_quit(self, threads):
+        self.mon.acquire()
+        self.logger.put(5, 'Waiting till queue is empty')
+        while self.lineq:
+            self.ow.wait()
+        self.logger.put(5, 'Set working to 0')
+        self.working = 0
+        for t in threads:
+            self.iw.notify()
+        self.mon.release()
+
+
+class ConsumerThread(threading.Thread):
+    def __init__(self, queue, logger):
+        threading.Thread.__init__(self)
+        self.logger = logger
+        self.queue = queue
+
+    def run(self):
+        logger = self.logger
+        while self.queue.working:
+            logger.put(5, '%s: getting a new linemap' % self.getName())
+            item = self.queue.get_linemap()
+            if item is not None:
+                linemap, handler, module = item
+                logger.put(5, '%s: calling the handler' % self.getName())
+                result = handler(linemap)
+                if result is not None:
+                    line = linemap['line']
+                    logger.put(5, '%s: returning the result' % self.getName())
+                    self.queue.put_result(line, result, module)
+                else:
+                    logger.put(5, '%s: Result is None.' % self.getName())
+            else:
+                logger.put(5, '%s: Item is none.' % self.getName())
+        logger.put(5, '%s: I am now dying' % self.getName())
+
+class ResultSet:
+    def __init__(self):
+        self.resultset = {}
+
+    def add(self, resobj):
+        result = resobj.result
+        multiplier = resobj.multiplier
+        try: self.resultset[result] += multiplier
+        except KeyError: self.resultset[result] = multiplier
+
+    def get_distinct(self, matchtup):
+        lim = len(matchtup)
+        matches = []
+        for key in self.resultset.keys():
+            if matchtup == key[0:lim]:
+                if key[lim] not in matches:
+                    matches.append(key[lim])
+        return matches
+
+    def get_submap(self, matchtup):
+        lim = len(matchtup)
+        matchmap = {}
+        for key in self.resultset.keys():
+            if matchtup == key[0:lim]:
+                subtup = key[lim:]
+                try: matchmap[subtup] += self.resultset[key]
+                except KeyError: matchmap[subtup] = self.resultset[key]
+        return matchmap
+
+    def is_empty(self):
+        if self.resultset == {}: return 1
+        else: return 0
+        
+class Result:
+    def __init__(self, result, multiplier):
+        self.result = result
+        self.multiplier = multiplier

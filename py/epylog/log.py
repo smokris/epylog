@@ -343,7 +343,12 @@ class Log:
         self.lp.set(ix, offset)
         log.repeated_cache[system] = message
         logger.put(5, '<Log.nextline')
-        return line, stamp, system, message, multiplier
+        linemap = {'line': line,
+                   'stamp': stamp,
+                   'system': system,
+                   'message': message,
+                   'multiplier': multiplier}
+        return linemap
 
     def _lookup_repeated(self, system):
         logger = self.logger

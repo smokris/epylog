@@ -2,7 +2,7 @@
 
 import re
 import string
-from epylog.module import Result
+from epylog import Result
 
 class reboots_mod:
     def __init__(self, opts, logger):

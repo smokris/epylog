@@ -3,7 +3,7 @@
 import re
 import epylog
 import string
-from epylog.module import Result
+from epylog import Result
 
 class logins_mod(epylog.module.PythonModule):
     def __init__(self, opts, logger):
@@ -39,10 +39,10 @@ class logins_mod(epylog.module.PythonModule):
         self.flip = ' bgcolor="#dddddd"'
 
         self.line_rep = '<tr%s><td align="left" valign="top">%s</td><td align="right" valign="top">%s:</td><td>%s</td></tr>\n'
-        #self.line2_rep = '<tr><td align="right" valign="top">%s:</td><td>%s</td></tr>\n'
 
-    def pam_failure(self, stamp, system, message, multiplier):
+    def pam_failure(self, linemap):
         action = self.failure
+        system, message, mult = self.get_smm(linemap)
         mo = self.pam_failure_re.search(message)
         if not mo:
             self.logger.put(3, 'Odd pam failure string: %s' % message)
@@ -50,13 +50,14 @@ class logins_mod(epylog.module.PythonModule):
         byuser, rhost, user = mo.groups()
         service = self._get_pam_service(message)
         mo = self.pam_failure_more_re.search(message)
-        if mo: multiplier += int(mo.group(1))
-        else: multiplier += 1
+        if mo: mult += int(mo.group(1))
+        else: mult += 1
         restuple = (action, system, service, user, byuser, rhost)
-        return Result(restuple, multiplier)
+        return Result(restuple, mult)
 
-    def pam_open(self, stamp, system, message, multiplier):
+    def pam_open(self, linemap):
         action = self.open
+        system, message, mult = self.get_smm(linemap)
         mo = self.pam_open_re.search(message)
         if not mo:
             self.logger.put(3, 'Odd pam open string: %s' % message)
@@ -67,15 +68,16 @@ class logins_mod(epylog.module.PythonModule):
             byuser = self.getuname(int(byuid))
         rhost = ''
         restuple = (action, system, service, user, byuser, rhost)
-        return Result(restuple, multiplier)
+        return Result(restuple, mult)
 
-    def pam_closed(self, stamp, system, message, multiplier):
+    def pam_closed(self, linemap):
         action = self.close
+        system, message, mult = self.get_smm(linemap)
         ##
         # We are ignoring these at the moment
         #
         restuple = (action, None, None, None, None, None)
-        return Result(restuple, multiplier)
+        return Result(restuple, mult)
     
     def _get_pam_service(self, str):
         service = 'unknown'
@@ -94,9 +96,9 @@ class logins_mod(epylog.module.PythonModule):
     def finalize(self, rs):
         logger = self.logger
         logger.put(5, '>logins_mod.finalize')
-        rrs = epylog.module.ResultSet()
-        urs = epylog.module.ResultSet()
-        nrs = epylog.module.ResultSet()
+        rrs = epylog.ResultSet()
+        urs = epylog.ResultSet()
+        nrs = epylog.ResultSet()
         ##
         # Get all failures and opens
         #

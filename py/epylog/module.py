@@ -132,57 +132,47 @@ class Module:
             msg = 'Could not instantiate class "%s" in module "%s"'
             msg = msg % (modname, self.executable)
             raise epylog.ModuleError(msg, logger)
-        self.threads = []
+        logger.put(5, 'Opening "%s" for writing')
+        self.filtfh = open(self.logfilter, 'w+')
         logger.put(5, '<Module._init_internal_module')
 
-    def invoke_internal_module(self, line, stamp, sys, msg, mult, semaphore):
+    def message_match(self, message):
         logger = self.logger
-        logger.put(5, '>Module.invoke_internal_module')
-        match = 0
+        logger.put(5, '>Module.message_match')
+        handler = None
         for regex in self.epymod.regex_map.keys():
-            if regex.search(msg):
-                logger.put(5, 'match: %s' % msg)
+            if regex.search(message):
+                logger.put(5, 'match: %s' % message)
                 handler = self.epymod.regex_map[regex]
-                t = ThreadedLineHandler(line, stamp, sys, msg, mult, handler,
-                                        semaphore, logger)
-                self.threads.append(t)
-                logger.put(5, 'Starting handler thread')
-                t.start()
-                match = 1
                 break
-        logger.put(5, '<Module.invoke_internal_module')
-        return match
+        logger.put(5, '<Module.message_match')
+        return handler
 
-    def finalize_processing(self):
+    def put_filtered(self, line):
+        logger = self.logger
+        logger.put(5, '>Module.put_filtered')
+        self.filtfh.write(line)
+        logger.put(5, 'Wrote "%s" into filtfh' % line)
+        logger.put(5, '<Module.put_filtered')
+
+    def no_report(self):
+        self.logger.put(5, '>Module.no_report')
+        self.logreport = None
+        self.logfilter = None
+        self.close_filtered()
+        self.logger.put(5, '<Module.no_report')
+        
+    def close_filtered(self):
+        logger = self.logger
+        logger.put(5, '>Module.close_filtered')
+        self.filtfh.close()
+        logger.put(5, '<Module.close_filtered')
+
+    def finalize_processing(self, rs):
         logger = self.logger
         logger.put(5, '>Module.finalize_processing')
         logger.put(5, 'Finalizing for module "%s"' % self.name)
-        if len(self.threads):
-            rs = ResultSet()
-            logger.put(5, 'Opening "%s" for writing' % self.logfilter)
-            filtfh = open(self.logfilter, 'w+')
-            while 1:
-                try: t = self.threads.pop(0)
-                except IndexError: break
-                t.join()
-                try:
-                    result = t.result
-                    if result is not None:
-                        logger.put(5, 'Adding result for line: %s' % t.line)
-                        rs.add(t.result)
-                        filtfh.write(t.line)
-                    del t
-                except AttributeError:
-                    ##
-                    # We should probably warn the end-user?
-                    #
-                    pass
-            if not filtfh.tell():
-                logger.put(5, 'No filtered strings')
-                self.logfilter = None
-            logger.put(5, 'Closing "%s"' % self.logfilter)
-            filtfh.close()
-            logger.put(5, 'Done with all threads')
+        if self.filtfh.tell():
             if not rs.is_empty():
                 logger.put(5, 'Finalizing the processing')
                 report = self.epymod.finalize(rs)
@@ -193,11 +183,13 @@ class Module:
                     repfh.write(report)
                     repfh.close()
             else:
-                logger.put(2, 'NO results/report from this module')
                 self.logreport = None
+                self.logfilter = None
         else:
+            logger.put(5, 'No filtered strings for this module')
             self.logreport = None
             self.logfilter = None
+        self.close_filtered()
         logger.put(5, 'Done with this module, deleting')
         del self.epymod
         logger.put(5, '<Module._invoke_internal_module')
@@ -328,27 +320,6 @@ class Module:
         logger.put(5, '<Module._make_into_html')
         return report
 
-class ThreadedLineHandler(threading.Thread):
-    def __init__(self, line, stamp, sys, msg, mult, handler, sem, logger):
-        threading.Thread.__init__(self)
-        self.logger = logger
-        logger.put(5, '>ThreadedLineHandler.__init__')
-        logger.put(5, 'My line is: %s' % line)
-        self.line = line
-        self.stamp = stamp
-        self.system = sys
-        self.message = msg
-        self.multiplier = mult
-        self.handler = handler
-        self.semaphore = sem
-        logger.put(5, '<ThreadedLineHandler.__init__')
-
-    def run(self):
-        self.semaphore.acquire()
-        self.result = self.handler(self.stamp, self.system, self.message,
-                                   self.multiplier)
-        self.semaphore.release()
-
 class PythonModule:
     def __init__(self):
         self._known_hosts = {}
@@ -376,44 +347,6 @@ class PythonModule:
 
         self._known_hosts[ip_addr] = name
         return name
-
-
-class ResultSet:
-    def __init__(self):
-        self.resultset = {}
-
-    def add(self, resobj):
-        result = resobj.result
-        multiplier = resobj.multiplier
-        try: self.resultset[result] += multiplier
-        except KeyError: self.resultset[result] = multiplier
-
-    def get_distinct(self, matchtup):
-        lim = len(matchtup)
-        matches = []
-        for key in self.resultset.keys():
-            if matchtup == key[0:lim]:
-                if key[lim] not in matches:
-                    matches.append(key[lim])
-        return matches
-
-    def get_submap(self, matchtup):
-        lim = len(matchtup)
-        matchmap = {}
-        for key in self.resultset.keys():
-            if matchtup == key[0:lim]:
-                subtup = key[lim:]
-                try: matchmap[subtup] += self.resultset[key]
-                except KeyError: matchmap[subtup] = self.resultset[key]
-        return matchmap
-
-    def is_empty(self):
-        if self.resultset == {}: return 1
-        else: return 0
         
-class Result:
-    def __init__(self, result, multiplier):
-        self.result = result
-        self.multiplier = multiplier
-
-        
+    def get_smm(self, lm):
+        return (lm['system'], lm['message'], lm['multiplier'])
