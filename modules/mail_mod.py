@@ -1,0 +1,206 @@
+#!/usr/bin/python -tt
+import sys
+import re
+
+##
+# This is for testing purposes, so you can invoke this from the
+# modules directory. See also the testing notes at the end of the
+# file.
+#
+sys.path.insert(0, '../py/')
+from epylog import Result, InternalModule
+
+class mail_mod(InternalModule):
+    def __init__(self, opts, logger):
+        InternalModule.__init__(self)
+        self.logger = logger
+        rc = re.compile
+        self.regex_map = {
+            ##
+            # Match postfix
+            #
+            rc('postfix/smtpd\[\d+\]:\s\S*:'): self.postfix_smtpd,
+            rc('postfix/nqmgr\[\d+\]:\s\S*:'): self.postfix_nqmgr,
+            rc('postfix/local\[\d+\]:\s\S*:'): self.postfix_local,
+            rc('postfix/smtp\[\d+\]:\s\S*:'): self.postfix_smtp
+            }
+        
+        self.toplim = int(opts.get('top_report_limit', '5'))
+        self.postfix_ident_re = rc('\[\d+\]:\s*([A-Z0-9]*):')
+        self.postfix_smtpd_re = rc('client=\S*\[(\S*)\]')
+        self.postfix_nqmgr_re = rc('from=(\S*),.*size=(\d*)')
+        self.postfix_local_re = rc('to=(\S*),.*status=(\S*)\s\((.*)\)')
+        self.postfix_smtp_re  = rc('to=(\S*),.*status=(\S*)')
+
+        self.procmail_re = rc('bin/procmail')
+
+        self.bounce   = 0
+        self.success  = 1
+        self.warning  = 2
+        self.procmail = 3
+
+        self.report_wrap = '<table border="0" width="100%%" rules="cols" cellpadding="2">%s</table>'
+        self.subreport_wrap = '<tr><th colspan="2" align="left"><h3><font color="blue">%s</font></h3></th></tr>\n'
+        
+        self.report_line = '<tr%s><td valign="top" align="right">%s</td><td valign="top" width="90%%">%s</td></tr>\n'
+        self.flip = ' bgcolor="#dddddd"'
+        self.flipper = ''
+
+    ##
+    # Line-matching routines
+    #
+    def postfix_smtpd(self, linemap):
+        sys, msg, mult = self.get_smm(linemap)
+        id = self._get_postfix_id(msg)
+        self.logger.put(5, 'id=%s' % id)
+        try:
+            client = self.postfix_smtpd_re.search(msg).group(1)
+            client = self.gethost(client)
+        except: client = None
+        self.logger.put(5, 'client=%s' % client)
+        restuple = self._mk_restuple(sys, id, client=client)
+        return {restuple: mult}
+
+    def postfix_nqmgr(self, linemap):
+        sys, msg, mult = self.get_smm(linemap)
+        id = self._get_postfix_id(msg)
+        self.logger.put(5, 'id=%s' % id)
+        try: sender, size = self.postfix_nqmgr_re.search(msg).groups()
+        except: sender, size = (None, 0)
+        size = int(size)
+        self.logger.put(5, 'sender=%s, size=%d' % (sender, size))
+        restuple = self._mk_restuple(sys, id, sender=sender, size=size)
+        return {restuple: mult}
+
+    def postfix_local(self, linemap):
+        sys, msg, mult = self.get_smm(linemap)
+        id = self._get_postfix_id(msg)
+        self.logger.put(5, 'id=%s' % id)
+        try: to, status, comment = self.postfix_local_re.search(msg).groups()
+        except:
+            self.logger.put(5, 'Odd postfix/local line: %s' % msg)
+            return None
+        self.logger.put(5, 'to=%s, status=%s, comment=%s' %
+                        (to, status, comment))
+        if status == 'sent': status = self.success
+        elif status == 'bounced': status = self.bounce
+        else: status = self.warning
+        if self.procmail_re.search(comment): extra = self.procmail
+        else: extra = None
+        restuple = self._mk_restuple(sys, id, to=to, status=status,
+                                     extra=extra)
+        return {restuple: mult}
+
+    def postfix_smtp(self, linemap):
+        sys, msg, mult = self.get_smm(linemap)
+        id = self._get_postfix_id(msg)
+        self.logger.put(5, 'id=%s' % id)
+        try: to, status = self.postfix_smtp_re.search(msg).groups()
+        except:
+            self.logger.put(5, 'Odd postfix/smtp line: %s' % msg)
+            return None
+        self.logger.put(5, 'to=%s, status=%s' % (to, status))
+        if status == 'sent': status = self.success
+        elif status == 'bounced': status = self.bounce
+        else: status = self.warning
+        restuple = self._mk_restuple(sys, id, to=to, status=status)
+        return {restuple: mult}
+
+
+    def _mk_restuple(self, sys, id, client=None, sender=None, to=None,
+                     size=0, status=None, extra=None):
+        return (sys, id, client, sender, to, size, status, extra)
+
+    def _get_postfix_id(self, str):
+        try: id = self.postfix_ident_re.search(str).group(1)
+        except: id = 'unknown'
+        return id
+
+    def _fix_address(self, address):
+        if address == '<>': address = '<mailer-daemon>'
+        address = self.htmlsafe(address)
+        return address
+
+    def _flip(self):
+        if self.flipper: self.flipper = ''
+        else: self.flipper = self.flip
+        return self.flipper
+
+    def _mk_size_unit(self, size):
+        ksize = int(size/1024)
+        if ksize:
+            msize = int(ksize/1024)
+            if msize:
+                gsize = int(msize/1024)
+                if gsize: return (gsize, 'GB')
+                return (msize, 'MB')
+            return (ksize, 'KB')
+        return (size, 'Bytes')
+
+    def _get_top_report(self, rs, descr):
+        toprep = self.subreport_wrap % (descr % self.toplim)
+        toplist = rs.get_top(self.toplim)
+        for count, member in toplist:
+            key = self._fix_address(member[0])
+            toprep += self.report_line % (self._flip(), str(count), key)
+        return toprep
+    
+    def finalize(self, rs):
+        ##
+        # Remove, collapse and count all warnings
+        #
+        yrs = Result() # Systems
+        crs = Result() # Clients (Connecting Relays)
+        srs = Result() # Senders
+        rrs = Result() # Recipients
+        totalmsgs = 0
+        totalsize = 0
+        warnings = 0
+        successes = 0
+        bounces = 0
+        procmailed = 0
+        for system in rs.get_distinct(()):
+            for id in rs.get_distinct((system,)):
+                yrs.add_result({(system,): 1})
+                totalmsgs += 1
+                msg = rs.get_distinct_values((system, id))
+                clients, senders, rcpts, sizes, stati, extras = msg
+                for client in clients: crs.add_result({(client,): 1})
+                for sender in senders: srs.add_result({(sender,): 1})
+                for rcpt in rcpts: rrs.add_result({(rcpt,): 1})
+                for size in sizes: totalsize += size
+                for status in stati:
+                    if status == self.warning: warnings += 1
+                    elif status == self.success: successes += 1
+                    elif status == self.bounce: bounces += 1
+                for extra in extras:
+                    if extra == self.procmail: procmailed += 1
+        rep = self.subreport_wrap % 'General Mail Report'
+        rep += self.report_line % (self._flip(), totalmsgs,
+                                   'Total Messages Processed')
+        rep += self.report_line % (self._flip(), successes,
+                                   'Total Successful Deliveries')
+        rep += self.report_line % (self._flip(), warnings,
+                                   'Total Warnings Issued')
+        rep += self.report_line % (self._flip(), bounces,
+                                   'Total Bounced Messages')
+        if procmailed:
+            rep += self.report_line % (self._flip(), procmailed,
+                                       'Processed by Procmail')
+        size, unit = self._mk_size_unit(totalsize)
+        rep += self.report_line % (self._flip(), '%d %s' % (size, unit),
+                                   'Total Transferred Size')
+
+        rep += self._get_top_report(yrs, 'Top %d active systems')
+        rep += self._get_top_report(crs, 'Top %d connecting hosts')
+        rep += self._get_top_report(srs, 'Top %d senders')
+        rep += self._get_top_report(rrs, 'Top %d recipients')
+        
+        report = self.report_wrap % rep
+        
+        return report
+
+
+if __name__ == '__main__':
+    from epylog.helpers import ModuleTest
+    ModuleTest(mail_mod, sys.argv)
