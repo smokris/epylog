@@ -97,14 +97,14 @@ AC_ARG_WITH(python-dirs, [  --with-python-dirs      Put modules in python's site
 
 AC_SUBST(PERL_MODULE_DIR)
 AC_MSG_CHECKING(for --with-site-perl)
-AC_ARG_WITH(site-perl, [  --with-site-perl        Put perl module in site-perl dir],
+AC_ARG_WITH(site-perl, [  --with-site-perl        Put perl module in site_perl dir],
 [
   PERL_MODULE_DIR=$withval
   AC_MSG_RESULT(yes)
 ],
 [
   #eval `perl '-V:installsitelib'`
-  PERL_MODULE_DIR=$libdir/perl5/site-perl
+  PERL_MODULE_DIR=$libdir/perl5/site_perl
   AC_MSG_RESULT(will use $PERL_MODULE_DIR)
 ])
 
