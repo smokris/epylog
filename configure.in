@@ -128,5 +128,6 @@ AC_ARG_WITH(temp-dir, [  --with-temp-dir         Use this for temp dir (/var/tmp
   AC_MSG_RESULT(will use $PERL_MODULE_DIR)
 ])
 
-AC_OUTPUT(Makefile epylog)
-AC_OUTPUT(compiledir, chmod +x compiledir)
+AC_OUTPUT_COMMANDS(chmod +x epylog)
+AC_OUTPUT_COMMANDS(chmod +x compiledir)
+AC_OUTPUT(Makefile compiledir epylog)
