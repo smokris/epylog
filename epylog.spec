@@ -1,7 +1,10 @@
 # $Id$
 
+%{!?_pyver:%define _pyver 2.2}
+
+%define _python  %{_bindir}/python%{_pyver}
 %define _vardir  %{_localstatedir}/lib
-%define _pydir   %{_libdir}/python2.2/site-packages
+%define _pydir   %{_libdir}/python%{_pyver}/site-packages
 %define _perldir %{_libdir}/perl5/site_perl
 
 #------------------------------------------------------------------------------
@@ -9,7 +12,7 @@
 Summary:        New logs analyzer and parser.
 Name:           epylog
 Version:        0.9.7
-Release:        0.4
+Release:        0.5-%{_pyver}
 Epoch:          0
 License:        GPL
 Group:          Applications/System
@@ -17,8 +20,8 @@ Source:         http://linux.duke.edu/projects/epylog/download/%{name}-%{version
 URL:            http://linux.duke.edu/projects/epylog/
 BuildRoot:      %{_tmppath}/%{name}-%{version}-root
 BuildArch:      noarch
-BuildPrereq:    perl, python, gzip, sed
-Requires:       /usr/bin/python2, elinks, libxml2-python
+BuildPrereq:    perl, %{_python}, gzip, sed
+Requires:       %{_python}, elinks, libxml2-python
 #Obsoletes:      dulog
 
 %description
@@ -48,7 +51,7 @@ external perl modules, or intend to write some of your own.
 %prep
 %setup -q
 %configure \
-    --with-python=/usr/bin/python2 \
+    --with-python=%{_python} \
     --with-lynx=/usr/bin/links
 ##
 # Fix version.
@@ -112,6 +115,7 @@ external perl modules, or intend to write some of your own.
 %changelog
 * Mon Feb 09 2004 Konstantin Ryabitsev <icon@linux.duke.edu> 0.9.7-1
 - Version 0.9.7
+- Depend on python version.
 
 * Mon Sep 22 2003 Konstantin Ryabitsev <icon@linux.duke.edu> 0.9.6-1
 - Version 0.9.6
