@@ -8,7 +8,7 @@
 Summary: New logs analyzer and parser.
 Name: epylog
 Version: 0.8.5
-Release: 1
+Release: 1.1
 License: GPL
 Group: Applications/System
 Source: http://www.dulug.duke.edu/epylog/download/%{name}-%{version}.tar.gz

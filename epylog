@@ -157,7 +157,7 @@ def restore_offsets(epylog):
     for o in omap:
         try:
             epylog.logtracker.set_start_offset_by_entry(o[0], o[1], o[2])
-        except epylog.NoSuchLogError:
+        except NoSuchLogError:
             logger.put(0, 'No such log in tracker: %s' % o[0])
     logger.put(5, '<epylog.restore_offsets')
     
