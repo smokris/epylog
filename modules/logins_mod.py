@@ -1,15 +1,15 @@
 #!/usr/bin/python -tt
 import sys
-sys.path.insert(0, '../py/epylog/')
-sys.path.insert(0, './py/')
 import re
 
+sys.path.insert(0, '../py/')
 from epylog import Result, InternalModule
 
 class logins_mod(InternalModule):
     def __init__(self, opts, logger):
         InternalModule.__init__(self)
         self.logger = logger
+        self.opts = opts
         rc = re.compile
 
         self.ignore     = 0
@@ -17,31 +17,37 @@ class logins_mod(InternalModule):
         self.failure    = 2
         self.root_open    = 11
         self.root_failure = 12
-        
-        self.regex_map = {
-            ##
-            # PAM reports
-            #
+
+        ##
+        # PAM reports
+        #
+        pam_map = {
             rc('\(pam_unix\)\S*:.*authentication\s*failure'): self.pam_failure,
             rc('\(pam_unix\)\S*:\ssession\sopened\sfor'): self.pam_open,
             rc('\(pam_unix\)\S*:\ssession\sclosed\sfor'): self.general_ignore,
             rc('\(pam_unix\)\S*:\sbad\susername'): self.pam_baduser,
             rc('\(pam_unix\)\S*:\sauth\scould\snot'): self.pam_chelper_failure,
-            rc('\(pam_unix\)\S*:\scheck\spass;'): self.general_ignore,
-            ##
-            # XINETD reports
-            #
+            rc('\(pam_unix\)\S*:\scheck\spass;'): self.general_ignore
+            }
+        ##
+        # XINETD reports
+        #
+        xinetd_map = {
             rc('xinetd\S*: START:'): self.xinetd_start,
-            rc('xinetd\S*: EXIT:'): self.general_ignore,
-            ##
-            # SSH reports
-            #
+            rc('xinetd\S*: EXIT:'): self.general_ignore
+            }
+        ##
+        # SSH reports
+        #
+        sshd_map = {
             rc('sshd\[\S*: Accepted'): self.sshd_open,
             rc('sshd\[\S*: Connection\sclosed'): self.general_ignore,
-            rc('sshd\[\S*: Failed'): self.sshd_failure,
-            ##
-            # IMAPD and IPOP3D
-            #
+            rc('sshd\[\S*: Failed'): self.sshd_failure
+            }
+        ##
+        # IMAPD and IPOP3D
+        #
+        imap_pop_map = {
             rc('imapd\[\S*: Login\sfail'): self.imap_pop_failure,
             rc('imapd\[\S*: Authenticated\suser'): self.imap_pop_open,
             rc('imapd\[\S*: AUTHENTICATE'): self.general_ignore,
@@ -53,10 +59,12 @@ class logins_mod(InternalModule):
             rc('ipop3d\[\S*: AUTHENTICATE'): self.general_ignore,
             rc('ipop3d\[\S*: Logout'): self.general_ignore,
             rc('ipop3d\[\S*: Killed'): self.general_ignore,
-            rc('ipop3d\[\S*: Autologout'): self.general_ignore,
-            ##
-            # IMP
-            #
+            rc('ipop3d\[\S*: Autologout'): self.general_ignore
+            }
+        ##
+        # IMP
+        #
+        imp_map = {
             rc('IMP\[\S*: Login'): self.imp2_open,
             rc('IMP\[\S*: FAILED'): self.imp2_failure,
             rc('HORDE\[\S*\s*\[imp\] Login'): self.imp3_open,
@@ -64,6 +72,16 @@ class logins_mod(InternalModule):
             rc('HORDE\[\S*\s*\[imp\] Logout'): self.general_ignore
         }
 
+        regex_map = {}
+        if opts.get('enable_pam', "1") != "0": regex_map.update(pam_map)
+        if opts.get('enable_xinetd', "1") != "0": regex_map.update(xinetd_map)
+        if opts.get('enable_sshd', "1") != "0": regex_map.update(sshd_map)
+        if opts.get('enable_imap_pop', "0") != "0":
+            regex_map.update(imap_pop_map)
+        if opts.get('enable_imp', "0") != "0": regex_map.update(imp_map)
+
+        self.regex_map = regex_map
+        
         self.pam_service_re = rc('(\S+)\(pam_unix\)')
         self.pam_failure_re = rc('.*\slogname=(\S*).*\srhost=(\S*).*\suser=(\S*)')
         self.pam_open_re = rc('.*for user (\S+) by\s(\S*)\s*\(uid=(\S+)\)')
@@ -384,37 +402,6 @@ class logins_mod(InternalModule):
         return report
 
 if __name__ == '__main__':
-    def mklinemap(system, message):
-        linemap = {'line': 'line',
-                   'stamp': 0,
-                   'system': system,
-                   'message': message,
-                   'multiplier': 1}
-        return linemap                   
+    from epylog.helpers import ModuleTest
+    ModuleTest(logins_mod, sys.argv)
     
-    from epylog import Logger
-    logger = Logger(5)
-    opts = {}
-    epymod = logins_mod(opts, logger)
-    testlines = [
-        ['ruser open', 'sshd[30260]: Accepted rhosts-rsa for jcd from 152.3.182.36 port 32901 ruser jcd'],
-        ['ssh2 open', 'sshd[28091]: Accepted publickey for icon from 152.16.65.208 port 36269 ssh2'],
-        ['simple open', 'sshd[316]: Accepted password for shwetket from 152.3.25.84 port 47030'],
-        ['sshd failure', 'sshd[7136]: Failed password for boyd from 63.214.104.191 port 565'],
-        ['sshd illegal user failure', 'sshd[31221]: Failed none for illegal user Mike from 152.3.183.188 port 32982 ssh2'],
-        ['imap login', 'imapd[16091]: Authenticated user=djcecile host=login2.phy.duke.edu [152.3.182.75]'],
-        ['imap failure', 'imapd[16035]: Login failed user=AryaBhatta auth=AryaBhatta host=login1.phy.duke.edu [152.3.182.74]'],
-        ['pop3 login', 'ipop3d[5613]: Login user=shke host=momentum.chem.duke.edu [152.3.169.5] nmsgs=144/144'],
-        ['pop3 failure', 'ipop3d[804]: Login failed user=leluo auth=leluo host=res-152-16-222-235.dorm.duke.edu [152.16.222.235]'],
-        ['IMP2 open', 'IMP[15435]: Login 152.3.182.140 to mail.phy.duke.edu:993 as kinast'],
-        ['IMP2 failure', 'IMP[15398]: FAILED 152.3.182.140 to mail.phy.duke.edu:993 as kinast'],
-        ['IMP3 open', 'HORDE[27127]: [imp] Login success for wjs [208.61.133.234] to {mail-wj.acpub.duke.edu:993} [on line 64 of "/usr/share/horde/imp/redirect.php"]'],
-        ['IMP3 failure', 'HORDE[27126]: [imp] FAILED LOGIN 208.61.133.234 to mail.cs.duke.edu:993[imap/ssl/novalidate-cert] as wjs [on line 270 of "/usr/share/horde/imp/lib/IMP.php"]']
-        ]
-    for descr, line in testlines:
-        linemap = mklinemap(descr, line)
-        for regex in epymod.regex_map.keys():
-            if regex.search(line):
-                handler = epymod.regex_map[regex]
-                result = handler(linemap)
-                print result.result

@@ -1,9 +1,8 @@
 #!/usr/bin/python -tt
 import sys
-sys.path.insert(0, '../py/epylog/')
-sys.path.insert(0, './py/')
 import re
 
+sys.path.insert(0, '../py/')
 from epylog import Result, InternalModule
 
 class notices_mod(InternalModule):
@@ -45,7 +44,11 @@ class notices_mod(InternalModule):
             ##
             # SSHD notices
             #
-            rc('sshd\[\S*: Did not receive identification'): self.sshd_scan
+            rc('sshd\[\S*: Did not receive identification'): self.sshd_scan,
+            ##
+            # VFS Errors left by cd-roms
+            #
+            rc('VFS: busy inodes on changed media'): self.busy_inodes
         }
 
         self.normal   = 0
@@ -60,7 +63,7 @@ class notices_mod(InternalModule):
         self.critical_title = '<font color="red">CRITICAL Notices</font>'
         self.normal_title = '<font color="blue">General Notices</font>'
         
-        self.report_line = '<tr%s><td>%s:</td><td>%s</td></tr>\n'
+        self.report_line = '<tr%s><td valign="top">%s:</td><td valign="top">%s</td></tr>\n'
         self.flip = ' bgcolor="#dddddd"'
 
     ##
@@ -119,6 +122,12 @@ class notices_mod(InternalModule):
         msg = 'sshd scan from %s' % rhost
         return Result((urg, sys, msg), mult)
 
+    def busy_inodes(self, linemap):
+        urg = self.normal
+        sys, msg, mult = self.get_smm(linemap)
+        msg = 'dirty CDROM mount'
+        return Result((urg, sys, msg), mult)
+
     ##
     # FINALIZE!
     #
@@ -136,7 +145,7 @@ class notices_mod(InternalModule):
                 for message in mymap.keys():
                     messages.append('%s(%d)' % (message[0], mymap[message]))
                 reports[urg] += self.report_line % (flipr, system,
-                                                    ', '.join(messages))
+                                                    '<br>'.join(messages))
             
         if reports[self.critical]:
             report += self.subreport_wrap % self.critical_title
@@ -151,27 +160,5 @@ class notices_mod(InternalModule):
 
 
 if __name__ == '__main__':
-    def mklinemap(system, message):
-        linemap = {'line': 'line',
-                   'stamp': 0,
-                   'system': system,
-                   'message': message,
-                   'multiplier': 1}
-        return linemap                   
-    
-    from epylog import Logger
-    logger = Logger(5)
-    opts = {}
-    epymod = notices_mod(opts, logger)
-    testlines = [
-        ['ypserv', 'ypserv[17381]: refused connect from 152.3.182.2:59557 to procedure ypproc_match'],
-        ['sshd scan', 'sshd[17779]: Did not receive identification string from 152.3.182.3'],
-        ['linux reboot', 'kernel: Linux version 2.4.18-27.7.x (bhcompile@stripples.devel.redhat.com) (gcc version 2.96 20000731 (Red Hat Linux 7.3 2.96-112)) #1 Fri Mar 14 05:51:23 EST 2003']
-        ]
-    for descr, line in testlines:
-        linemap = mklinemap(descr, line)
-        for regex in epymod.regex_map.keys():
-            if regex.search(line):
-                handler = epymod.regex_map[regex]
-                result = handler(linemap)
-                print result.result
+    from epylog.helpers import ModuleTest
+    ModuleTest(notices_mod, sys.argv)

@@ -7,6 +7,7 @@ import re
 import threading
 import pwd
 import socket
+import sys
 
 from report import Report
 from module import Module
@@ -292,42 +293,44 @@ class Epylog:
         pq = ProcessingQueue(QUEUE_LIMIT, logger)
         logger.put(5, 'Starting the consumer threads')
         threads = []
-        for i in range(0, self.threads):
-            t = ConsumerThread(pq, logger)
-            t.start()
-            threads.append(t)
-        for entry in logmap.keys():
-            logger.puthang(1, 'Processing Log: %s' % entry)
-            log = self.logtracker.getlog(entry)
-            matched = 0
-            while 1:
-                logger.put(5, 'Getting next line from "%s"' % entry)
-                try:
-                    linemap = log.nextline()
-                except FormatError: continue
-                except OutOfRangeError: break
-                logger.put(5, 'We have the following:')
-                logger.put(5, 'line=%s' % linemap['line'])
-                logger.put(5, 'stamp=%d' % linemap['stamp'])
-                logger.put(5, 'system=%s' % linemap['system'])
-                logger.put(5, 'message=%s' % linemap['message'])
-                logger.put(5, 'multiplier=%d' % linemap['multiplier'])
-                for module in logmap[entry]:
-                    logger.put(5, 'Matching module "%s"' % module.name)
-                    handler = module.message_match(linemap['message'])
-                    if handler is not None:
-                        matched += 1
-                        pq.put_linemap(linemap, handler, module)
-                        if not self.multimatch:
-                            logger.put(5, 'multimatch is not set')
-                            logger.put(5, 'Not matching other modules')
-                            break
-            logger.put(1, '%d lines matched' % matched)
-            logger.endhang(1)
-        logger.put(5, 'Notifying the threads that they may die now')
-        pq.tell_threads_to_quit(threads)
-        logger.put(5, 'Waiting for threads to die')
-        for t in threads: t.join()
+        try:
+            for i in range(0, self.threads):
+                t = ConsumerThread(pq, logger)
+                t.start()
+                threads.append(t)
+            for entry in logmap.keys():
+                logger.puthang(1, 'Processing Log: %s' % entry)
+                log = self.logtracker.getlog(entry)
+                matched = 0
+                while 1:
+                    logger.put(5, 'Getting next line from "%s"' % entry)
+                    try:
+                        linemap = log.nextline()
+                    except FormatError: continue
+                    except OutOfRangeError: break
+                    logger.put(5, 'We have the following:')
+                    logger.put(5, 'line=%s' % linemap['line'])
+                    logger.put(5, 'stamp=%d' % linemap['stamp'])
+                    logger.put(5, 'system=%s' % linemap['system'])
+                    logger.put(5, 'message=%s' % linemap['message'])
+                    logger.put(5, 'multiplier=%d' % linemap['multiplier'])
+                    for module in logmap[entry]:
+                        logger.put(5, 'Matching module "%s"' % module.name)
+                        handler = module.message_match(linemap['message'])
+                        if handler is not None:
+                            matched += 1
+                            pq.put_linemap(linemap, handler, module)
+                            if not self.multimatch:
+                                logger.put(5, 'multimatch is not set')
+                                logger.put(5, 'Not matching other modules')
+                                break
+                logger.put(1, '%d lines matched' % matched)
+                logger.endhang(1)
+        finally:
+            logger.put(5, 'Notifying the threads that they may die now')
+            pq.tell_threads_to_quit(threads)
+            logger.put(5, 'Waiting for threads to die')
+            for t in threads: t.join()
         logger.put(5, 'Finished all matching, now finalizing')
         for module in modules:
             logger.put(5, 'Finalizing "%s"' % module.name)
@@ -338,6 +341,7 @@ class Epylog:
                 module.no_report()
         logger.endhang(1)
         logger.put(5, '<Epylog._process_internal_modules')
+
 
 class ProcessingQueue:
     def __init__(self, limit, logger):
@@ -411,13 +415,23 @@ class ConsumerThread(threading.Thread):
             if item is not None:
                 linemap, handler, module = item
                 logger.put(5, '%s: calling the handler' % self.getName())
-                result = handler(linemap)
-                if result is not None:
-                    line = linemap['line']
-                    logger.put(5, '%s: returning the result' % self.getName())
-                    self.queue.put_result(line, result, module)
-                else:
-                    logger.put(5, '%s: Result is None.' % self.getName())
+                try:
+                    result = handler(linemap)
+                    if result is not None:
+                        line = linemap['line']
+                        logger.put(5, '%s: returning result' % self.getName())
+                        self.queue.put_result(line, result, module)
+                    else:
+                        logger.put(5, '%s: Result is None.' % self.getName())
+                except Exception, e:
+                    erep  = 'Handler crash. Dump follows:\n'
+                    erep += '  Thread : %s\n' % self.getName()
+                    erep += '  Module : %s\n' % module.executable
+                    erep += '  Handler: %s\n' % handler.__name__
+                    erep += '  Error  : %s\n' % e
+                    erep += '  Line   : %s\n' % linemap['line'].strip()
+                    erep += 'End Dump'
+                    logger.put(0, erep)
             else:
                 logger.put(5, '%s: Item is none.' % self.getName())
         logger.put(5, '%s: I am now dying' % self.getName())

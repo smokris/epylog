@@ -40,6 +40,13 @@ def mkstamp_from_syslog_datestr(datestr, monthmap):
         timestamp = -1
     return timestamp
 
+def get_stamp_sys_msg(line, monthmap):
+    mo = epylog.LOG_SPLIT_RE.match(line)
+    if not mo: raise ValueError('Unknown line format: %s' % line)
+    time, sys, msg = mo.groups()
+    stamp = mkstamp_from_syslog_datestr(time, monthmap)
+    sys = re.sub(epylog.SYSLOG_NG_STRIP, '', sys)
+    return stamp, sys, msg
 
 class LogTracker:
     def __init__(self, config, logger):
@@ -332,8 +339,8 @@ class Log:
         log = self.loglist[ix]
         line, offset = log.get_line_at_offset(offset)
         try:
-            stamp, system, message = self._get_stamp_sys_msg(line)
-        except epylog.FormatError, e:
+            stamp, system, message = get_stamp_sys_msg(line, self.monthmap)
+        except ValueError, e:
             logger.put(0, 'Invalid syslog format string in %s: %s' %
                        (log.filename, line))
             # Pass it on
@@ -378,7 +385,7 @@ class Log:
         while 1:
             try:
                 cline, offset = log.find_previous_entry_by_re(offset, host_re)
-            except IOError: break
+            except IOError, epylog.OutOfRangeError: break
             if epylog.MESSAGE_REPEATED_RE.search(cline):
                 try:
                     rep_offset = log.repeated_cache[offset]
@@ -387,7 +394,9 @@ class Log:
                     logger.put(5, 'line=%s' % line)
                     log.repeated_cache[offset_orig] = rep_offset
                     break
-                except KeyError: pass
+                except KeyError:
+                    logger.put(5, 'Not in cached values')
+                    pass
             else:
                 logger.put(5, 'Found by backstepping')
                 line = cline
@@ -398,7 +407,7 @@ class Log:
             msg = 'Could not find the original message'
             raise epylog.GenericError(msg, logger)
         try:
-            stamp, system, message = self._get_stamp_sys_msg(line)
+            stamp, system, message = get_stamp_sys_msg(line, self.monthmap)
         except epylog.FormatError, e:
             logger.put(0, 'Invalid syslog format string in %s: %s'
                        (log.filename, line))
@@ -447,22 +456,6 @@ class Log:
                        % (buflen, fh.name))
         logger.put(5, '<Log.dump_strings')
         return buflen
-
-    def _get_stamp_sys_msg(self, line):
-        logger = self.logger
-        logger.put(5, '>Log._get_stamp_sys_msg')
-        mo = epylog.LOG_SPLIT_RE.match(line)
-        if not mo:
-            msg = 'Unknown format of string "%s"' % line
-            raise epylog.FormatError(msg, logger)
-        time, sys, msg = mo.groups()
-        stamp = mkstamp_from_syslog_datestr(time, self.monthmap)
-        sys = re.sub(epylog.SYSLOG_NG_STRIP, '', sys)
-        logger.put(5, 'stamp=%d' % stamp)
-        logger.put(5, 'sys=%s' % sys)
-        logger.put(5, 'msg=%s' % msg)
-        logger.put(5, '<Log._get_stamp_sys_msg')
-        return stamp, sys, msg
 
     def get_stamps(self):
         ##
@@ -851,15 +844,24 @@ class LogFile:
         return [line, offset]
         logger.put(5, '<LogFile.get_line_at_offset')
 
-    def find_previous_entry_by_re(self, offset, re):
+    def find_previous_entry_by_re(self, offset, re, limit=1000):
         logger = self.logger
         logger.put(5, '>LogFile.find_previous_entry_by_re')
         self.fh.seek(offset)
+        count = 0
         while 1:
-            self._lineback()
-            line = self.fh.readline()
-            if re.search(line): break
-            self._lineback()
+            line = self._lineback()
+            #line = self.fh.readline()
+            #self._lineback()
+            if re.search(line):
+                logger.put(5, 'Found line: %s' % line)
+                break
+            count += 1
+            logger.put(5, 'No match, going further back (count=%d)' % count)
+            if count > limit:
+                logger.put(5, 'Reached backstepping limit')
+                msg = 'Out of sane range looking for repeated line'
+                raise epylog.OutOfRangeError(msg, logger)
         logger.put(5, '<LogFile.find_previous_entry_by_re')
         return line, self.fh.tell()
 
@@ -984,12 +986,13 @@ class LogFile:
         logger = self.logger
         logger.put(5, '>LogFile._lineover')
         offset = self.fh.tell()
-        self.fh.readline()
+        entry = self.fh.readline()
         if self.fh.tell() == offset:
             logger.put(5, 'End of file reached!')
             raise IOError
         logger.put(5, 'New offset at %d' % self.fh.tell())
         logger.put(5, '<LogFile._lineover')
+        return entry
 
     def _lineback(self):
         logger = self.logger
@@ -998,9 +1001,10 @@ class LogFile:
         if self.fh.tell() <= 1:
             logger.put(5, 'Start of file reached')
             raise IOError
-        self._rel_position(-2)
+        entry = self._rel_position(-2)
         logger.put(5, 'New offset at %d' % self.fh.tell())
         logger.put(5, '<LogFile._lineback')
+        return entry
 
     def _get_stamp(self):
         logger = self.logger
@@ -1034,9 +1038,10 @@ class LogFile:
             logger.put(5, 'new_offset less than 0. Setting to 0')
             new_offset = 0
         self.fh.seek(new_offset)
-        self._set_at_line_start()
+        entry = self._set_at_line_start()
         logger.put(5, 'offset after _set_at_line_start: %d' % self.fh.tell())
         logger.put(5, '<LogFile._rel_position')
+        return entry
     
     def _mkstamp_from_syslog_datestr(self, datestr):
         logger = self.logger
@@ -1078,12 +1083,14 @@ class LogFile:
             logger.put(5, 'Already at file start')
             return
         logger.put(5, 'starting the backstepping loop')
+        entry = ''
         while 1:
             curchar = self.fh.read(1)
             if curchar == '\n':
                 logger.put(5, 'Found newline at offset %d' % self.fh.tell())
                 break
-            logger.put(5, 'curchar=%s' % curchar)
+            #logger.put(5, 'curchar=%s' % curchar)
+            entry = curchar + entry
             offset = self.fh.tell() - 1
             self.fh.seek(offset)
             if offset == 0:
@@ -1097,5 +1104,5 @@ class LogFile:
         logger.put(5, 'Line start found at offset "%d"' % now_offset)
         logger.put(5, 'rewound by %d characters' % rewound)
         logger.put(5, '<LogFile._set_at_line_start')
-        return rewound
+        return entry
         
