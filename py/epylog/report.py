@@ -144,6 +144,7 @@ class Report:
     def publish(self, rawfh, weedfh):
         logger = self.logger
         logger.put(5, '>Report.publish')
+        unparsed_strings = ''
         if self.unparsed:
             logger.put(2, 'Checking the size of filt_fh')
             self.filt_fh.seek(0, 2)
