@@ -167,6 +167,7 @@ class Report:
                     raise AccessError('Could not open weeded strings file "%s"'
                                       % weeded_file, logger)
                 logger.endhang(2)
+                logger.put(5, 'strings=%s' % strings)
                 if len(strings.strip()):
                     unparsed_strings = strings
                     logger.put(5, unparsed_strings)
