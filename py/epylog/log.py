@@ -52,8 +52,8 @@ def mkmonthmap():
     pad = 2
     months = []
     for i in range(0, 12):
-        months.append(time.strftime("%b", (0, i+1, 0, 0,
-                                           0, 0, 0, 0, 0)))
+        months.append(time.strftime("%b", (1, i+1, 1, 1,
+                                           1, 1, 1, 1, 1)))
     basetime = time.localtime(time.time())
     now_year = basetime[0]
     now_month = basetime[1]

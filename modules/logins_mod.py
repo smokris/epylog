@@ -153,6 +153,7 @@ class logins_mod(InternalModule):
 
         self.safe_domains = []
         safe_domains = opts.get('safe_domains', '.*')
+        self.systems_collapse = int(opts.get('systems_collapse', '10'))
         for domain in safe_domains.split(','):
             domain = domain.strip()
             if domain:
@@ -216,6 +217,7 @@ class logins_mod(InternalModule):
         self.flip = ' bgcolor="#dddddd"'
 
         self.line_rep = '<tr%s><td valign="top" width="15%%">%s</td><td valign="top" width="15%%">%s</td><td width="70%%">%s</td></tr>\n'
+        self.collapsed_rep = '%s <font color="red">[%s more skipped]</font>'
 
     ##
     # LINE MATCHING ROUTINES
@@ -673,9 +675,13 @@ class logins_mod(InternalModule):
                     mymap = rs.get_submap((action, key, service))
                     key2s = []
                     for key2 in mymap.keys():
-                        field = key2[0]
-                        key2s.append('%s(%d)' % (field, mymap[key2]))
-                    service_rep.append([service, ', '.join(key2s)])
+                        loghost = key2[0]
+                        key2s.append('%s(%d)' % (loghost, mymap[key2]))
+                    if len(key2s) > self.systems_collapse:
+                        loghosts = self.collapsed_rep % (key2s[0],len(key2s)-1)
+                    else:
+                        loghosts = ', '.join(key2s)
+                    service_rep.append([service, loghosts])
                 blank = 0
                 for svcrep in service_rep:
                     if blank: key = '&nbsp;'
