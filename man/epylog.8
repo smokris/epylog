@@ -106,9 +106,9 @@ The useful way to run from a command line is with \-\-last. E.g.:
 .B epylog \-\-last 2w
 .LP 
 When running from cron, you want to store the offsets and not rely on
-timestamps. Therefore you'll want this:
+timestamps. There is a mode that allows you to do this:
 .LP 
-.B epylog \-\-quiet \-\-store\-offsets
+.B epylog \-\-cron
 
 .SH "AUTHORS"
 .LP 
