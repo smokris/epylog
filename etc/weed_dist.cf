@@ -108,6 +108,7 @@ sendmail\[.*:.*timeout waiting for input
 [spamd]
 spamd\[.*: info:
 spamd\[.*: processing message
+spamd\[.*: checking message
 spamd\[.*: connection from
 spamd\[.*: Creating default_prefs
 

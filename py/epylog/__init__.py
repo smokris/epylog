@@ -96,7 +96,10 @@ class Epylog:
 
         config = ConfigParser.ConfigParser()
         logger.puthang(3, 'Reading the config file "%s"' % cfgfile)
-        config.read(cfgfile)
+        try: config.read(cfgfile)
+        except:
+            msg = 'Could not read/parse config file "%s"' % cfgfile
+            raise ConfigError(msg, logger)
         logger.endhang(3)
         ##
         # Read in the main configuration
