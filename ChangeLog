@@ -1,3 +1,6 @@
+Epylog-0.9.4
+	* Fix for bug #38 (incorrect offsets were causing backtrace)
+
 Epylog-0.9.3
 	* Autoconf now used to configure and build epylog.
 	* Mail module now supports qmail.
