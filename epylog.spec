@@ -16,9 +16,8 @@ Vendor: Duke University
 BuildRoot: %{_tmppath}/%{name}-%{version}-root
 BuildArch: noarch
 BuildPrereq: perl, python, gzip, sed
-Requires: /usr/bin/python2, perl >= 5.6, elinks, grep
+Requires: /usr/bin/python2, elinks
 #Obsoletes: dulog
-Provides: perl(epylog)
 
 %description
 Epylog is a new log notifier and parser which runs periodically out of
@@ -27,6 +26,18 @@ them in a more comprehensive format, and then provides you with the
 output. It is written specifically with large network clusters in mind
 where a lot of machines (around 50 and upwards) log to the same
 loghost using syslog or syslog-ng.
+
+%package perl
+Summary: Perl module for writing external Epylog modules
+Group: Development/Libraries
+Requires: epylog, perl >= 5.6
+Provides: perl(epylog)
+
+%description perl
+This package provides a perl module for epylog. It is useful for
+writing epylog modules that use external module API. No modules shipping
+with epylog by default use that API, so install this only if you are using
+external perl modules, or intend to write some of your own.
 
 %prep
 %setup -q
@@ -69,15 +80,21 @@ mv AUTHORS ChangeLog INSTALL LICENSE README doc/
 %{_pydir}/%{name}
 %{_sbindir}/%{name}
 %{_sysconfdir}/cron.daily/%{name}.cron
-%{_perldir}/%{name}.pm
-%{_mandir}/man*/*
+%{_mandir}/man5/*
+%{_mandir}/man8/*
 %config(noreplace) %{_sysconfdir}/%{name}
 %doc doc/*
+
+%files perl
+%defattr(-,root,root)
+%{_perldir}/%{name}.pm
+%{_mandir}/man3/*
 
 %changelog
 * Thu May  1 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.9.3-1
 - Now using autoconf to do the building.
 - Added qmail support in mail module.
+- Split perl module into a separate package.
 
 * Tue Apr 29 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.9.2-1
 - Notices module reworked to support custom notifications.
