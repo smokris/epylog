@@ -44,6 +44,8 @@ class logins_mod(InternalModule):
         self.failure    = 2
         self.root_open    = 11
         self.root_failure = 12
+        self.pam_ignore = []
+        self.xinetd_ignore = []
 
         ##
         # PAM reports
@@ -104,14 +106,31 @@ class logins_mod(InternalModule):
             rc('\sLOGIN FAILED,\sip=\[\S+\]'): self.courier_failure
             }
 
+        ##
+        # ProFTPD
+        #
+        proftpd_map = {
+            rc('proftpd\[\S*:.*USER.*Login successful'): self.proftpd_open,
+            rc('proftpd\[\S*:.*no such user found'): self.proftpd_failure,
+            rc('proftpd\[\S*:.*Login failed'): self.proftpd_failure
+        }
+
         regex_map = {}
         if opts.get('enable_pam', "1") != "0": regex_map.update(pam_map)
         if opts.get('enable_xinetd', "1") != "0": regex_map.update(xinetd_map)
-        if opts.get('enable_sshd', "1") != "0": regex_map.update(sshd_map)
-        if opts.get('enable_uw_imap', "0") != "0":regex_map.update(uw_imap_map)
+        if opts.get('enable_sshd', "1") != "0": 
+            regex_map.update(sshd_map)
+            self.pam_ignore.append('sshd')
+        if opts.get('enable_uw_imap', "0") != "0":
+            regex_map.update(uw_imap_map)
+            self.xinetd_ignore.append('imaps')
         if opts.get('enable_imp', "0") != "0": regex_map.update(imp_map)
         if opts.get('enable_dovecot',"0") != "0": regex_map.update(dovecot_map)
         if opts.get('enable_courier',"0") != "0": regex_map.update(courier_map)
+        if opts.get('enable_proftpd',"0") != "0":
+            regex_map.update(proftpd_map)
+            self.pam_ignore.append('ftp')
+            self.xinetd_ignore.append('ftp')
 
         self.safe_domains = []
         safe_domains = opts.get('safe_domains', '.*')
@@ -150,6 +169,8 @@ class logins_mod(InternalModule):
         self.imp2_fail_re = rc('FAILED\s(\S*)\sto\s(\S*):\S*\sas\s(\S*)')
         self.imp3_open_re = rc('success\sfor\s(\S*)\s\[(\S*)\]\sto\s\{(\S*):')
         self.imp3_fail_re = rc('LOGIN\s(\S*)\sto\s(\S*):\S*\sas\s(\S*)')
+        self.proftpd_open_re = rc('proftpd\[\S*:.*\[(\S+)\].*USER\s(.*):\sLogin\ssuccessful')
+        self.proftpd_failure_re = rc('proftpd\[\S*:.*\[(\S+)\].*USER\s([^:\s]*)')
         self.fake_ipv6_re = rc('^::ffff:(\S+)')
         
         self.sshd_methods = {'password': 'pw',
@@ -212,9 +233,9 @@ class logins_mod(InternalModule):
         action = self.open
         system, message, mult = self.get_smm(linemap)
         service = self._get_pam_service(message)
-        if service == 'sshd':
+        if service in self.pam_ignore:
             ##
-            # sshd_open will do a much better job.
+            # the service will do a much better job.
             #
             result = self.general_ignore(linemap)
             return result
@@ -299,6 +320,12 @@ class logins_mod(InternalModule):
             self.logger.put(3, 'Odd xinetd start string: %s' % message)
             return None
         service = mo.group(1)
+        if service in self.xinetd_ignore:
+            ##
+            # the service will do a much better job.
+            #
+            result = self.general_ignore(linemap)
+            return result
         restuple = self._mk_restuple(action, system, service, '', '', '')
         return {restuple: mult}
 
@@ -419,7 +446,33 @@ class logins_mod(InternalModule):
         user = 'unknown'
         restuple = self._mk_restuple(action, system, service, user, '', rhost)
         return {restuple: mult}
-    
+
+    def proftpd_open(self, linemap):
+        action = self.open
+        system, message, mult = self.get_smm(linemap)
+        mo = self.proftpd_open_re.search(message)
+        if not mo:
+            self.logger.put(3, 'Odd ProFTPD OPEN string: %s' % message)
+            return None
+        service = 'ftp(pro)'
+        rhost, user = mo.groups()
+        rhost = self.gethost(rhost)
+        restuple = self._mk_restuple(action, system, service, user, '', rhost)
+        return {restuple: mult}
+
+    def proftpd_failure(self, linemap):
+        action = self.failure
+        system, message, mult = self.get_smm(linemap)
+        mo = self.proftpd_failure_re.search(message)
+        if not mo:
+            self.logger.put(3, 'Odd ProFTPD FAILURE string: %s' % message)
+            return None
+        service = 'ftp(pro)'
+        rhost, user = mo.groups()
+        rhost = self.gethost(rhost)
+        restuple = self._mk_restuple(action, system, service, user, '', rhost)
+        return {restuple: mult}
+
     def imp2_failure(self, linemap):
         action = self.failure
         system, message, mult = self.get_smm(linemap)

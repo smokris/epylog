@@ -19,6 +19,7 @@ enable_uw_imap = 0
 enable_dovecot = 0
 enable_courier = 0
 enable_imp = 0
+enable_proftpd = 0
 ##
 # This is a fun setting. You can list domains that are "safe" here.
 # E.g. if your org's domain is example.com and you generally don't 
