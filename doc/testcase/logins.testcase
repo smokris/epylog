@@ -11,3 +11,8 @@ Apr  6 12:00:00 hagrid IMP[15435]: Login 152.3.182.140 to mail.phy.duke.edu:993 
 Apr  6 12:00:00 hagrid IMP[15398]: FAILED 152.3.182.140 to mail.phy.duke.edu:993 as kinast
 Apr  6 12:00:00 hagrid HORDE[27127]: [imp] Login success for wjs [208.61.133.234] to {mail-wj.acpub.duke.edu:993} [on line 64 of "/usr/share/horde/imp/redirect.php"]
 Apr  6 12:00:00 hagrid HORDE[27126]: [imp] FAILED LOGIN 208.61.133.234 to mail.cs.duke.edu:993[imap/ssl/novalidate-cert] as wjs [on line 270 of "/usr/share/horde/imp/lib/IMP.php"]
+Apr 10 12:59:39 login1/login1 time(pam_unix)[13050]: session opened for user judy by (uid=0)
+Apr 10 12:59:39 login1/login1 gdm(pam_unix)[13050]: session opened for user judy by (uid=0)
+Apr 10 13:18:17 hagrid/hagrid xscreensaver(pam_unix)[1903]: authentication failure; logname= uid=1567 euid=1567 tty=:0.0 ruser= rhost=  user=icon
+Apr 10 15:07:18 public0/public0 gdm(pam_unix)[1466]: authentication failure; logname= uid=0 euid=0 tty=:0 ruser= rhost=
+Apr 11 17:11:21 mail/mail imapd[23246]: Login user=matveev host=tonatiu.phy.duke.edu [152.3.183.16]

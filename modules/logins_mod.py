@@ -24,42 +24,32 @@ class logins_mod(InternalModule):
         pam_map = {
             rc('\(pam_unix\)\S*:.*authentication\s*failure'): self.pam_failure,
             rc('\(pam_unix\)\S*:\ssession\sopened\sfor'): self.pam_open,
-            rc('\(pam_unix\)\S*:\ssession\sclosed\sfor'): self.general_ignore,
             rc('\(pam_unix\)\S*:\sbad\susername'): self.pam_baduser,
-            rc('\(pam_unix\)\S*:\sauth\scould\snot'): self.pam_chelper_failure,
-            rc('\(pam_unix\)\S*:\scheck\spass;'): self.general_ignore
+            rc('\(pam_unix\)\S*:\sauth\scould\snot'): self.pam_chelper_failure
             }
         ##
         # XINETD reports
         #
         xinetd_map = {
-            rc('xinetd\S*: START:'): self.xinetd_start,
-            rc('xinetd\S*: EXIT:'): self.general_ignore
+            rc('xinetd\S*: START:'): self.xinetd_start
             }
         ##
         # SSH reports
         #
         sshd_map = {
             rc('sshd\[\S*: Accepted'): self.sshd_open,
-            rc('sshd\[\S*: Connection\sclosed'): self.general_ignore,
             rc('sshd\[\S*: Failed'): self.sshd_failure
             }
         ##
         # IMAPD and IPOP3D
         #
-        imap_pop_map = {
-            rc('imapd\[\S*: Login\sfail'): self.imap_pop_failure,
-            rc('imapd\[\S*: Authenticated\suser'): self.imap_pop_open,
-            rc('imapd\[\S*: AUTHENTICATE'): self.general_ignore,
-            rc('imapd\[\S*: Logout'): self.general_ignore,
-            rc('imapd\[\S*: Killed'): self.general_ignore,
-            rc('ipop3d\[\S*: Login\sfail'): self.imap_pop_failure,
-            rc('ipop3d\[\S*: Login\suser'): self.imap_pop_open,
-            rc('ipop3d\[\S*: Auth\suser'): self.imap_pop_open,
-            rc('ipop3d\[\S*: AUTHENTICATE'): self.general_ignore,
-            rc('ipop3d\[\S*: Logout'): self.general_ignore,
-            rc('ipop3d\[\S*: Killed'): self.general_ignore,
-            rc('ipop3d\[\S*: Autologout'): self.general_ignore
+        uw_imap_map = {
+            rc('imapd\[\S*: Login\sfail'): self.uw_imap_failure,
+            rc('imapd\[\S*: Authenticated\suser'): self.uw_imap_open,
+            rc('imapd\[\S*: Login\suser'): self.uw_imap_open,
+            rc('ipop3d\[\S*: Login\sfail'): self.uw_imap_failure,
+            rc('ipop3d\[\S*: Login\suser'): self.uw_imap_open,
+            rc('ipop3d\[\S*: Auth\suser'): self.uw_imap_open
             }
         ##
         # IMP
@@ -68,22 +58,33 @@ class logins_mod(InternalModule):
             rc('IMP\[\S*: Login'): self.imp2_open,
             rc('IMP\[\S*: FAILED'): self.imp2_failure,
             rc('HORDE\[\S*\s*\[imp\] Login'): self.imp3_open,
-            rc('HORDE\[\S*\s*\[imp\] FAILED'): self.imp3_failure,
-            rc('HORDE\[\S*\s*\[imp\] Logout'): self.general_ignore
+            rc('HORDE\[\S*\s*\[imp\] FAILED'): self.imp3_failure
         }
 
         regex_map = {}
         if opts.get('enable_pam', "1") != "0": regex_map.update(pam_map)
         if opts.get('enable_xinetd', "1") != "0": regex_map.update(xinetd_map)
         if opts.get('enable_sshd', "1") != "0": regex_map.update(sshd_map)
-        if opts.get('enable_imap_pop', "0") != "0":
-            regex_map.update(imap_pop_map)
+        if opts.get('enable_uw_imap', "0") != "0":regex_map.update(uw_imap_map)
         if opts.get('enable_imp', "0") != "0": regex_map.update(imp_map)
+
+        self.safe_domains = []
+        safe_domains = opts.get('safe_domains', '.*')
+        for domain in safe_domains.split(','):
+            domain = domain.strip()
+            if domain:
+                try:
+                    domain_re = rc(domain)
+                    self.safe_domains.append(domain_re)
+                except:
+                    logger.put(0, 'Error compiling domain regex: %s' % domain)
+                    logger.put(0, 'Check config for Logins module!')
 
         self.regex_map = regex_map
         
         self.pam_service_re = rc('(\S+)\(pam_unix\)')
-        self.pam_failure_re = rc('.*\slogname=(\S*).*\srhost=(\S*).*\suser=(\S*)')
+        self.pam_failure_re = rc('.*\slogname=(\S*).*\srhost=(\S*)')
+        self.pam_failure_user_re = rc('\suser=(\S*)')
         self.pam_open_re = rc('.*for user (\S+) by\s(\S*)\s*\(uid=(\S+)\)')
         self.pam_failure_more_re = rc('(\S+)\smore\sauthentication\sfailures')
         self.pam_baduser_re = rc('\sbad\susername\s\[(.*)\]')
@@ -92,9 +93,9 @@ class logins_mod(InternalModule):
         self.sshd_open_ruser_re = rc('Accepted\s(\S*)\sfor\s(\S*)\sfrom\s(\S*)\sport\s\d*\sruser\s(\S*)\s*(\S*)')
         self.sshd_open_re = rc('Accepted\s(\S*)\sfor\s(\S*)\sfrom\s(\S*)\sport\s\d+\s*(\S*)')
         self.sshd_fail_re = rc('Failed\s(\S*)\sfor\s[illegal\suser]*\s*(\S*)\sfrom\s(\S*)\sport\s\d*\s*(\S*)')
-        self.imap_pop_fail_re = rc('auth=(.*)\shost=.*\[(\S*)\]')
-        self.imap_pop_open_re = rc('user=(.*)\shost=.*\[(\S*)\]')
-        self.imap_pop_service_re = rc('^(\S*)\[\d*\]:')
+        self.uw_imap_fail_re = rc('auth=(.*)\shost=.*\[(\S*)\]')
+        self.uw_imap_open_re = rc('user=(.*)\shost=.*\[(\S*)\]')
+        self.uw_imap_service_re = rc('^(\S*)\[\d*\]:')
         self.imp2_open_re = rc('Login\s(\S*)\sto\s(\S*):\S*\sas\s(\S*)')
         self.imp2_fail_re = rc('FAILED\s(\S*)\sto\s(\S*):\S*\sas\s(\S*)')
         self.imp3_open_re = rc('success\sfor\s(\S*)\s\[(\S*)\]\sto\s\{(\S*):')
@@ -106,7 +107,7 @@ class logins_mod(InternalModule):
                              'rsa': 'rsa',
                              'none': 'none'}
 
-        self.report_wrap = '<table width="90%%">%s</table>'
+        self.report_wrap = '<table width="100%%" rules="cols" cellpadding="2">%s</table>'
         self.subreport_wrap = '<tr><th align="left" colspan="3"><h3>%s</h3></th></tr>\n%s\n'
 
         self.root_failures_title = '<font color="red">ROOT FAILURES</font>'
@@ -114,41 +115,47 @@ class logins_mod(InternalModule):
         self.user_failures_title = '<font color="red">User Failures</font>'
         self.user_logins_title = '<font color="blue">User Logins</font>'
 
+        self.untrusted_host = '%(system)s::<font color="red">%(rhost)s</font>'
+
         self.flip = ' bgcolor="#dddddd"'
 
-        self.line_rep = '<tr%s><td align="left" valign="top" width="15%%">%s</td><td align="right" valign="top" width="15%%">%s:</td><td width="70%%">%s</td></tr>\n'
+        self.line_rep = '<tr%s><td valign="top" width="15%%">%s</td><td valign="top" width="15%%">%s</td><td width="70%%">%s</td></tr>\n'
 
     ##
     # LINE MATCHING ROUTINES
     #
     def general_ignore(self, linemap):
         restuple = (self.ignore, None, None, None)
-        return Result(restuple, 1)
+        return {restuple: 1}
 
     def pam_failure(self, linemap):
         action = self.failure
         self.logger.put(5, 'pam_failure invoked')
         system, message, mult = self.get_smm(linemap)
         service = self._get_pam_service(message)
-        if service == 'xscreensaver' or service == 'sshd':
-            ##
-            # xscreensaver always fail as root.
-            # SSHD is better handled by sshd part itself.
-            # Ignore these.
-            #
-            result = self.general_ignore(linemap)
-            return result
         mo = self.pam_failure_re.search(message)
         if not mo:
             self.logger.put(3, 'Odd pam failure string: %s' % message)
             return None
-        byuser, rhost, user = mo.groups()
+        byuser, rhost = mo.groups()
+        mo = self.pam_failure_user_re.search(message)
+        if mo: user = mo.group(1)
+        else: user = 'unknown'
+        if ((service == 'xscreensaver' and user == 'root')
+            or service == 'sshd' or service == 'imap'):
+            ##
+            # xscreensaver will always fail as root.
+            # SSHD is better handled by sshd part itself.
+            # Imap failures are caught by imap routines.
+            # Ignore these.
+            #
+            result = self.general_ignore(linemap)
+            return result
         mo = self.pam_failure_more_re.search(message)
         if mo: mult += int(mo.group(1))
-        else: mult += 1
         restuple = self._mk_restuple(action, system, service, user,
                                      byuser, rhost)
-        return Result(restuple, mult)
+        return {restuple: mult}
 
     def pam_open(self, linemap):
         action = self.open
@@ -167,7 +174,7 @@ class logins_mod(InternalModule):
         user, byuser, byuid = mo.groups()
         if byuser == '': byuser = self.getuname(int(byuid))
         restuple = self._mk_restuple(action, system, service, user, byuser, '')
-        return Result(restuple, mult)
+        return {restuple: mult}
 
     def pam_baduser(self, linemap):
         action = self.failure
@@ -179,7 +186,7 @@ class logins_mod(InternalModule):
         user = mo.group(1)
         service = self._get_pam_service(message)
         restuple = self._mk_restuple(action, system, service, user, '', '')
-        return Result(restuple, mult)
+        return {restuple: mult}
 
     def pam_chelper_failure(self, linemap):
         action = self.failure
@@ -191,7 +198,7 @@ class logins_mod(InternalModule):
         user = mo.group(1)
         service = self._get_pam_service(message)
         restuple = self._mk_restuple(action, system, service, user, '', '')
-        return Result(restuple, mult)
+        return {restuple: mult}
 
     def xinetd_start(self, linemap):
         action = self.open
@@ -202,7 +209,7 @@ class logins_mod(InternalModule):
             return None
         service = mo.group(1)
         restuple = self._mk_restuple(action, system, service, '', '', '')
-        return Result(restuple, mult)
+        return {restuple: mult}
 
     def sshd_open(self, linemap):
         action = self.open
@@ -221,7 +228,7 @@ class logins_mod(InternalModule):
         service = '%s(%s)' % (service, method)
         restuple = self._mk_restuple(action, system, service, user,
                                      ruser, rhost)
-        return Result(restuple, mult)
+        return {restuple: mult}
 
     def sshd_failure(self, linemap):
         action = self.failure
@@ -236,33 +243,33 @@ class logins_mod(InternalModule):
         if not service: service = 'ssh1'
         service = '%s(%s)' % (service, method)
         restuple = self._mk_restuple(action, system, service, user, '', rhost)
-        return Result(restuple, mult)
+        return {restuple: mult}
 
-    def imap_pop_failure(self, linemap):
+    def uw_imap_failure(self, linemap):
         action = self.failure
         system, message, mult = self.get_smm(linemap)
-        service = self._get_imap_pop_service(message)
-        mo = self.imap_pop_fail_re.search(message)
+        service = self._get_uw_imap_service(message)
+        mo = self.uw_imap_fail_re.search(message)
         if not mo:
             self.logger.put(3, 'Odd imap FAILURE string: %s' % message)
             return None
         user, rhost = mo.groups()
         rhost = self.gethost(rhost)
         restuple = self._mk_restuple(action, system, service, user, '', rhost)
-        return Result(restuple, mult)
+        return {restuple: mult}
 
-    def imap_pop_open(self, linemap):
+    def uw_imap_open(self, linemap):
         action = self.open
         system, message, mult = self.get_smm(linemap)
-        service = self._get_imap_pop_service(message)
-        mo = self.imap_pop_open_re.search(message)
+        service = self._get_uw_imap_service(message)
+        mo = self.uw_imap_open_re.search(message)
         if not mo:
             self.logger.put(3, 'Odd imap open string: %s' % message)
             return None
         user, rhost = mo.groups()
         rhost = self.gethost(rhost)
         restuple = self._mk_restuple(action, system, service, user, '', rhost)
-        return Result(restuple, mult)
+        return {restuple: mult}
 
     def imp2_failure(self, linemap):
         action = self.failure
@@ -275,7 +282,7 @@ class logins_mod(InternalModule):
         rhost = self.gethost(rhost)
         service = 'IMP2'
         restuple = self._mk_restuple(action, system, service, user, '', rhost)
-        return Result(restuple, mult)
+        return {restuple: mult}
 
     def imp2_open(self, linemap):
         action = self.open
@@ -288,7 +295,7 @@ class logins_mod(InternalModule):
         rhost = self.gethost(rhost)
         service = 'IMP2'
         restuple = self._mk_restuple(action, system, service, user, '', rhost)
-        return Result(restuple, mult)
+        return {restuple: mult}
 
     def imp3_failure(self, linemap):
         action = self.failure
@@ -301,7 +308,7 @@ class logins_mod(InternalModule):
         rhost = self.gethost(rhost)
         service = 'IMP3'
         restuple = self._mk_restuple(action, system, service, user, '', rhost)
-        return Result(restuple, mult)
+        return {restuple: mult}
 
     def imp3_open(self, linemap):
         action = self.open
@@ -314,7 +321,7 @@ class logins_mod(InternalModule):
         rhost = self.gethost(rhost)
         service = 'IMP3'
         restuple = self._mk_restuple(action, system, service, user, '', rhost)
-        return Result(restuple, mult)
+        return {restuple: mult}
 
 
     ##
@@ -324,37 +331,51 @@ class logins_mod(InternalModule):
         if user == '': user = 'unknown'
         if user == 'root' or user == 'ROOT':
             action += 10
-            remote = self._mk_remote(byuser, rhost)
+            remote = self._mk_userat(byuser, rhost)
             restuple = (action, system, service, remote)
         else:
+            if rhost:
+                match = 0
+                for domain_re in self.safe_domains:
+                    if domain_re.search(rhost):
+                        match = 1
+                        break
+                if not match:
+                    tmp = {'system': system, 'rhost': rhost}
+                    system = self.untrusted_host % tmp
             restuple = (action, user, service, system)
         return restuple
-    
+
+    def _mk_dots(self, str, lim):
+        if len(str) > lim:
+            start = -(lim-2)
+            str = '..' + str[start:]
+        return str
+        
     def _get_pam_service(self, str):
         service = 'unknown'
         mo = self.pam_service_re.search(str)
         if mo: service = mo.group(1)
         return service
 
-    def _get_imap_pop_service(self, str):
+    def _get_uw_imap_service(self, str):
         service = 'unknown'
-        mo = self.imap_pop_service_re.search(str)
+        mo = self.uw_imap_service_re.search(str)
         if mo: service = mo.group(1)
         return service
 
-    def _mk_remote(self, ruser, rhost):
-        if ruser and rhost: ruhost = '%s@%s' % (ruser, rhost)
-        elif ruser: ruhost = ruser
-        elif rhost: ruhost = '@%s' % rhost
-        else: ruhost = 'unknown'
-        return ruhost
+    def _mk_userat(self, user, host):
+        if user and host: userat = '%s@%s' % (user, host)
+        elif user: userat = user
+        elif host: userat = '@%s' % host
+        else: userat = 'unknown'
+        return userat
 
     ##
     # FINALIZE!!
     #
     def finalize(self, rs):
         logger = self.logger
-        logger.put(5, '>logins_mod.finalize')
         ##
         # Prepare report
         #
@@ -362,26 +383,23 @@ class logins_mod(InternalModule):
         rep = {}
         for action in [self.root_failure, self.root_open,
                        self.failure, self.open]:
-            logger.put(5, 'Processing action %d' % action)
             rep[action] = ''
             flipper = ''
             for key in rs.get_distinct((action,)):
-                logger.put(5, 'key=%s' % key)
+                if flipper: flipper = ''
+                else: flipper = self.flip
                 service_rep = []
                 for service in rs.get_distinct((action, key)):
-                    logger.put(5, 'service=%s' % service)
                     mymap = rs.get_submap((action, key, service))
                     key2s = []
                     for key2 in mymap.keys():
-                        logger.put(5, 'key2=%s' % key2)
-                        key2s.append('%s(%d)' % (key2[0], mymap[key2]))
+                        field = key2[0]
+                        key2s.append('%s(%d)' % (field, mymap[key2]))
                     service_rep.append([service, ', '.join(key2s)])
                 blank = 0
                 for svcrep in service_rep:
                     if blank: key = '&nbsp;'
                     else: blank = 1
-                    if flipper: flipper = ''
-                    else: flipper = self.flip
                     rep[action] += self.line_rep % (flipper, key,
                                                     svcrep[0], svcrep[1])
         

@@ -329,16 +329,25 @@ class Epylog:
         finally:
             logger.put(5, 'Notifying the threads that they may die now')
             pq.tell_threads_to_quit(threads)
-            logger.put(5, 'Waiting for threads to die')
+            logger.puthang(1, 'Waiting for all processing threads to quit')
             for t in threads: t.join()
-        logger.put(5, 'Finished all matching, now finalizing')
+            logger.endhang(1)
+        logger.puthang(1, 'Finished all matching, now finalizing')
         for module in modules:
-            logger.put(5, 'Finalizing "%s"' % module.name)
+            logger.puthang(1, 'Finalizing "%s"' % module.name)
             try:
                 rs = pq.get_resultset(module)
-                module.finalize_processing(rs)
+                try:
+                    module.finalize_processing(rs)
+                except Exception, e:
+                    msg = ('Module %s crashed in finalize stage: %s' % 
+                           (module.name, e))
+                    logger.put(0, msg)
+                    module.no_report()
             except KeyError:
                 module.no_report()
+            logger.endhang(1)
+        logger.endhang(1)
         logger.endhang(1)
         logger.put(5, '<Epylog._process_internal_modules')
 
@@ -379,10 +388,10 @@ class ProcessingQueue:
     def put_result(self, line, result, module):
         self.mon.acquire()
         if result is not None:
-            try: self.resultsets[module].add(result)
+            try: self.resultsets[module].add_result(result)
             except KeyError:
-                self.resultsets[module] = ResultSet()
-                self.resultsets[module].add(result)
+                self.resultsets[module] = Result()
+                self.resultsets[module].add_result(result)
             module.put_filtered(line)
         self.mon.release()
 
@@ -436,20 +445,18 @@ class ConsumerThread(threading.Thread):
                 logger.put(5, '%s: Item is none.' % self.getName())
         logger.put(5, '%s: I am now dying' % self.getName())
 
-class ResultSet:
-    def __init__(self):
-        self.resultset = {}
-
-    def add(self, resobj):
-        result = resobj.result
-        multiplier = resobj.multiplier
-        try: self.resultset[result] += multiplier
-        except KeyError: self.resultset[result] = multiplier
+class Result(dict):
+    def add_result(self, result):
+        try:
+            restuple, mult = result.popitem()
+            if restuple in self: self[restuple] += mult
+            else: self[restuple] = mult
+        except KeyError: pass
 
     def get_distinct(self, matchtup, sort=1):
         lim = len(matchtup)
         matches = []
-        reskeys = self.resultset.keys()
+        reskeys = self.keys()
         if sort: reskeys.sort()
         for key in reskeys:
             if matchtup == key[0:lim]:
@@ -457,31 +464,72 @@ class ResultSet:
                     matches.append(key[lim])
         return matches
 
-    def get_submap(self, matchtup, sort=1):
+    def get_submap(self, matchtup, sort=1, remove=0):
         lim = len(matchtup)
         matchmap = {}
-        reskeys = self.resultset.keys()
-        reskeys.sort()
+        reskeys = self.keys()
+        if sort: reskeys.sort()
         for key in reskeys:
             if matchtup == key[0:lim]:
                 subtup = key[lim:]
-                try: matchmap[subtup] += self.resultset[key]
-                except KeyError: matchmap[subtup] = self.resultset[key]
+                try: matchmap[subtup] += self[key]
+                except KeyError: matchmap[subtup] = self[key]
+                if remove: del self[key]
         return matchmap
 
+    def get_distinct_values(self, matchtup):
+        submap = self.get_submap(matchtup)
+        if not submap: return []
+        values = []
+        while 1:
+            try: restuple, mult = submap.popitem()
+            except KeyError: break
+            for i in range(0, len(restuple)):
+                entry = restuple[i]
+                ##
+                # Get the list of values already at that position
+                #
+                try: vallist = values[i]
+                except IndexError:
+                    while 1:
+                        values.append([])
+                        try:
+                            vallist = values[i]
+                            break
+                        except IndexError: pass
+                if entry is None: continue
+                if entry not in vallist:
+                    vallist.append(entry)
+                    values[i] = vallist
+        return values
+
+    def get_top(self, lim):
+        if not lim: return {}
+        sortlist = []
+        for tuple, mult in self.items():
+            sortlist.append((mult, tuple))
+        sortlist.sort()
+        sortlist = sortlist[-lim:]
+        sortlist.reverse()
+        return sortlist
+
     def is_empty(self):
-        if self.resultset == {}: return 1
-        else: return 0
-        
-class Result:
-    def __init__(self, result, multiplier):
-        self.result = result
-        self.multiplier = multiplier
+        if self: return 0
+        else: return 1
 
 class InternalModule:
     def __init__(self):
         self._known_hosts = {}
         self._known_uids = {}
+        self.amp_re = re.compile('&')
+        self.lt_re  = re.compile('<')
+        self.gt_re  = re.compile('>')
+
+    def htmlsafe(self, unsafe):
+        unsafe = re.sub(self.amp_re, '&amp;', unsafe)
+        unsafe = re.sub(self.lt_re, '&lt;', unsafe)
+        unsafe = re.sub(self.gt_re, '&gt;', unsafe)
+        return unsafe
         
     def getuname(self, uid):
         """get username for a given uid"""
@@ -513,7 +561,7 @@ class Logger:
     indent = '  '
     hangmsg = []
     hanging = 0
-    
+
     def __init__(self, loglevel):
         self.loglevel = loglevel
 
@@ -537,7 +585,6 @@ class Logger:
             print '%sInvoking: "%s"...' % (self.__getindent(), message)
             self.hanging = 1
             self.hangmsg.append(message)
-
 
     def endhang(self, level, message='done'):
         if (level <= self.loglevel):

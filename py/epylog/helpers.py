@@ -46,7 +46,7 @@ class ModuleTest:
                 msg = "ERROR trying to open file %s: %s" % (filtfile, e)
                 self._die(msg)
         monthmap = epylog.log.mkmonthmap()
-        rs = epylog.ResultSet()
+        rs = epylog.Result()
         while 1:
             line = infh.readline()
             if not line: break
@@ -58,23 +58,27 @@ class ModuleTest:
                     handler = epymod.regex_map[regex]
                     logger.put(5, '%s -> %s' % (handler.__name__, msg))
                     result = handler(linemap)
-                    rs.add(result)
-                    if filtfile is not None:
-                        filtfh.write(line)
-                    break
+                    if result is not None:
+                        rs.add_result(result)
+                        if filtfile is not None:
+                            filtfh.write(line)
+                        break
         infh.close()
         if filtfile is not None: filtfh.close()
-        logger.put(5, 'Finalizing')
-        report = epymod.finalize(rs)
-        if repfile is not None:
-            logger.put(5, 'Trying to write report to %s' % repfile)
-            repfh = open(repfile, 'w')
-            repfh.write(report)
-            repfh.close()
-            logger.put(5, 'Report written to %s' % repfile)
+        if not rs.is_empty():
+            logger.put(5, 'Finalizing')
+            report = epymod.finalize(rs)
+            if repfile is not None:
+                logger.put(5, 'Trying to write report to %s' % repfile)
+                repfh = open(repfile, 'w')
+                repfh.write(report)
+                repfh.close()
+                logger.put(5, 'Report written to %s' % repfile)
+            else:
+                logger.put(5, 'Report follows:')
+                print report
         else:
-            logger.put(5, 'Report follows:')
-            print report
+            logger.put(5, 'No results for this run')
         logger.put(5, 'Done')
 
     def _mk_linemap(self, line, monthmap):

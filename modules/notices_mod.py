@@ -48,7 +48,11 @@ class notices_mod(InternalModule):
             ##
             # VFS Errors left by cd-roms
             #
-            rc('VFS: busy inodes on changed media'): self.busy_inodes
+            rc('VFS: busy inodes on changed media'): self.busy_inodes,
+            ##
+            # Generic CD-ROM errors
+            #
+            rc('kernel: cdrom: This disc doesn'): self.cdrom_misc
         }
 
         self.normal   = 0
@@ -58,12 +62,12 @@ class notices_mod(InternalModule):
         self.kernel_re = rc('Linux\sversion\s(\S*)')
         self.sshd_scan_re = rc('from\s(\S*)')
         
-        self.report_wrap = '<table border="0" width="90%%">%s</table>\n'
+        self.report_wrap = '<table border="0" width="100%%" rules="cols" cellpadding="2">%s</table>\n'
         self.subreport_wrap = '<tr><th colspan="2" align="left"><h3>%s</h3></th></tr>\n'
         self.critical_title = '<font color="red">CRITICAL Notices</font>'
         self.normal_title = '<font color="blue">General Notices</font>'
         
-        self.report_line = '<tr%s><td valign="top">%s:</td><td valign="top">%s</td></tr>\n'
+        self.report_line = '<tr%s><td valign="top">%s</td><td valign="top">%s</td></tr>\n'
         self.flip = ' bgcolor="#dddddd"'
 
     ##
@@ -73,35 +77,41 @@ class notices_mod(InternalModule):
         urg = self.normal
         sys, msg, mult = self.get_smm(linemap)
         msg = 'Gconf locking errors'
-        return Result((urg, sys, msg), mult)
+        return {(urg, sys, msg): mult}
 
     def fatalx(self, linemap):
         urg = self.critical
         sys, msg, mult = self.get_smm(linemap)
         msg = 'Fatal X errors'
-        return Result((urg, sys, msg), mult)
+        return {(urg, sys, msg): mult}
 
     def sftp(self, linemap):
         urg = self.normal
         sys, msg, mult = self.get_smm(linemap)
         msg = 'SFTP activity'
-        return Result((urg, sys, msg), mult)
+        return {(urg, sys, msg): mult}
 
     def floppy_misc(self, linemap):
         urg = self.normal
         sys, msg, mult = self.get_smm(linemap)
         msg = 'misc floppy errors'
-        return Result((urg, sys, msg), mult)
+        return {(urg, sys, msg): mult}
+
+    def cdrom_misc(self, linemap):
+        urg = self.normal
+        sys, msg, mult = self.get_smm(linemap)
+        msg = 'misc CDROM errors'
+        return {(urg, sys, msg): mult}
     
     def ypserv(self, linemap):
-        urg = self.critical
+        urg = self.normal
         sys, msg, mult = self.get_smm(linemap)
         mo = self.ypserv_re.search(msg)
         if not mo: return None
         fromip, proc = mo.groups()
         ypclient = self.gethost(fromip)
         msg = '%s denied from %s' % (proc, ypclient)
-        return Result((urg, sys, msg), mult)
+        return {(urg, sys, msg): mult}
 
     def linux_reboot(self, linemap):
         urg = self.critical
@@ -110,7 +120,7 @@ class notices_mod(InternalModule):
         if not mo: return None
         kernel = mo.group(1)
         msg = 'rebooted with kernel %s' % kernel
-        return Result((urg, sys, msg), mult)
+        return {(urg, sys, msg): mult}
 
     def sshd_scan(self, linemap):
         urg = self.critical
@@ -120,13 +130,13 @@ class notices_mod(InternalModule):
         rhost = mo.group(1)
         rhost = self.gethost(rhost)
         msg = 'sshd scan from %s' % rhost
-        return Result((urg, sys, msg), mult)
+        return {(urg, sys, msg): mult}
 
     def busy_inodes(self, linemap):
         urg = self.normal
         sys, msg, mult = self.get_smm(linemap)
         msg = 'dirty CDROM mount'
-        return Result((urg, sys, msg), mult)
+        return {(urg, sys, msg): mult}
 
     ##
     # FINALIZE!
