@@ -29,9 +29,16 @@ external.
 import ConfigParser
 import epylog
 import os
-import mytempfile as tempfile
+import tempfile
 import string
 import re
+
+if 'mkdtemp' not in dir(tempfile):
+    ##
+    # Must be python < 2.3
+    #
+    del tempfile
+    import mytempfile as tempfile
 
 from ihooks import BasicModuleLoader
 _loader = BasicModuleLoader()

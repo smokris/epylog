@@ -34,6 +34,14 @@ import socket
 import time
 import shutil
 import gzip
+import tempfile
+
+if 'mkdtemp' not in dir(tempfile):
+    ##
+    # Must be python < 2.3
+    #
+    del tempfile
+    import mytempfile as tempfile
 
 def make_html_page(template, starttime, endtime, title, module_reports,
                    unparsed, logger):
@@ -209,7 +217,6 @@ class MailPublisher:
 
         self.plainrep = None
         if self.format != 'html':
-            import mytempfile as tempfile
             tempfile.tempdir = self.tmpprefix
             logger.puthang(3, 'Creating a plaintext format of the report')
             htmlfile = tempfile.mktemp('HTML')
@@ -238,7 +245,6 @@ class MailPublisher:
             ##
             # GzipFile doesn't work with StringIO. :/ Bleh.
             #
-            import mytempfile as tempfile
             tempfile.tempdir = self.tmpprefix
             outfh = open(tempfile.mktemp('GZIP'), 'w+')
             do_chunked_gzip(rawfh, outfh, 'rawlogs', logger)

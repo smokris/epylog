@@ -29,12 +29,19 @@ import ConfigParser
 import exceptions
 import os
 import shutil
-import mytempfile as tempfile
+import tempfile
 import re
 import threading
 import pwd
 import socket
 import sys
+
+if 'mkdtemp' not in dir(tempfile):
+    ##
+    # Must be python < 2.3
+    #
+    del tempfile
+    import mytempfile as tempfile
 
 from report import Report
 from module import Module

@@ -29,8 +29,14 @@ import epylog
 import os
 import re
 import time
+import tempfile
 
-import epylog.mytempfile as tempfile
+if 'mkdtemp' not in dir(tempfile):
+    ##
+    # Must be python < 2.3
+    #
+    del tempfile
+    import mytempfile as tempfile
 
 from publishers import *
 

@@ -31,6 +31,14 @@ import os
 import re
 import string
 import time
+import tempfile
+
+if 'mkdtemp' not in dir(tempfile):
+    ##
+    # Must be python < 2.3
+    #
+    del tempfile
+    import mytempfile as tempfile
 
 def mkmonthmap():
     """
@@ -904,7 +912,6 @@ class LogFile:
         if re.compile('\.gz$').search(self.filename, 1):
             logger.put(3, 'Ends in .gz. Using GzipFile to open')
             import gzip
-            import epylog.mytempfile as tempfile
             tempfile.tmpdir = self.tmpprefix
             ungzfile = tempfile.mktemp('UNGZ')
             logger.put(3, 'Creating a tempfile in "%s"' % ungzfile)
