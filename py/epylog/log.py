@@ -132,7 +132,9 @@ class LogTracker:
                     log.set_range_param(0, 0, 0)
             else:
                 logger.put(5, 'Inodes match, setting offset to "%d"' % offset)
-                log.set_range_param(0, offset, 0)
+                try: log.set_range_param(0, offset, 0)
+                except epylog.OutOfRangeError:
+                    logger.put(3, 'Uh-oh, not in range! Set to the last entry')
         else:
             msg = 'No such log entry "%s"' % entry
             raise epylog.NoSuchLogError(msg, logger)
@@ -359,16 +361,19 @@ class Log:
                 msg = 'Invalid index "%d" for log "%s"' % (ix, self.entry)
                 raise epylog.OutOfRangeError(msg, logger)
             
-        logger.put(3, 'Checking if offset makes sense')
-        if self.loglist[ix].end_offset <= offset:
-            msg = 'Offset is past the end of the log!'
-            raise epylog.OutOfRangeError(msg, logger)
-        if whence:
-            logger.put(3, 'Setting range END for entry "%s"' % self.entry)
-            self.orange.setend(ix, offset, self.loglist)
+        logger.put(3, 'Checking if the offset makes sense')
+        if self.loglist[ix].end_offset < offset:
+            msg = 'Offset %d is past the end of %s: %d! Correcting.' % (
+                offset, self.loglist[ix].filename, self.loglist[ix].end_offset)
+            logger.put(0, msg)
+            self.orange.setend(ix, self.loglist[ix].end_offset, self.loglist)
         else:
-            logger.put(3, 'Setting range START for entry "%s"' % self.entry)
-            self.orange.setstart(ix, offset, self.loglist)
+            if whence:
+                logger.put(3, 'Setting range END for entry "%s"' % self.entry)
+                self.orange.setend(ix, offset, self.loglist)
+            else:
+                logger.put(3, 'Setting range START for entry: %s' % self.entry)
+                self.orange.setstart(ix, offset, self.loglist)
         logger.put(5, '<Log.set_range_param')
 
     def getinode(self):
@@ -383,6 +388,10 @@ class Log:
     def nextline(self):
         logger = self.logger
         logger.put(5, '>Log.nextline')
+        logger.put(3, 'Testing if this log is empty')
+        if self.orange.start_is_end:
+            msg = 'This log is empty.'
+            raise epylog.OutOfRangeError(msg, logger)
         if self.lp is None:
             ix = self.orange.startix
             offset = self.orange.start_offset
@@ -391,7 +400,7 @@ class Log:
             self.lp = LinePointer(ix, offset, logger)
         ix = self.lp.ix
         offset = self.lp.offset
-        logger.put(5, 'Checking if we are past the orange end')
+        logger.put(3, 'Checking if we are past the orange end')
         if not self.orange.is_inside(ix, offset):
             msg = 'Moved past the end of the range'
             raise epylog.OutOfRangeError(msg, logger)
