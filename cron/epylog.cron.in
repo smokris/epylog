@@ -3,4 +3,4 @@
 #
 # $Id$
 #
-%%sbindir%%/epylog --quiet --store-offsets
+%%sbindir%%/epylog --cron

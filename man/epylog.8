@@ -5,7 +5,7 @@
 
 .SH SYNOPSIS
 \fBepylog\fR [\-c epylog.conf] [\-d LOGLEVEL] [\-\-last PERIOD]  
-       [\-\-store\-offsets] [\-\-quiet]
+       [\-\-store\-offsets] [\-\-quiet] [\-\-cron]
 
 .SH DESCRIPTION
 Epylog is a new log notifier and parser which runs periodically out of
@@ -53,6 +53,11 @@ more details.
 .TP
 .B \-\-quiet
 In every way identical to \-d 0.
+.B \-\-cron
+This is essentially \-\-quiet \-\-store\-offsets, plus a lockfile will
+be created and consulted, preventing more than one instance of epylog 
+from running. You can still run epylog manually \-\- the lockfile is
+only checked when running in \-\-cron mode.
 
 .SH "FEATURES"
 .RS

@@ -220,6 +220,11 @@ def usage():
         --quiet
             completely identical to -d 0
 
+        --cron
+            Equivalent of --quiet --store-offsets, plus it will create a
+            lock file that will not allow more than one cron instance of
+            epylog to run.
+
         --last [hour|day|week|month]
             will analyze strings from the past [time period] specified.
 
