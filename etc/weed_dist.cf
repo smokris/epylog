@@ -91,6 +91,14 @@ ipop3d.*: Killed
 ipop3d.*: Autologout
 ipop3d.*: pop3.*service init
 
+[courier-imap]
+imapd.*: Connection, ip=\[\S+\]
+imapd.*: LOGOUT, user=\S+, ip=\[\S+\]
+imapd.*: Disconnected, ip=\[\S+\]
+pop3d.*: Connection, ip=\[\S+\]
+pop3d.*: LOGOUT, user=\S+, ip=\[\S+\]
+pop3d.*: Disconnected, ip=\[\S+\]
+
 [postfix]
 postfix/smtp\[\d+\]: connect to
 postfix/smtp\[\d+\]: warning: no MX host

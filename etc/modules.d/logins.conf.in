@@ -16,6 +16,8 @@ enable_pam = 1
 enable_xinetd = 1
 enable_sshd = 1
 enable_uw_imap = 0
+enable_dovecot = 0
+enable_courier = 0
 enable_imp = 0
 ##
 # This is a fun setting. You can list domains that are "safe" here.

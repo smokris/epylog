@@ -115,6 +115,7 @@ external perl modules, or intend to write some of your own.
 - Switched to libxml2 from pyxml for handling of xml files -- faster
   and memory handling in libxml2 is by far better than pyxml.
 - pam_krb5 handling for logins module
+- Dovecot and Courier-IMAP handlers added
 
 * Wed Jul 23 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.9.5-1
 - Version 0.9.5

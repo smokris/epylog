@@ -88,7 +88,21 @@ class logins_mod(InternalModule):
             rc('IMP\[\S*: FAILED'): self.imp2_failure,
             rc('HORDE\[\S*\s*\[imp\] Login'): self.imp3_open,
             rc('HORDE\[\S*\s*\[imp\] FAILED'): self.imp3_failure
-        }
+            }
+        ##
+        # DOVECOT
+        #
+        dovecot_map = {
+            rc('imap-login:\sLogin:\s'): self.dovecot_open,
+            rc('imap-login:\sAborted\slogin\s'): self.dovecot_failure
+            }
+        ##
+        # Courier-IMAP
+        #
+        courier_map = {
+            rc('\sLOGIN,\suser=\S+,\sip=\[\S+\]'): self.courier_open,
+            rc('\sLOGIN FAILED,\sip=\[\S+\]'): self.courier_failure
+            }
 
         regex_map = {}
         if opts.get('enable_pam', "1") != "0": regex_map.update(pam_map)
@@ -96,6 +110,8 @@ class logins_mod(InternalModule):
         if opts.get('enable_sshd', "1") != "0": regex_map.update(sshd_map)
         if opts.get('enable_uw_imap', "0") != "0":regex_map.update(uw_imap_map)
         if opts.get('enable_imp', "0") != "0": regex_map.update(imp_map)
+        if opts.get('enable_dovecot',"0") != "0": regex_map.update(dovecot_map)
+        if opts.get('enable_courier',"0") != "0": regex_map.update(courier_map)
 
         self.safe_domains = []
         safe_domains = opts.get('safe_domains', '.*')
@@ -126,6 +142,10 @@ class logins_mod(InternalModule):
         self.uw_imap_fail_re = rc('auth=(.*)\shost=.*\[(\S*)\]')
         self.uw_imap_open_re = rc('user=(.*)\shost=.*\[(\S*)\]')
         self.uw_imap_service_re = rc('^(\S*)\[\d*\]:')
+        self.dovecot_open_re = rc('Login:\s(\S+)\s\[(\S+)\]')
+        self.dovecot_failure_re = rc('Aborted\slogin\s\[(\S+)\]')
+        self.courier_open_re = rc('^(\S+?):.*\suser=(\S+),\sip=\[(\S+)\]')
+        self.courier_failure_re = rc('^(\S+?):.*,\sip=\[(\S+)\]')
         self.imp2_open_re = rc('Login\s(\S*)\sto\s(\S*):\S*\sas\s(\S*)')
         self.imp2_fail_re = rc('FAILED\s(\S*)\sto\s(\S*):\S*\sas\s(\S*)')
         self.imp3_open_re = rc('success\sfor\s(\S*)\s\[(\S*)\]\sto\s\{(\S*):')
@@ -239,6 +259,12 @@ class logins_mod(InternalModule):
             return None
         service = mo.group(1)
         user = mo.group(2)
+        if service == 'sshd':
+            ##
+            # sshd_open will do a much better job.
+            #
+            result = self.general_ignore(linemap)
+            return result
         restuple = self._mk_restuple(action, system, service, user, '', '')
         return {restuple: mult}
 
@@ -251,6 +277,16 @@ class logins_mod(InternalModule):
             return None
         service = mo.group(1)
         user = mo.group(2)
+        if ((service == 'xscreensaver' and user == 'root')
+            or service == 'sshd' or service == 'imap'):
+            ##
+            # xscreensaver will always fail as root.
+            # SSHD is better handled by sshd part itself.
+            # Imap failures are caught by imap routines.
+            # Ignore these.
+            #
+            result = self.general_ignore(linemap)
+            return result
         restuple = self._mk_restuple(action, system, service, user, '', '')
         return {restuple: mult}
         
@@ -303,6 +339,7 @@ class logins_mod(InternalModule):
         action = self.failure
         system, message, mult = self.get_smm(linemap)
         service = self._get_uw_imap_service(message)
+        service = '%s(uw)' % service
         mo = self.uw_imap_fail_re.search(message)
         if not mo:
             self.logger.put(3, 'Odd imap FAILURE string: %s' % message)
@@ -316,6 +353,7 @@ class logins_mod(InternalModule):
         action = self.open
         system, message, mult = self.get_smm(linemap)
         service = self._get_uw_imap_service(message)
+        service = '%s(uw)' % service
         mo = self.uw_imap_open_re.search(message)
         if not mo:
             self.logger.put(3, 'Odd imap open string: %s' % message)
@@ -325,6 +363,60 @@ class logins_mod(InternalModule):
         restuple = self._mk_restuple(action, system, service, user, '', rhost)
         return {restuple: mult}
 
+    def dovecot_open(self, linemap):
+        action = self.open
+        system, message, mult = self.get_smm(linemap)
+        service = 'imap(dc)'
+        mo = self.dovecot_open_re.search(message)
+        if not mo:
+            self.logger.put(3, 'Odd dovecot OPEN string: %s' % message)
+            return None
+        user, rhost = mo.groups()
+        rhost = self.gethost(rhost)
+        restuple = self._mk_restuple(action, system, service, user, '', rhost)
+        return {restuple: mult}
+
+    def dovecot_failure(self, linemap):
+        action = self.failure
+        system, message, mult = self.get_smm(linemap)
+        service = 'imap(dc)'
+        mo = self.dovecot_failure_re.search(message)
+        if not mo:
+            self.logger.put(3, 'Odd dovecot FAILURE string: %s' % message)
+            return None
+        rhost = mo.group(1)
+        rhost = self.gethost(rhost)
+        user = 'unknown'
+        restuple = self._mk_restuple(action, system, service, user, '', rhost)
+        return {restuple: mult}
+
+    def courier_open(self, linemap):
+        action = self.open
+        system, message, mult = self.get_smm(linemap)
+        mo = self.courier_open_re.search(message)
+        if not mo:
+            self.logger.put(3, 'Odd courier OPEN string: %s' % message)
+            return None
+        service, user, rhost = mo.groups()
+        service = '%s(cr)' % service
+        rhost = self.gethost(rhost)
+        restuple = self._mk_restuple(action, system, service, user, '', rhost)
+        return {restuple: mult}
+
+    def courier_failure(self, linemap):
+        action = self.failure
+        system, message, mult = self.get_smm(linemap)
+        mo = self.courier_failure_re.search(message)
+        if not mo:
+            self.logger.put(3, 'Odd courier FAILURE string: %s' % message)
+            return None
+        service, rhost = mo.groups()
+        service = '%s(cr)' % service
+        rhost = self.gethost(rhost)
+        user = 'unknown'
+        restuple = self._mk_restuple(action, system, service, user, '', rhost)
+        return {restuple: mult}
+    
     def imp2_failure(self, linemap):
         action = self.failure
         system, message, mult = self.get_smm(linemap)
