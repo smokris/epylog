@@ -452,7 +452,7 @@ class Log:
         while 1:
             try:
                 cline, offset = log.find_previous_entry_by_re(offset, host_re)
-            except IOError, epylog.OutOfRangeError: break
+            except (IOError, epylog.OutOfRangeError), e: break
             if epylog.MESSAGE_REPEATED_RE.search(cline):
                 try:
                     rep_offset = log.repeated_cache[offset]
