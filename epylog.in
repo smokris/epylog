@@ -244,7 +244,7 @@ def main(args):
             elif o == '--quiet': debuglvl = 0
             elif o == '--store-offsets': o_stor = 1
             elif o == '--cron': o_cron = 1
-            elif o == '--last': o_stamp = parselast(o)
+            elif o == '--last': o_stamp = parselast(a)
             elif o == '-c': config_file = a
             elif o == '-h' or o == '--help': usage()                
     except getopt.error, e:
