@@ -607,55 +607,10 @@ class LogFile:
         if self.stamp_in_log(searchstamp) != 0:
             msg = 'This stamp does not appear to be in this log'
             raise epylog.OutOfRangeError(msg, logger)
-        logger.put(2, 'Starting the binary location routines')
-        increment = int(self.end_offset/2)
-        relative = increment
-        logger.put(5, 'rewinding the logfile')
-        self.fh.seek(0)
-        logger.put(5, 'initial increment=%d' % increment)
-        logger.put(5, 'initial relative=%d' % relative)
-        line = None
-        while 1:
-            self.__rel_position(relative)
-            increment = increment/2
-            logger.put(5, 'increment=%d' % increment)
-            oldline = line
-            logger.put(5, 'oldline=%s' % oldline)
-            offset = self.fh.tell()
-            line = self.fh.readline()
-            self.fh.seek(offset)
-            logger.put(5, 'line=%s' % line)
-            if line == oldline:
-                logger.put(5, 'line and oldline equal, exiting loop')
-                break
-            timestamp = self.__mkstamp_from_syslog_datestr(line)
-            logger.put(5, 'timestamp=%d' % timestamp)
-            logger.put(5, 'searchstamp=%d' % searchstamp)
-            if timestamp < searchstamp:
-                logger.put(5, 'timestamp match results: Not yet')
-                relative = increment
-                logger.put(5, 'Jumping forward by %d' % relative)
-            elif timestamp > searchstamp:
-                logger.put(5, 'timestamp match results: Too far')
-                relative = -increment
-                logger.put(5, 'Jumping backward by %d' % relative)
-            elif timestamp == searchstamp:
-                logger.put(5, 'Match! Looking for precise matches')
-                self.fh.seek(offset)
-                myline = line
-                myoffset = offset
-                while timestamp == searchstamp:
-                    line = myline
-                    offset = myoffset
-                    self.__rel_position(-2)
-                    myoffset = self.fh.tell()
-                    myline = self.fh.readline()
-                    self.fh.seek(myoffset)
-                    timestamp = self.__mkstamp_from_syslog_datestr(myline)
-                break
-        logger.put(5, 'Line matching searchstamp is: %s' % line)
+        self.__crude_locate(searchstamp)
+        self.__fine_locate(searchstamp)
+        offset = self.fh.tell()
         logger.put(2, 'Offset found at %d' % offset)
-        logger.put(2, 'Done with the binary location routines')
         logger.put(5, '<LogFile.find_offset_by_timestamp')
         return offset
 
@@ -669,10 +624,23 @@ class LogFile:
         logger.put(5, 'range_start=%d' % self.range_start)
         logger.put(5, 'range_end=%d' % self.range_end)
         logger.put(5, 'chunklen=%d' % chunklen)
+        self.fh.seek(self.range_start)
         if chunklen > 0:
-            self.fh.seek(self.range_start)
-            chunk = self.fh.read(chunklen)
-            fh.write(chunk)
+            iternum = int(chunklen/1024)
+            lastchunk = chunklen%1024
+            logger.put(5, 'iternum=%d' % iternum)
+            logger.put(5, 'lastchunk=%d' % lastchunk)
+            if iternum > 0:
+                for i in range(iternum):
+                    chunk = self.fh.read(1024)
+                    fh.write(chunk)
+                    logger.put(5, 'wrote %d bytes from %s to %s' %
+                               (len(chunk), self.filename, fh.name))
+            if lastchunk > 0:
+                chunk = self.fh.read(lastchunk)
+                fh.write(chunk)
+                logger.put(5, 'wrote %d bytes from %s to %s' %
+                           (len(chunk), self.filename, fh.name))
         return chunklen
 
     def get_range_stamps(self):
@@ -687,11 +655,132 @@ class LogFile:
         logger.put(5, '<LogFile.get_range_stamps')
         return [start_stamp, end_stamp]
 
+    def __crude_locate(self, stamp):
+        logger = self.logger
+        logger.put(5, '>LogFile.__crude_locate')
+        logger.put(5, 'Looking for "%d" in file %s' % (stamp, self.filename))
+        increment = int(self.end_offset/2)
+        relative = increment
+        logger.put(5, 'rewinding the logfile')
+        self.fh.seek(0)
+        logger.put(5, 'initial increment=%d' % increment)
+        logger.put(5, 'initial relative=%d' % relative)
+        ostamp = None
+        while 1:
+            old_ostamp = ostamp
+            self.__rel_position(relative)
+            ostamp = self.__get_stamp()
+            if ostamp == 0:
+                logger.put(5, 'Bogus timestamp! Breaking.')
+                break
+            logger.put(5, 'ostamp=%d' % ostamp)
+            if old_ostamp == ostamp:
+                logger.put(5, 'ostamp and old_ostamp the same. Breaking')
+                break
+            increment = increment/2
+            logger.put(5, 'increment=%d' % increment)
+            if ostamp < stamp:
+                logger.put(5, '<<<<<<<')
+                relative = increment
+                logger.put(5, 'Jumping forward by %d' % relative)
+            elif ostamp > stamp:
+                logger.put(5, '>>>>>>>')
+                relative = -increment
+                logger.put(5, 'Jumping backward by %d' % relative)
+            elif ostamp == stamp:
+                logger.put(5, '=======')
+                break
+        logger.put(5, 'Crude search finished at offset %d' % self.fh.tell())
+        logger.put(5, '<LogFile.__crude_locate')
+
+    def __fine_locate(self, stamp):
+        logger = self.logger
+        logger.put(5, '>LogFile.__fine_locate')
+        lineloc = 0
+        before_stamp = None
+        after_stamp = None
+        current_stamp = None
+        while 1:
+            try:
+                if lineloc > 0:
+                    logger.put(5, 'Going forward one line')
+                    before_stamp = current_stamp
+                    current_stamp = after_stamp
+                    after_stamp = None
+                    self.__lineover()
+                elif lineloc < 0:
+                    logger.put(5, 'Going back one line')
+                    before_stamp = None
+                    current_stamp = before_stamp
+                    after_stamp = current_stamp
+                    self.__lineback()
+                offset = self.fh.tell()
+                if current_stamp is None:
+                    current_stamp = self.__get_stamp()
+                    self.fh.seek(offset)
+                if before_stamp is None:
+                    self.__lineback()
+                    before_stamp = self.__get_stamp()
+                    self.fh.seek(offset)
+                if after_stamp is None:
+                    self.__lineover()
+                    after_stamp = self.__get_stamp()
+                    self.fh.seek(offset)
+            except IOError:
+                logger.put(5, 'Either end or start of file reached, breaking')
+                break
+            logger.put(5, 'before_stamp=%d' % before_stamp)
+            logger.put(5, 'current_stamp=%d' % current_stamp)
+            logger.put(5, 'after_stamp=%d' % after_stamp)
+            logger.put(5, 'searching for %d' % stamp)
+            if before_stamp == 0 or current_stamp == 0 or after_stamp == 0:
+                logger.put(5, 'Bogus stamps found. Breaking.')
+                break
+            if before_stamp >= stamp:
+                logger.put(5, '>>>>>')
+                lineloc = -1
+            elif before_stamp < stamp and after_stamp <= stamp:
+                logger.put(5, '<<<<<')
+                lineloc = 1
+            elif current_stamp < stamp and after_stamp >= stamp:
+                logger.put(5, '<<<<<')
+                lineloc = 1
+            elif before_stamp < stamp and current_stamp >= stamp:
+                logger.put(5, '=====')
+                break
+        logger.put(5, 'fine locate finished at offset %d' % self.fh.tell())
+        logger.put(5, '<LogFile.__fine_locate')
+
+    def __lineover(self):
+        logger = self.logger
+        logger.put(5, '>LogFile.__lineover')
+        offset = self.fh.tell()
+        self.fh.readline()
+        if self.fh.tell() == offset:
+            logger.put(5, 'End of file reached!')
+            raise IOError
+        logger.put(5, 'New offset at %d' % self.fh.tell())
+        logger.put(5, '<LogFile.__lineover')
+
+    def __lineback(self):
+        logger = self.logger
+        logger.put(5, '>LogFile.__lineback')
+        self.__set_at_line_start()
+        if self.fh.tell() <= 1:
+            logger.put(5, 'Start of file reached')
+            raise IOError
+        self.__rel_position(-2)
+        self.__set_at_line_start()
+        logger.put(5, 'New offset at %d' % self.fh.tell())
+        logger.put(5, '<LogFile.__lineback')
+
     def __get_stamp(self):
         logger = self.logger
         logger.put(5, '>LogFile.__get_stamp')
         self.__set_at_line_start()
+        offset = self.fh.tell()
         curline = self.fh.readline()
+        self.fh.seek(offset)
         if len(curline):
             try:
                 stamp = self.__mkstamp_from_syslog_datestr(curline)

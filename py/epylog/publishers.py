@@ -109,7 +109,7 @@ class MailPublisher:
         logger.put(2, 'Done with MailPublisher object initialization')
         
     def publish(self, template, starttime, endtime, title, module_reports,
-                unparsed_strings, raw_strings):
+                unparsed_strings, rawfh):
         logger = self.logger
         logger.puthang(3, 'Creating a standard html page report')
         html_report = make_html_page(template, starttime, endtime, title,
@@ -143,31 +143,40 @@ class MailPublisher:
             logger.endhang(4)
             logger.endhang(3)
 
-        self.gzlogs = None
-        if self.rawlogs and raw_strings is not None:
-            logger.puthang(3, 'Gzipping the strings')
+        if self.rawlogs:
+            logger.puthang(3, 'Gzipping the raw logs')
             ##
             # GzipFile doesn't work with StringIO. :/ Bleh.
             #
             import mytempfile as tempfile, gzip
             tempfile.tempdir = self.tmpprefix
-            fh = open(tempfile.mktemp('GZIP'), 'w+')
-            gzfh = gzip.GzipFile('rawlogs', fileobj=fh)
-            gzfh.write(raw_strings)
+            tfh = open(tempfile.mktemp('GZIP'), 'w+')
+            gzfh = gzip.GzipFile('rawlogs', fileobj=tfh)
+            rawfh.seek(0)
+            logger.put(5, 'Doing chunked read from rawfh into gzfh')
+            while 1:
+                chunk = rawfh.read(1024)
+                if not chunk:
+                    logger.put(5, 'Reached EOF')
+                    break
+                gzfh.write(chunk)
+                logger.put(5, 'Wrote %d bytes' % len(chunk))
             gzfh.close()
-            fh.seek(0)
-            gz_logs = fh.read()
-            fh.close()
-            size = len(gz_logs)
+            rawfh.close()
+            rawfh = tfh
+            rawfh.seek(0, 2)
+            size = rawfh.tell()
             logger.endhang(3, 'Strings gzipped down to %d bytes' % size)
-            self.gzlogs = gz_logs
-
-        if self.gzlogs is None:
-            self.rawlogs = 0
-        if self.rawlogs and size > self.rawlogs:
-            logger.put(2, 'Gzipped Raw Logs over the defined max of "%d"'
-                       % self.rawlogs)
-            self.rawlogs = 0
+            if size > self.rawlogs:
+                logger.put(2, 'Gzipped Raw Logs over the defined max of "%d"'
+                           % self.rawlogs)
+                self.rawlogs = 0
+            else:
+                logger.put(5, 'Reading in the gzipped logs')
+                rawfh.seek(0)
+                self.gzlogs = rawfh.read()
+                rawfh.close()
+            
         ##
         # Using MimeWriter, since package 'email' doesn't come with rhl-7.3
         # Suck-o.

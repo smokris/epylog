@@ -7,7 +7,7 @@
 
 Summary: New logs analyzer and parser.
 Name: epylog
-Version: 0.8.5
+Version: 0.8.6
 Release: 1
 License: GPL
 Group: Applications/System
@@ -144,6 +144,11 @@ popd
 %doc doc/*
 
 %changelog
+* Tue Jan 28 2003 Konstantin Riabitsev <icon@phy.dukee.du> 0.8.6-1
+- Lots and lots of memory optimizations (chunked reads throughout)
+- Entities replaced in get_html_report
+- memory-friendly fgrep calls
+
 * Mon Jan 27 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.8.5-1
 - Big rewrite of logfile handling routines. This works much-much-much
   better!

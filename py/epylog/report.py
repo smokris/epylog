@@ -3,6 +3,8 @@ import os
 import re
 import time
 
+import epylog.mytempfile as tempfile
+
 from publishers import *
 
 class Report:
@@ -64,7 +66,6 @@ class Report:
         logger.put(3, 'unparsed=%d' % self.unparsed)
         if self.unparsed:
             logger.put(3, 'Creating a temporary file for filtered strings')
-            import epylog.mytempfile as tempfile
             tempfile.tmpdir = self.tmpprefix
             filen = tempfile.mktemp('FILT')
             self.filt_fh = open(filen, 'w+')
@@ -106,20 +107,31 @@ class Report:
         else:
             logger.put(2, 'Module report is empty, ignoring')
 
-    def append_filtered_strings(self, module_name, filtered_strings):
+    def append_filtered_strings(self, module_name, fsfh):
         logger = self.logger
+        logger.put(5, '>Report.append_filtered_strings')
         if self.filt_fh is None:
             logger.put(2, 'No open filt_fh, ignoring')
             return
-        if len(filtered_strings) > 0:
-            logger.put(2, 'Appending filtered strings from module "%s"'
+        fsfh.seek(0, 2)
+        if fsfh.tell() != 0:
+            logger.put(3, 'Appending filtered strings from module "%s"'
                        % module_name)
-            logger.put(5, filtered_strings)
-            logger.put(2, 'Writing to file "%s"' % self.filt_fh.name)
-            self.filt_fh.write(filtered_strings)
+            logger.put(5, 'Doing chunked read from %s to %s' %
+                       (fsfh.name, self.filt_fh.name))
+            fsfh.seek(0)
+            while 1:
+                chunk = fsfh.read(1024)
+                if len(chunk):
+                    self.filt_fh.write(chunk)
+                    logger.put(5, 'wrote %d bytes' % len(chunk))
+                else:
+                    logger.put(5, 'EOF reached')
+                    break
             self.useful = 1
         else:
             logger.put(2, 'Filtered Strings are empty, ignoring')
+        logger.put(5, '<Report.append_filtered_strings')
 
     def set_stamps(self, stamps):
         logger = self.logger
@@ -129,68 +141,21 @@ class Report:
         logger.put(5, 'end_stamp=%d' % self.end_stamp)
         logger.put(5, '<Publisher.set_stamps')
         
-    def publish(self, rawstr_file, weeded_file):
+    def publish(self, rawfh, weedfh):
         logger = self.logger
-        logger.put(2, 'Invoking the publish() method of the report obj')
-        raw_strings = None
-        unparsed_strings = None
+        logger.put(5, '>Report.publish')
         if self.unparsed:
             logger.put(2, 'Checking the size of filt_fh')
             self.filt_fh.seek(0, 2)
-            filt_size = self.filt_fh.tell()
-            logger.put(2, 'The size of filt file is "%d"' % filt_size)
-            logger.put(2, 'Closing the filt_fh handle')
-            self.filt_fh.close()
-            if filt_size:
-                logger.puthang(3, 'Reading in the raw strings')
-                fh = open(rawstr_file)
-                raw_strings = fh.read()
-                fh.close()
+            if self.filt_fh.tell():
+                logger.puthang(3, 'Doing memory friendly grep')
+                self.__memory_friendly_grep(rawfh, weedfh)
                 logger.endhang(3)
-                logger.put(2, 'Weeding the logs')
-                logger.put(5, 'raw strings file: %s' % rawstr_file)
-                logger.put(5, 'filtered strings file: %s' % self.filt_fh.name)
-                logger.put(5, 'weeded results in: %s' % weeded_file)
-                ##
-                # Currently this uses fgrep since it's the fastest way.
-                # Doing this natively in python consumes loads of memory
-                # and takes forever. Suggestions are welcome.
-                #
-                logger.puthang(2, 'Making a system call to fgrep')
-                fgrep_com = ('/bin/fgrep -v -f %s %s > %s' %
-                             (self.filt_fh.name, rawstr_file, weeded_file))
-                logger.put(3, 'Calling fgrep with command "%s"' % fgrep_com)
-                exitcode = os.system(fgrep_com)
-                ##
-                # TODO: Find out wtf is exit code 256!
-                #
-                logger.put(5, 'exitcode=%d' % exitcode)
-                if exitcode and exitcode != 256:
-                    raise epylog.SysCallError(('Call to fgrep for weed failed'
-                                              + ' with exit code %d')
-                                             % exitcode, logger)
-                logger.endhang(2)
-                logger.puthang(2, 'Reading the weeded strings from "%s"'
-                               % weeded_file)
-                try:
-                    fh = open(weeded_file)
-                    strings = fh.read()
-                    fh.close()
-                except:
-                    ##
-                    # The file should exist even if there are no strings
-                    # in it, simply due to the nature of > redirect.
-                    #
-                    raise AccessError('Could not open weeded strings file "%s"'
-                                      % weeded_file, logger)
-                logger.endhang(2)
-                logger.put(5, 'strings=%s' % strings)
-                if len(strings.strip()):
-                    unparsed_strings = strings
-                    logger.put(5, unparsed_strings)
-                else:
-                    logger.put(3, 'No unparsed strings in the weeded file')
-
+                logger.puthang(3, 'Reading in weeded logs')
+                weedfh.seek(0)
+                unparsed_strings = weedfh.read()
+                weedfh.close()
+                logger.endhang(3)
         logger.puthang(3, 'Reading in the template file "%s"' % self.template)
         fh = open(self.template)
         template = fh.read()
@@ -206,8 +171,95 @@ class Report:
                               self.title,
                               self.module_reports,
                               unparsed_strings,
-                              raw_strings)
+                              rawfh)
             logger.endhang(2)
+
 
     def is_report_useful(self):
         return self.useful
+
+    def __memory_friendly_grep(self, rawfh, weedfh):
+        logger = self.logger
+        logger.put(5, '>Report.__memory_friendly_grep')
+        tempfile.tmpdir = self.tmpprefix
+        temp_raw = tempfile.mktemp('TEMPRAW')
+        temp_filt = tempfile.mktemp('TEMPFILT')
+        temp_weed = tempfile.mktemp('TEMPWEED')
+        logger.put(5, 'temp_raw=%s' % temp_raw)
+        logger.put(5, 'temp_filt=%s' % temp_filt)
+        logger.put(5, 'temp_weed=%s' % temp_weed)
+        rawfh.seek(0, 2)
+        rawfh_size = rawfh.tell()
+        self.filt_fh.seek(0, 2)
+        filtfh_size = self.filt_fh.tell()
+        logger.put(5, 'rawfh_size=%d' % rawfh_size)
+        logger.put(5, 'filtfh_size=%d' % filtfh_size)
+        rawfh.seek(0)
+        self.filt_fh.seek(0)
+        while 1:
+            logger.put(5, 'new iteration of rawfh')
+            if rawfh.tell() == rawfh_size:
+                logger.put(5, 'No more lines in rawfh')
+                break
+            try:
+                os.remove(temp_raw)
+            except:
+                pass
+            temp_rawfh = open(temp_raw, 'w+')
+            self.__dump_lines(rawfh, temp_rawfh, 1000)
+            temp_rawfh.close()
+            logger.put(5, 'Rewinding filt_fh')
+            self.filt_fh.seek(0)
+            while 1:
+                logger.put(5, 'new iteration of filt_fh')
+                if self.filt_fh.tell() == filtfh_size:
+                    logger.put(5, 'No more lines in filt_fh')
+                    break
+                if os.access(temp_weed, os.F_OK):
+                    logger.put(5, 'Moving %s to %s' % (temp_weed, temp_raw))
+                    os.rename(temp_weed, temp_raw)
+                try:
+                    os.remove(temp_filt)
+                except:
+                    pass
+                temp_filtfh = open(temp_filt, 'w+')
+                self.__dump_lines(self.filt_fh, temp_filtfh, 1000)
+                temp_filtfh.close()
+                self.__call_fgrep(temp_raw, temp_filt, temp_weed)
+                if not os.stat(temp_weed).st_size:
+                    logger.put(5, 'Nothing left after weeding')
+                    break
+            logger.put(5, 'Reading weeding results from temp_weed')
+            temp_weedfh = open(temp_weed)
+            weedfh.write(temp_weedfh.read())
+            temp_weedfh.close()
+        logger.put(5, 'Done doing memory friendly grep')
+        logger.put(5, '<Report.__memory_friendly_grep')
+
+    def __dump_lines(self, fromfh, tofh, number):
+        logger = self.logger
+        logger.put(5, '>Report.__dump_lines')
+        logger.put(5, 'reading %d lines from "%s"' % (number, fromfh.name))
+        for i in range(number):
+            line = fromfh.readline()
+            if not line:
+                logger.put(5, 'end of file reached at iter %d' % i)
+                break
+            tofh.write(line)
+        writenum = i + 1
+        logger.put(5, 'wrote %d lines into %s' % (writenum, tofh.name))
+        logger.put(5, '<Report.__dump_lines')
+        return writenum
+
+    def __call_fgrep(self, raw, filt, weed):
+        logger = self.logger
+        logger.put(5, '>Report.__call_fgrep')
+        fgrep = '/bin/fgrep -v -f %s %s > %s' % (filt, raw, weed)
+        logger.put(5, 'Calling fgrep with command "%s"' % fgrep)
+        ecode = os.system(fgrep)
+        logger.put(5, 'ecode=%d' % ecode)
+        if ecode and ecode != 256:
+            msg = 'Call to fgrep for weed failed with exit code %d' % ecode
+            raise epylog.SysCallError(msg, logger)
+        logger.put(5, '<Report.__call_fgrep')
+        

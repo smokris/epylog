@@ -11,7 +11,7 @@ from report import Report
 from module import Module
 from log import LogTracker
 
-VERSION = 'Epylog-0.8.5'
+VERSION = 'Epylog-0.8.6'
 
 class FormatError(exceptions.Exception):
     def __init__(self, message, logger):
@@ -190,10 +190,9 @@ class Epylog:
             module_report = module.get_html_report()
             if module_report is not None:
                 self.report.append_module_report(module.name, module_report)
-            module_strings = module.get_filtered_strings()
-            if module_strings is not None:
-                self.report.append_filtered_strings(module.name,
-                                                    module_strings)
+            fsfh = module.get_filtered_strings_fh()
+            self.report.append_filtered_strings(module.name, fsfh)
+            fsfh.close()
         self.report.set_stamps(self.logtracker.get_stamps())
         logger.put(5, '<Epylog.make_report')
         return self.report.is_report_useful()
@@ -204,13 +203,11 @@ class Epylog:
         if self.report.unparsed:
             logger.put(2, 'Dumping all log strings into a temp file')
             tempfile.tempdir = self.tmpprefix
-            rawstr_file = tempfile.mktemp('RAW')
-            weeded_file = tempfile.mktemp('WEED')
-            fh = open(rawstr_file, 'w')
-            logger.put(2, 'RAW strings file created in "%s"' % rawstr_file)
-            self.logtracker.dump_all_strings(fh)
-            fh.close()
-        self.report.publish(rawstr_file, weeded_file)
+            rsfh = open(tempfile.mktemp('RAW'), 'w+')
+            wfh = open(tempfile.mktemp('WEED'), 'w+')
+            logger.put(3, 'RAW strings file created in "%s"' % rsfh.name)
+            self.logtracker.dump_all_strings(rsfh)
+        self.report.publish(rsfh, wfh)
         logger.put(5, '<Epylog.publish_report')
         
     def cleanup(self):

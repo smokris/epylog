@@ -117,9 +117,9 @@ class Module:
         exitcode = os.system(self.executable)
         logger.put(2, 'External module finished with code "%d"' % exitcode)
         if exitcode and exitcode != 256:
-            raise epylog.ModuleExecError(('External module "%s" exited '
-                                        + 'abnormally (exit code "%d")')
-                                        % (self.executable, exitcode), logger)
+            msg = ('External module "%s" exited abnormally (exit code %d)' %
+                   (self.executable, exitcode))
+            raise epylog.ModuleExecError(msg, logger)
         logger.put(2, 'Checking if we have the report')
         if os.access(logreport, os.R_OK):
             logger.put(2, 'Report "%s" exists and is readable' % logreport)
@@ -172,15 +172,15 @@ class Module:
             logger.endhang(2, 'done')
             if len(report):
                 if not self.outhtml:
-                    logger.put(2, 'Report is not html, wrapping in <pre>')
-                    report = '<pre>%s</pre>' % report
+                    logger.put(2, 'Report is not html')
+                    report = self.__make_into_html(report)
                 return report
             else:
                 return None
 
-    def get_filtered_strings(self):
+    def get_filtered_strings_fh(self):
         logger = self.logger
-        logger.put(2, 'Fetching the filtered strings')
+        logger.put(5, '>Module.get_filtered_strings_fh')
         if self.is_python():
             ##
             # TODO: Code for python modules
@@ -190,21 +190,13 @@ class Module:
            if self.logfilter is None:
                logger.put(2, 'No filtered strings from this module')
                return None
-           logger.put(2, 'Getting the strings from "%s"' % self.logfilter)
+           logger.put(3, 'Opening filtstrings file "%s"' % self.logfilter)
            if not os.access(self.logfilter, os.R_OK):
-               raise epylog.ModuleSanityError(('Filtered strings file for'
-                                              + ' module "%s" is missing')
-                                             % self.name, logger)
-           logger.puthang(3, 'Reading the strings from file "%s"'
-                          % self.logfilter)
+               msg = 'Filtered strings file for "%s" is missing' % self.name
+               raise epylog.ModuleSanityError(msg, logger)
            fh = open(self.logfilter)
-           filter = fh.read()
-           fh.close()
-           logger.endhang(3)
-           if len(filter):
-               return filter
-           else:
-               return None
+        logger.put(5, '<Module.get_filtered_strings_fh')
+        return fh
            
     def __dump_log_strings(self, filename):
         logger = self.logger
@@ -216,3 +208,15 @@ class Module:
             len = log.dump_strings(fh)
         logger.put(3, 'Total length of the log is "%d"' % len)
         return len
+
+    def __make_into_html(self, report):
+        logger = self.logger
+        logger.put(5, '>Module.__make_into_html')
+        import re
+        logger.put(5, 'Regexing entities')
+        report = re.sub(re.compile('&'), '&amp;', report)
+        report = re.sub(re.compile('<'), '&lt;', report)
+        report = re.sub(re.compile('>'), '&gt;', report)
+        report = '<pre>\n%s\n</pre>' % report
+        logger.put(5, '<Module.__make_into_html')
+        return report
