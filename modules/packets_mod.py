@@ -15,16 +15,30 @@ class packets_mod(InternalModule):
         InternalModule.__init__(self)
         self.logger = logger
         rc = re.compile
-        self.regex_map = {
-            rc('IN=\S*\sOUT=\S*\sMAC=\S*\sSRC=\S*\sDST=\S*\s'): self.iptables,
+        iptables_map = {
+            rc('IN=\S*\sOUT=\S*\sMAC=\S*\sSRC=\S*\sDST=\S*\s'): self.iptables
+            }
+        ipchains_map = {
             rc('kernel:\sPacket\slog:\s'): self.ipchains
-        }
+            }
+        ipfilter_map = {
+            rc('ipmon\[\d+\]:'): self.ipfilter
+            }
+
+        self.regex_map = {}
+        if opts.get('enable_iptables', '1') == '1':
+            self.regex_map.update(iptables_map)
+        if opts.get('enable_ipchains', '0') == '1':
+            self.regex_map.update(ipchains_map)
+        if opts.get('enable_ipfilter', '0') == '1':
+            self.regex_map.update(ipfilter_map)
 
         self.comment_line_re = rc('^\s*#')
         self.empty_line_re = rc('^\s*$')
         self.iptables_logtype_re = rc('iptables:\s*(\S*)')
         self.iptables_re = rc('SRC=(\S*)\s.*PROTO=(\S*)\s.*DPT=(\S*)')
         self.ipchains_re = rc('\slog:\s\S+\s(\S*).*\sPROTO=(\d+)\s(\S*):\d*\s\S*:(\d+)')
+        self.ipfilter_re = rc('ipmon\[\d+\]:.*\s(\S+),\d+\s->\s\S+,(\d+)\sPR\s(\S+)')
         self.etc_services_re = rc('^(\S*)\s+(\S*)')
         self.trojan_list_re = rc('^(\S*)\s+(\S*)')
         self.etc_protocols_re = rc('^(\S*)\s+(\S*)')
@@ -46,7 +60,6 @@ class packets_mod(InternalModule):
         self.line_rep = '<tr%s><td valign="top" width="5%%">%d</td><td valign="top" width="50%%">%s</td><td valign="top" width="15%%">%s</td><td valign="top" width="15%%">%s</td><td valign="top" width="15%%">%s</td></tr>\n'
         self.flip = ' bgcolor="#dddddd"'
 
-
     def _parse_etc_protocols(self):
         try: fh = open('/etc/protocols', 'r')
         except:
@@ -62,7 +75,6 @@ class packets_mod(InternalModule):
             except: continue
             protodict[num] = proto
         return protodict
-        
         
     def _parse_etc_services(self):
         try: fh = open('/etc/services', 'r')
@@ -94,7 +106,6 @@ class packets_mod(InternalModule):
             except: continue
             if pproto not in svcdict: svcdict[pproto] = trojan
         return svcdict
-            
 
     ##
     # Line-matching routines
@@ -122,9 +133,20 @@ class packets_mod(InternalModule):
             self.logger.put(3, 'Unknown ipchains entry: %s' % msg)
             return None
         source = self.gethost(src)
-        port = '%s/%s' % (dpt, self.protodict.get(int(proto), '??'))
+        port = '%s/%s' % (dpt, self.protodict.get(proto, '??'))
         port = self._mk_port(port)
         return {(source, sys, port, logtype): mult}
+
+    def ipfilter(self, linemap):
+        sys, msg, mult = self.get_smm(linemap)
+        try: src, dpt, proto = self.ipfilter_re.search(msg).groups()
+        except:
+            self.logger.put(3, 'Unknown ipfilter entry: %s' % msg)
+            return None
+        source = self.gethost(src)
+        port = '%s/%s' % (dpt, proto.lower())
+        port = self._mk_port(port)
+        return {(source, sys, port, 'LOGGED'): mult}
 
 
     def _mk_port(self, port):
