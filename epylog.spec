@@ -3,26 +3,32 @@
 %define _vardir   %{_localstatedir}/lib
 %define _perldir  %{_libdir}/perl5/site_perl
 %define __perldoc %{_bindir}/perldoc
+%define __pydoc   %{_bindir}/pydoc
 %define _pydir    %{_libdir}/python2.2/site-packages
 
 Summary: New logs analyzer and parser.
 Name: epylog
-Version: 0.8.14
-Release: 1
+Version: 0.9.0
+Release: 0.1
 License: GPL
 Group: Applications/System
-Source: http://www.dulug.duke.edu/epylog/download/%{name}-%{version}.tar.gz
+Source: http://linux.duke.edu/projects/epylog/download/%{name}-%{version}.tar.gz
 Packager: Konstantin Riabitsev <icon@phy.duke.edu>
 Vendor: Duke University
-BuildRoot: /var/tmp/%{name}-%{version}-root
+BuildRoot: %{_tmppath}/%{name}-%{version}-root
 BuildArch: noarch
-BuildPrereq: perl, python, file, gzip, sed
+BuildPrereq: %{__pydoc}, perl, python, file, gzip, sed
 Requires: /usr/bin/python2, perl >= 5.6, elinks, grep
 #Obsoletes: dulog
 Provides: perl(epylog)
 
 %description
-New log notifier and analyzer with modular analysis options.
+Epylog is a new log notifier and parser which runs periodically out of
+cron, looks at your logs, processes the entries in order to present
+them in a more comprehensive format, and then provides you with the
+output. It is written specifically with large network clusters in mind
+where a lot of machines (around 50 and upwards) log to the same
+loghost using syslog or syslog-ng.
 
 %prep
 %setup -q
@@ -37,44 +43,28 @@ New log notifier and analyzer with modular analysis options.
 cat <<EOF | %{__python}2
 from compileall import compile_dir
 compile_dir('py')
+compile_dir('modules')
 EOF
 cat <<EOF | %{__python}2 -OO
 from compileall import compile_dir
 compile_dir('py')
+compile_dir('modules')
 EOF
 ##
 # Build module documentation.
 #
 MDOCDIR="doc/modules"
 %{__mkdir_p} -m 755 $MDOCDIR
-for FILE in modules/*; do
-  TYPE=`%{__file} -ib $FILE 2>/dev/null`
-  case $TYPE in
-    application/x-perl)
-      %{__perldoc} -t $FILE > $MDOCDIR/`basename $FILE .pl`.txt
-      ;;
-    application/x-sh)
-      %{__grep} -E "^#" $FILE | %{__sed} \
-        "/#!\/bin\/bash/d;/#!\/bin\/sh/d;/Copyright/,//d;s/^#//g;s/^ //g" \
-        > $MDOCDIR/`basename $FILE .sh`.txt
-      ;;
-    ##
-    # file is a little not right in the head
-    # This is really python
-    #
-    "text/x-java; charset=us-ascii")
-      echo "Not doing documentation for python modules yet. FIXME!"
-      ;;
-    *)
-      ;;
-  esac
+for FILE in modules/*.pl; do
+    %{__perldoc} -t $FILE > $MDOCDIR/`basename $FILE .pl`.txt
 done
+pushd modules
+for FILE in *.py; do
+    %{__pydoc} ./$FILE > ../$MDOCDIR/`basename $FILE .py`.txt
+done
+popd
 # build the perl module manpage
-%{__perldoc} epylog.pm > man/epylog.3
-##
-# Move template.mod.pl into doc.
-#
-%{__mv} modules/template.mod.pl doc/
+%{__perldoc} perl/epylog.pm > man/epylog.3
 
 %install
 %{__rm} -rf %{buildroot}
@@ -90,14 +80,15 @@ done
 %{__mkdir_p} -m 755 %{buildroot}%{_sysconfdir}/%{name}/modules.d
 %{__install} -m 644 etc/modules.d/*.conf \
     %{buildroot}%{_sysconfdir}/%{name}/modules.d/
-for FILE in epylog.conf report_template.html trojans.list weed.list; do
+FILES="epylog.conf report_template.html trojans.list weed_dist.cf weed_local.cf"
+for FILE in $FILES; do
   %{__install} -m 644 etc/$FILE %{buildroot}%{_sysconfdir}/%{name}/$FILE
 done
 ##
 # Install the modules
 #
-%{__mkdir_p} -m 755 %{buildroot}%{_libdir}/%{name}/modules
-%{__install} -m 755 modules/* %{buildroot}%{_libdir}/%{name}/modules/
+%{__mkdir_p} -m 755 %{buildroot}%{_datadir}/%{name}/modules
+%{__install} -m 755 modules/* %{buildroot}%{_datadir}/%{name}/modules/
 ##
 # Install the executable
 #
@@ -133,8 +124,8 @@ popd
 %files
 %defattr(-,root,root)
 %dir %{_vardir}/%{name}
-%dir %{_libdir}/%{name}
-%{_libdir}/%{name}/modules/*
+%dir %{_datadir}/%{name}
+%{_datadir}/%{name}/modules/*
 %{_pydir}/%{name}
 %{_sbindir}/%{name}
 %{_sysconfdir}/cron.daily/%{name}.cron
@@ -144,6 +135,9 @@ popd
 %doc doc/*
 
 %changelog
+* Thu Apr 18 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.9.0-1
+- A significant rewrite of module handlers.
+
 * Wed Mar 13 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.8.14-1
 - Fixes for html email sending
 - Option to send via sendmail vs. smtplib
