@@ -151,7 +151,7 @@ class Epylog:
                                % logname[0])
                     try:
                         logger.puthang(3, 'Calling LogFile init routines')
-                        logobj = LogFile(logname[0], logger)
+                        logobj = LogFile(logname[0], self.tmpprefix, logger)
                         logger.endhang(3)
                     except AccessError:
                         raise ConfigError(('Log file "%s" does not exist or ' +
@@ -163,7 +163,8 @@ class Epylog:
                         logger.put(3, 'Initializing the rotated logfile "%s"'
                                    % logname[1])
                         try:
-                            rotobj = LogFile(logname[1], logger)
+                            rotobj = LogFile(logname[1], self.tmpprefix,
+                                             logger)
                             logger.put(3, ('Sticking rotated logfile object' +
                                            ' into the log object'))
                             logobj.rotated = rotobj
