@@ -27,6 +27,7 @@ import os
 import sys
 import getopt
 import time
+import libxml2
 
 sys.path.insert(0, '%%PY_MODULE_DIR%%')
 from epylog import *
@@ -44,19 +45,6 @@ def mkstamp(hours=0, days=0):
     then = now - (hours * 60 * 60)
     return then
 
-def getTextVal(node):
-    """
-    getTextVal(node):
-        The node is an element node containing text nodes. This function
-        will concatenate the text nodes together and return them as one
-        string. Any non-text nodes will be ignored.
-    """
-    val = ''
-    for childnode in node.childNodes:
-        if childnode.nodeType == childnode.TEXT_NODE:
-            val = val + childnode.data
-    return val
-
 def unxmlify_offsets(ofile, logger):
     """
     Take the XML file with offsets and return them as a dictionary.
@@ -68,9 +56,8 @@ def unxmlify_offsets(ofile, logger):
         logger.put(3, 'Returning blank tuple')
         logger.put(5, '<epylog.unxmlify_offsets')
         return []
-    from xml.dom.minidom import parse
     try:
-        doc = parse(ofile)
+        doc = libxml2.parseFile(ofile)
     except:
         logger.put(3, 'Could not parse offsets file "%s"' % ofile)
         logger.put(3, 'Returning blank tuple')
@@ -78,17 +65,19 @@ def unxmlify_offsets(ofile, logger):
         return []
     
     omap = []
-    for node in doc.getElementsByTagName('entry'):
-        if node.nodeType == node.ELEMENT_NODE:
-            for cnode in node.childNodes:
-                val = getTextVal(cnode)
-                if cnode.nodeName == 'log':
-                    entry = val
-                elif cnode.nodeName == 'inode':
-                    inode = int(val)
-                elif cnode.nodeName == 'offset':
-                    offset = int(val)
+    root = doc.getRootElement()
+    enode = root.children
+    while enode:
+        if enode.name == 'entry':
+            kid = enode.children
+            while kid:
+                if kid.name == 'log': entry = kid.content.strip()
+                elif kid.name == 'inode': inode = int(kid.content)
+                elif kid.name == 'offset': offset = int(kid.content)
+                kid = kid.next
             omap.append([entry, inode, offset])
+        enode = enode.next
+    doc.freeDoc()
     logger.put(5, omap)
     logger.put(5, '<epylog.unxmlify_offsets')
     return omap
@@ -104,33 +93,23 @@ def xmlify_offsets(omap, ofile, logger):
     except IOError:
         logger.put(0, 'Could not open "%s" for writing! Offsets not saved!')
         return
-    from xml.dom.minidom import Document
     logger.puthang(3, 'Making XML out of offset map')
-    doc = Document()
-    epyel = doc.createElement('epylog-offsets')
+    doc = libxml2.newDoc('1.0')
+    doc.newChild(None, 'epylog-offsets', None)
     for entry in omap:
-        entryel = doc.createElement('entry')
-        logel = doc.createElement('log')
-        logtx = doc.createTextNode(str(entry[0]))
-        logel.appendChild(logtx)
-        entryel.appendChild(logel)
-        inodeel = doc.createElement('inode')
-        inodetx = doc.createTextNode(str(entry[1]))
-        inodeel.appendChild(inodetx)
-        entryel.appendChild(inodeel)
-        offsetel = doc.createElement('offset')
-        offsettx = doc.createTextNode(str(entry[2]))
-        offsetel.appendChild(offsettx)
-        entryel.appendChild(offsetel)
-        epyel.appendChild(entryel)
-    doc.appendChild(epyel)
+        enode = doc.newChild(None, 'entry', None)
+        enode.newChild(None, 'log', entry[0])
+        enode.newChild(None, 'inode', str(entry[1]))
+        enode.newChild(None, 'offset', str(entry[2]))
     logger.endhang(3)
-    logger.put(5, doc.toprettyxml())
+    offsets = doc.serialize()
+    doc.freeDoc()
+    logger.put(5, offsets)
     import fcntl
     logger.put(3, 'Locking the offsets file')
     fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
     logger.puthang(3, 'Writing the offsets into "%s"' % ofile)
-    doc.writexml(fh)
+    fh.write(offsets)
     logger.endhang(3)
     logger.put(3, 'Unlocking the offsets file')
     fcntl.flock(fh.fileno(), fcntl.LOCK_UN)

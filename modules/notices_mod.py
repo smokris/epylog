@@ -28,24 +28,11 @@ Description will eventually go here.
 
 import sys
 import re
-from xml.dom.minidom import parse
+import libxml2
 import os
 
 sys.path.insert(0, '../py/')
 from epylog import InternalModule
-
-def getTextVal(node):
-    """
-    getTextVal(node):
-        The node is an element node containing text nodes. This function
-        will concatenate the text nodes together and return them as one
-        string. Any non-text nodes will be ignored.
-    """
-    val = ''
-    for childnode in node.childNodes:
-        if childnode.nodeType == childnode.TEXT_NODE:
-            val = val + childnode.data
-    return val
 
 class notices_mod(InternalModule):
     def __init__(self, opts, logger):
@@ -57,12 +44,6 @@ class notices_mod(InternalModule):
         self.regex_dict = {}
         n_dist = opts.get('notice_dist', '/etc/epylog/notice_dist.xml')
         n_loc = opts.get('notice_local', '/etc/epylog/notice_local.xml')
-
-        self.entities = {
-            re.compile('&lt;'): '<',
-            re.compile('&gt;'): '>',
-            re.compile('&quot;'): '"',
-            re.compile('&amp;'): '&'}
 
         enables = opts.get('enable', 'ALL')
         if not enables: return
@@ -107,32 +88,27 @@ class notices_mod(InternalModule):
             ret.append(member)
         return tuple(ret)
 
-    def _deent(self, str):
-        for regex in self.entities.keys():
-            str = re.sub(regex, self.entities[regex], str)
-        return str
-    
     def _parse_notices(self, dist, loc, enlist):
         logger = self.logger
         notice_dict = {}
         try:
-            doc = parse(dist)
+            doc = libxml2.parseFile(dist)
             temp_dict = self._get_notice_dict(doc)
             if enlist[0] == 'ALL': notice_dict = temp_dict
             else:
                 for en in enlist:
                     if en in temp_dict: notice_dict[en] = temp_dict[en]
-            del doc
+            doc.freeDoc()
         except Exception, e:
             logger.put(0, 'Could not read/parse notices file %s: %s' %
                        (dist, e))
             return
         if os.access(loc, os.R_OK):
             try:
-                doc = parse(loc)
+                doc = libxml2.parseFile(loc)
                 local_dict = self._get_notice_dict(doc)
                 if local_dict: notice_dict.update(local_dict)
-                del doc
+                doc.freeDoc()
             except Exception, e:
                 logger.put(0, 'Exception while parsing %s: %s' % (loc, e))
                 pass
@@ -147,25 +123,32 @@ class notices_mod(InternalModule):
     def _get_notice_dict(self, doc):
         logger = self.logger
         notice_dict = {}
-        for node in doc.getElementsByTagName('notice'):
-            id = node.getAttribute('id')
-            crit = self.normal
-            try:
-                if node.getAttribute('critical') == 'yes': crit = self.critical
-            except: pass
-            regexes = []
-            for cnode in node.childNodes:
-                val = getTextVal(cnode)
-                val = self._deent(val)
-                if cnode.nodeName == 'regex':
-                    try:
-                        regex = re.compile(val)
-                        regexes.append(regex)
-                    except:
-                        logger.put(0, 'Bad regex for "%s": %s' % (id, val))
-                elif cnode.nodeName == 'report':
-                    report = val
-            notice_dict[id] = (regexes, crit, report)
+        root = doc.getRootElement()
+        node = root.children
+        while node:
+            if node.name == 'notice':
+                crit = self.normal
+                props = node.properties
+                while props:
+                    if props.name == 'id': id = props.content
+                    elif props.name == 'critical':
+                        if props.content.lower() == 'yes':
+                            crit = self.critical
+                    props = props.next
+                regexes = []
+                kid = node.children
+                while kid:
+                    if kid.name == 'regex':
+                        try:
+                            regex = re.compile(kid.content)
+                            regexes.append(regex)
+                        except:
+                            logger.put(0, 'Bad regex for "%s": %s'
+                                       % (id, kid.content))
+                    elif kid.name == 'report': report = kid.content
+                    kid = kid.next
+                notice_dict[id] = (regexes, crit, report)
+            node = node.next
         return notice_dict
 
     ##
