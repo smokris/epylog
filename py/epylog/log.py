@@ -841,6 +841,12 @@ class Log:
                 raise epylog.ConfigError(msg, logger)
         else:
             rotname = re.sub(re.compile('\[|\]'), '', self.entry)
+            ## 
+            # There may not be any rotfiles specified!
+            #
+            if rotname == self.entry:
+                msg = 'No file-rotation data found in "%s"' % self.entry
+                raise epylog.NoSuchLogError(msg, logger)
         rotname = re.sub(re.compile('#'), str(ix), rotname)
         logger.put(5, 'rotname=%s' % rotname)
         logger.put(5, '<Log._get_rotname_by_ix')

@@ -79,7 +79,7 @@ class mail_mod(InternalModule):
 
         self.sendmail_ident_re = rc('sendmail\[\d+\]:\s(.*?):')
         self.sendmail_fromline_re = rc('from=(.*?),.*size=(\d+),.*relay=(.*)')
-        self.sendmail_ctladdr_re = rc('to=(\"\|.*?),\sctladdr=(.*?),.*stat=(\w+)')
+        self.sendmail_ctladdr_re = rc('to=(\"\|.*?),\sctladdr=(\S+).*stat=(\w+)')
         self.sendmail_toline_re = rc('to=(.*?),.*stat=(\w+)')
         self.sendmail_from_re = rc('(<.*?>)')
         self.sendmail_relay_re = rc('(.*?)\s\[(\S*)\]')
@@ -276,7 +276,7 @@ class mail_mod(InternalModule):
 
     def _fix_sendmail_address(self, str):
         try: str = self.sendmail_from_re.search(str).group(1)
-        except: pass
+        except: str = '<%s>' % str
         return str
     
     def _get_top_report(self, rs, descr):
