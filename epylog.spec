@@ -1,7 +1,6 @@
 # $Id$
 
-%define _pyver      %(python -c 'import sys; print sys.version[:3],')
-%define _next_pyver %(python -c 'import sys; print "%d.%d" % (sys.version_info[0], sys.version_info[1]+1),')
+%define _pyver   %(python -c 'import sys; print sys.version[:3],')
 
 %define _python  %{_bindir}/python%{_pyver}
 %define _vardir  %{_localstatedir}/lib
@@ -12,7 +11,7 @@
 
 Summary:        New logs analyzer and parser.
 Name:           epylog
-Version:        1.0
+Version:        1.0.1
 Release:        1.%{_pyver}
 Epoch:          0
 License:        GPL
@@ -89,16 +88,15 @@ external perl modules, or intend to write some of your own.
 
 %files
 %defattr(-,root,root)
+%doc doc/*
+%config(noreplace) %{_sysconfdir}/%{name}
 %dir %{_vardir}/%{name}
 %dir %{_datadir}/%{name}
 %{_datadir}/%{name}/modules/*
 %{_pydir}/%{name}
 %{_sbindir}/%{name}
 %{_sysconfdir}/cron.daily/%{name}.cron
-%{_mandir}/man5/*
-%{_mandir}/man8/*
-%config(noreplace) %{_sysconfdir}/%{name}
-%doc doc/*
+%{_mandir}/man?/*
 
 #------------------------------------------------------------------------------
 
@@ -110,8 +108,9 @@ external perl modules, or intend to write some of your own.
 #------------------------------------------------------------------------------
 
 %changelog
-* Wed May 19 2004 Konstantin Ryabitsev <icon@linux.duke.edu> 1.0-2
+* Wed May 19 2004 Konstantin Ryabitsev <icon@linux.duke.edu> 1.0.1-1
 - Use automatic _pyver determination to make rebuilds simpler.
+- Don't gzip man, it will be done automatically.
 
 * Fri Apr 09 2004 Konstantin Ryabitsev <icon@linux.duke.edu> 1.0-1
 - Version 1.0
