@@ -1,0 +1,134 @@
+.TH "epylog.conf" "5" "0.9" "Konstantin Riabitsev" "Applications/System"
+
+.SH NAME
+\fBepylog.conf\fR \- epylog configuration
+
+.SH SYNOPSIS
+\fBepylog\fR config file is a simple plaintext file in win.ini style
+format.
+
+.SH "Location"
+Epylog will look in /etc/epylog/epylog.conf by default, but you can
+override that by passing \-c switch on the command line.
+
+.SH "[main]"
+.TP
+.B cfgdir
+This is where epylog should look for other configuration information,
+most notably, \fBmodules.d\fR directory. See \fIepylog-modules(5)\fR
+for more info.
+.TP
+.B tmpdir
+Where to create temporary directories and put temporary files. Note
+that log files can grow VERY big and epylog might create several
+copies of them for processing purposes. Make sure there is no danger
+of filling up that partition. A good place on a designated loghost is
+/var/tmp, since that is usually a separate partition dedicated
+entirely for logs.
+.TP
+.B vardir
+Where epylog should save its state data, namely the offsets.xml
+file. The sanest place for this is /var/lib/epylog.
+
+.SH "[report]"
+.TP
+.B title 
+What should be the title of the report. For mailed reports, this is
+the subject of the message. For the ones published on the web, this is
+the title of the page (as in <title></title>).
+.TP
+.B template
+Which html template should be used for the final report. See the
+source of the default template for the format used.
+.TP
+.B include_unparsed
+Can be either "yes" or "no". If "no" is specified, strings that didn't
+match any of the modules will not be appended to the report. Not very
+wise! A good setting is "yes".
+.TP
+.B publishers
+Lists the publishers to use. The value is the name of the section
+where to look for the publisher configuration. E.g.:
+.br
+.B publishers = nfspub
+.br
+will look for a section called "[nfspub]" for publisher
+initialization. The name of the publisher has nothing to do with the
+method it uses for publishing. The fact that the default are named
+[file] and [mail] is only a matter of convenience. List multiple
+values separated by a comma.
+
+.SH "Mail Publisher"
+.TP
+.B method
+Method must be set to "mail" for this publisher to be considered a
+mail publisher.
+.TP
+.B smtpserv
+Can be either a hostname of an SMTP server to use, or the location of
+a sendmail binary. If the value starts with a "/" it will be
+considered a path. E.g. valid entries:
+.br
+.B smtpserv = mail.example.com
+.br
+.B smtpserv = /usr/sbin/sendmail -t
+.TP
+.B mailto
+The list of email addresses where to mail the report. Separate
+multiple entries by a comma. If ommitted, "root@localhost" will be
+used.
+.TP
+.B format
+Can be one of the following: \fBhtml\fR, \fBplain\fR, or \fBboth\fR. If
+you use a mail client that doesn't support html mail, then you better
+use "plain" or "both", though you will miss out on visual cueing that
+epylog uses to notify of important events.
+.TP
+.B lynx
+This is only useful if you use format other than "html". Epylog will
+use a lynx-compliant tool to transform HTML into plain text. The
+following browsers are known to work: lynx, elinks, w3m.
+.TP
+.B include_rawlogs
+Whether to include the gzipped raw logs with the message. If set to
+"yes", it will attach the file with all processed logs with the
+message. If you use a file publisher in addition to the mail
+publisher, this may be a tad too paranoid.
+.TP
+.B rawlogs_limit
+If the size of rawlogs.gz is more than this setting (in kilobytes),
+then raw logs will not be attached. Useful if you have a 50Mb log and
+check your mail over a slow uplink.
+
+.SH "File Publisher"
+.TP
+.B method
+Method must be set to "file" for this config to work as a file
+publisher.
+.TP
+.B path
+Where to place the directories with reports. A sensible location would
+be in /var/www/html/epylog. Note that the reports may contain
+sensitive information, so make sure you place a .htaccess in that
+directory and require a password, or limit by host.
+.TP
+.B dirmask, filemask
+These are the masks to be used for the created directories and
+files. For format values look at strftime documentation here:
+http://www.python.org/doc/current/lib/module-time.html
+.TP
+.B expire_in
+A digit specifying the number of days after which the old directories
+should be removed. Default is 7.
+
+.SH "COMMENTS"
+Lines starting with "#" will be considered commented out.
+
+.SH "AUTHORS"
+.LP 
+Konstantin Riabitsev <icon@phy.duke.edu>
+
+.SH "SEE ALSO"
+.LP 
+epylog(8), Epylog(3), epylog-modules(5)
+
