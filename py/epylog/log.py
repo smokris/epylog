@@ -521,7 +521,7 @@ class LogFile:
                                          % self.filename, logger)
             logger.put(5, 'Putting the contents of the gzlog into ungzlog')
             while 1:
-                chunk = gzfh.read(1024)
+                chunk = gzfh.read(epylog.CHUNK_SIZE)
                 if chunk:
                     ungzfh.write(chunk)
                     logger.put(5, 'Read "%s" bytes from gzfh' % len(chunk))
@@ -626,13 +626,13 @@ class LogFile:
         logger.put(5, 'chunklen=%d' % chunklen)
         self.fh.seek(self.range_start)
         if chunklen > 0:
-            iternum = int(chunklen/1024)
-            lastchunk = chunklen%1024
+            iternum = int(chunklen/epylog.CHUNK_SIZE)
+            lastchunk = chunklen%epylog.CHUNK_SIZE
             logger.put(5, 'iternum=%d' % iternum)
             logger.put(5, 'lastchunk=%d' % lastchunk)
             if iternum > 0:
                 for i in range(iternum):
-                    chunk = self.fh.read(1024)
+                    chunk = self.fh.read(epylog.CHUNK_SIZE)
                     fh.write(chunk)
                     logger.put(5, 'wrote %d bytes from %s to %s' %
                                (len(chunk), self.filename, fh.name))

@@ -28,15 +28,12 @@ class Logger:
     def put(self, level, message):
         if (level <= self.loglevel):
             if self.hanging:
-                print '(output follows):'
                 self.hanging = 0
             print '%s%s' % (self.__getindent(), message)
 
     def puthang(self, level, message):
         if (level <= self.loglevel):
-            if self.hanging:
-                print '(output follows):'
-            print '%s%s...' % (self.__getindent(), message),
+            print '%sInvoking: "%s"...' % (self.__getindent(), message)
             self.hanging = 1
             self.hangmsg.append(message)
 
@@ -46,7 +43,7 @@ class Logger:
             hangmsg = self.hangmsg.pop()
             if self.hanging:
                 self.hanging = 0
-                print '%s' % message
+                print '%s%s...%s' % (self.__getindent(), hangmsg, message)
             else:
                 print '%s(Hanging from "%s")....%s' % (self.__getindent(),
                                                        hangmsg, message)

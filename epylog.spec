@@ -7,7 +7,7 @@
 
 Summary: New logs analyzer and parser.
 Name: epylog
-Version: 0.8.6
+Version: 0.8.7
 Release: 1
 License: GPL
 Group: Applications/System
@@ -17,7 +17,7 @@ Vendor: Duke University
 BuildRoot: /var/tmp/%{name}-%{version}-root
 BuildArch: noarch
 BuildPrereq: perl, python, file, gzip, sed
-Requires: /usr/bin/python2, perl >= 5.6, elinks, grep
+Requires: /usr/bin/python2, perl >= 5.6, w3m, grep
 #Obsoletes: dulog
 Provides: perl(epylog)
 

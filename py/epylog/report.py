@@ -121,7 +121,7 @@ class Report:
                        (fsfh.name, self.filt_fh.name))
             fsfh.seek(0)
             while 1:
-                chunk = fsfh.read(1024)
+                chunk = fsfh.read(epylog.CHUNK_SIZE)
                 if len(chunk):
                     self.filt_fh.write(chunk)
                     logger.put(5, 'wrote %d bytes' % len(chunk))
@@ -148,14 +148,14 @@ class Report:
             logger.put(2, 'Checking the size of filt_fh')
             self.filt_fh.seek(0, 2)
             if self.filt_fh.tell():
-                logger.puthang(3, 'Doing memory friendly grep')
+                logger.puthang(1, 'Doing memory-friendly grep')
                 self.__memory_friendly_grep(rawfh, weedfh)
                 logger.endhang(3)
                 logger.puthang(3, 'Reading in weeded logs')
                 weedfh.seek(0)
                 unparsed_strings = weedfh.read()
                 weedfh.close()
-                logger.endhang(3)
+                logger.endhang(1)
         logger.puthang(3, 'Reading in the template file "%s"' % self.template)
         fh = open(self.template)
         template = fh.read()
@@ -188,51 +188,50 @@ class Report:
         logger.put(5, 'temp_raw=%s' % temp_raw)
         logger.put(5, 'temp_filt=%s' % temp_filt)
         logger.put(5, 'temp_weed=%s' % temp_weed)
-        rawfh.seek(0, 2)
-        rawfh_size = rawfh.tell()
+        logger.put(5, 'Kerchunking %s into %s' % (rawfh.name, temp_raw))
+        temp_rawfh = open(temp_raw, 'w')
+        rawfh.seek(0)
+        while 1:
+            chunk = rawfh.read(epylog.CHUNK_SIZE)
+            if chunk:
+                temp_rawfh.write(chunk)
+                logger.put(5, 'wrote %d bytes' % len(chunk))
+            else:
+                logger.put(5, 'Reached EOF')
+                break
+        temp_rawfh.close()
+
         self.filt_fh.seek(0, 2)
         filtfh_size = self.filt_fh.tell()
-        logger.put(5, 'rawfh_size=%d' % rawfh_size)
         logger.put(5, 'filtfh_size=%d' % filtfh_size)
-        rawfh.seek(0)
         self.filt_fh.seek(0)
+        donesize = 0
         while 1:
-            logger.put(5, 'new iteration of rawfh')
-            if rawfh.tell() == rawfh_size:
-                logger.put(5, 'No more lines in rawfh')
+            logger.put(5, 'new iteration of filt_fh')
+            if self.filt_fh.tell() == filtfh_size:
+                logger.put(5, 'No more lines in filt_fh')
                 break
+            if os.access(temp_weed, os.F_OK):
+                logger.put(5, 'Moving %s to %s' % (temp_weed, temp_raw))
+                os.rename(temp_weed, temp_raw)
             try:
-                os.remove(temp_raw)
+                os.remove(temp_filt)
             except:
                 pass
-            temp_rawfh = open(temp_raw, 'w+')
-            self.__dump_lines(rawfh, temp_rawfh, 1000)
-            temp_rawfh.close()
-            logger.put(5, 'Rewinding filt_fh')
-            self.filt_fh.seek(0)
-            while 1:
-                logger.put(5, 'new iteration of filt_fh')
-                if self.filt_fh.tell() == filtfh_size:
-                    logger.put(5, 'No more lines in filt_fh')
-                    break
-                if os.access(temp_weed, os.F_OK):
-                    logger.put(5, 'Moving %s to %s' % (temp_weed, temp_raw))
-                    os.rename(temp_weed, temp_raw)
-                try:
-                    os.remove(temp_filt)
-                except:
-                    pass
-                temp_filtfh = open(temp_filt, 'w+')
-                self.__dump_lines(self.filt_fh, temp_filtfh, 1000)
-                temp_filtfh.close()
-                self.__call_fgrep(temp_raw, temp_filt, temp_weed)
-                if not os.stat(temp_weed).st_size:
-                    logger.put(5, 'Nothing left after weeding')
-                    break
-            logger.put(5, 'Reading weeding results from temp_weed')
-            temp_weedfh = open(temp_weed)
-            weedfh.write(temp_weedfh.read())
-            temp_weedfh.close()
+            temp_filtfh = open(temp_filt, 'w')
+            s = self.__dump_lines(self.filt_fh, temp_filtfh, epylog.GREP_LINES)
+            temp_filtfh.close()
+            donesize = donesize + s
+            done = (donesize*100)/filtfh_size
+            self.__call_fgrep(temp_raw, temp_filt, temp_weed)
+            logger.put(1, '%d%% done' % done)
+            if not os.stat(temp_weed).st_size:
+                logger.put(5, 'Nothing left after weeding')
+                break
+        logger.put(5, 'Reading weeding results from temp_weed')
+        temp_weedfh = open(temp_weed)
+        weedfh.write(temp_weedfh.read())
+        temp_weedfh.close()
         logger.put(5, 'Done doing memory friendly grep')
         logger.put(5, '<Report.__memory_friendly_grep')
 
@@ -240,16 +239,19 @@ class Report:
         logger = self.logger
         logger.put(5, '>Report.__dump_lines')
         logger.put(5, 'reading %d lines from "%s"' % (number, fromfh.name))
+        chunksize = 0
         for i in range(number):
             line = fromfh.readline()
             if not line:
                 logger.put(5, 'end of file reached at iter %d' % i)
                 break
+            chunksize = chunksize + len(line)
             tofh.write(line)
         writenum = i + 1
         logger.put(5, 'wrote %d lines into %s' % (writenum, tofh.name))
+        logger.put(5, 'total size of chunk: %d' % chunksize)
         logger.put(5, '<Report.__dump_lines')
-        return writenum
+        return chunksize
 
     def __call_fgrep(self, raw, filt, weed):
         logger = self.logger

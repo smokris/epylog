@@ -1,21 +1,27 @@
 import epylog
-import re
 import os
+import re
+import socket
 
 def make_html_page(template, starttime, endtime, title, module_reports,
-                   unparsed_strings, logger):
+                   unparsed, logger):
     logger.put(4, 'Making a standard report page')
-    logger.put(4, 'Regexing @@STARTTIME@@ into "%s"' % starttime)
-    endpage = re.sub(re.compile('@@STARTTIME@@', re.M), starttime, template)
-    logger.put(4, 'Regexing @@ENDTIME@@ into "%s"' % endtime)
-    endpage = re.sub(re.compile('@@ENDTIME@@', re.M), endtime, endpage)
-    logger.put(4, 'Regexing @@TITLE@@ into "%s"' % title)
-    endpage = re.sub(re.compile('@@TITLE@@', re.M), title, endpage)
-    import socket
-    hostname = socket.gethostname()
-    logger.put(4, 'Regexing @@HOSTNAME@@ into "%s"' % hostname)
-    endpage = re.sub(re.compile('@@HOSTNAME@@', re.M), hostname, endpage)
+    fmtstr = re.sub(re.compile('%'), '%%', template)
+    fmtstr = re.sub(re.compile('@@STARTTIME@@'), '%(starttime)s', fmtstr)
+    fmtstr = re.sub(re.compile('@@ENDTIME@@'), '%(endtime)s', fmtstr)
+    fmtstr = re.sub(re.compile('@@TITLE@@'), '%(title)s', fmtstr)
+    fmtstr = re.sub(re.compile('@@HOSTNAME@@'), '%(hostname)s', fmtstr)
+    fmtstr = re.sub(re.compile('@@MODULE_REPORTS@@'), '%(allrep)s', fmtstr)
+    fmtstr = re.sub(re.compile('@@UNPARSED_STRINGS@@'), '%(unparsed)s', fmtstr)
+    fmtstr = re.sub(re.compile('@@VERSION@@'), '%(version)s', fmtstr)
+    logger.put(5, 'fmtstr=%s' % fmtstr)
 
+    valumap = {}
+    valumap['starttime'] = starttime
+    valumap['endtime'] = endtime
+    valumap['title'] = title
+    valumap['hostname'] = socket.gethostname()
+    
     logger.put(4, 'Concatenating the module reports together')
     iter = module_reports.iteritems()
     allrep = ''
@@ -30,19 +36,21 @@ def make_html_page(template, starttime, endtime, title, module_reports,
             break
     if allrep == '':
         allrep = 'No module reports'
-    logger.put(5, allrep)
-    logger.put(4, 'Regexing @@MODULE_REPORTS@@ into the report itself')
-    endpage = re.sub(re.compile('@@MODULE_REPORTS@@', re.M), allrep, endpage)
-    if unparsed_strings is not None:
+    valumap['allrep'] = allrep
+    
+    if unparsed is not None:
+        logger.put(4, 'Regexing <, > and &')
+        unparsed = re.sub(re.compile('&'), '&amp;', unparsed)
+        unparsed = re.sub(re.compile('<'), '&lt;',  unparsed)
+        unparsed = re.sub(re.compile('>'), '&gt;',  unparsed)
         logger.put(4, 'Wrapping unparsed strings into <pre>')
-        unparsed_strings = '<pre>\n%s</pre>' % unparsed_strings
+        unparsed = '<pre>\n%s</pre>' % unparsed
     else:
-        unparsed_strings = 'No unparsed strings'
-    logger.put(4, 'Regexing @@UNPARSED_STRINGS into the strings themselves')
-    endpage = re.sub(re.compile('@@UNPARSED_STRINGS@@', re.M),
-                     unparsed_strings, endpage)
-    logger.put(4, 'Regexing @@VERSION@@ into version')
-    endpage = re.sub(re.compile('@@VERSION@@', re.M), epylog.VERSION, endpage)
+        unparsed = 'No unparsed strings'
+    valumap['unparsed'] = unparsed
+    valumap['version'] = epylog.VERSION
+    
+    endpage = fmtstr % valumap
     logger.put(5, endpage)
     return endpage
     
@@ -155,7 +163,7 @@ class MailPublisher:
             rawfh.seek(0)
             logger.put(5, 'Doing chunked read from rawfh into gzfh')
             while 1:
-                chunk = rawfh.read(1024)
+                chunk = rawfh.read(epylog.CHUNK_SIZE)
                 if not chunk:
                     logger.put(5, 'Reached EOF')
                     break
