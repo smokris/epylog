@@ -42,9 +42,7 @@ class mail_mod(InternalModule):
         self.report_wrap = '<table border="0" width="100%%" rules="cols" cellpadding="2">%s</table>'
         self.subreport_wrap = '<tr><th colspan="2" align="left"><h3><font color="blue">%s</font></h3></th></tr>\n'
         
-        self.report_line = '<tr%s><td valign="top" align="right">%s</td><td valign="top" width="90%%">%s</td></tr>\n'
-        self.flip = ' bgcolor="#dddddd"'
-        self.flipper = ''
+        self.report_line = '<tr><td valign="top" align="right">%s</td><td valign="top" width="90%%">%s</td></tr>\n'
 
     ##
     # Line-matching routines
@@ -121,11 +119,6 @@ class mail_mod(InternalModule):
         address = self.htmlsafe(address)
         return address
 
-    def _flip(self):
-        if self.flipper: self.flipper = ''
-        else: self.flipper = self.flip
-        return self.flipper
-
     def _mk_size_unit(self, size):
         ksize = int(size/1024)
         if ksize:
@@ -142,12 +135,31 @@ class mail_mod(InternalModule):
         toplist = rs.get_top(self.toplim)
         for count, member in toplist:
             key = self._fix_address(member[0])
-            toprep += self.report_line % (self._flip(), str(count), key)
+            toprep += self.report_line % (str(count), key)
         return toprep
     
     def finalize(self, rs):
         ##
-        # Remove, collapse and count all warnings
+        # Go through the results and make sense out of them
+        #
+        msgdict = {}
+        while 1:
+            try: msgtup, mult = rs.popitem()
+            except: break
+            system, id, client, sender, rcpt, size, status, extra = msgtup
+            if system is None or (id is None or id is 'unknown'): continue
+            key = (system, id)
+            try: msglist = msgdict[key]
+            except KeyError: msglist = [[], [], [], [], [], []]
+            if client is not None: msglist[0].append(client)
+            if sender is not None: msglist[1].append(sender)
+            if rcpt is not None: msglist[2].append(rcpt)
+            if size is not None: msglist[3].append(size)
+            if status is not None: msglist[4].append(status)
+            if extra is not None: msglist[5].append(extra)
+            msgdict[key] = msglist
+        ##
+        # Do some real calculations now that we have the results collapsed.
         #
         yrs = Result() # Systems
         crs = Result() # Clients (Connecting Relays)
@@ -159,36 +171,32 @@ class mail_mod(InternalModule):
         successes = 0
         bounces = 0
         procmailed = 0
-        for system in rs.get_distinct(()):
-            for id in rs.get_distinct((system,)):
-                yrs.add_result({(system,): 1})
-                totalmsgs += 1
-                msg = rs.get_distinct_values((system, id))
-                clients, senders, rcpts, sizes, stati, extras = msg
-                for client in clients: crs.add_result({(client,): 1})
-                for sender in senders: srs.add_result({(sender,): 1})
-                for rcpt in rcpts: rrs.add_result({(rcpt,): 1})
-                for size in sizes: totalsize += size
-                for status in stati:
-                    if status == self.warning: warnings += 1
-                    elif status == self.success: successes += 1
-                    elif status == self.bounce: bounces += 1
-                for extra in extras:
-                    if extra == self.procmail: procmailed += 1
+        while 1:
+            try: key, val = msgdict.popitem()
+            except: break
+            system, id = key
+            yrs.add_result({(system,): 1})
+            totalmsgs += 1
+            clients, senders, rcpts, sizes, stati, extras = val
+            for client in clients: crs.add_result({(client,): 1})
+            for sender in senders: srs.add_result({(sender,): 1})
+            for rcpt in rcpts: rrs.add_result({(rcpt,): 1})
+            for size in sizes: totalsize += size
+            for status in stati:
+                if status == self.warning: warnings += 1
+                elif status == self.success: successes += 1
+                elif status == self.bounce: bounces += 1
+            for extra in extras:
+                if extra == self.procmail: procmailed += 1
         rep = self.subreport_wrap % 'General Mail Report'
-        rep += self.report_line % (self._flip(), totalmsgs,
-                                   'Total Messages Processed')
-        rep += self.report_line % (self._flip(), successes,
-                                   'Total Successful Deliveries')
-        rep += self.report_line % (self._flip(), warnings,
-                                   'Total Warnings Issued')
-        rep += self.report_line % (self._flip(), bounces,
-                                   'Total Bounced Messages')
+        rep += self.report_line % (totalmsgs, 'Total Messages Processed')
+        rep += self.report_line % (successes, 'Total Successful Deliveries')
+        rep += self.report_line % (warnings, 'Total Warnings Issued')
+        rep += self.report_line % (bounces, 'Total Bounced Messages')
         if procmailed:
-            rep += self.report_line % (self._flip(), procmailed,
-                                       'Processed by Procmail')
+            rep += self.report_line % (procmailed, 'Processed by Procmail')
         size, unit = self._mk_size_unit(totalsize)
-        rep += self.report_line % (self._flip(), '%d %s' % (size, unit),
+        rep += self.report_line % ('%d %s' % (size, unit),
                                    'Total Transferred Size')
 
         rep += self._get_top_report(yrs, 'Top %d active systems')
@@ -199,7 +207,6 @@ class mail_mod(InternalModule):
         report = self.report_wrap % rep
         
         return report
-
 
 if __name__ == '__main__':
     from epylog.helpers import ModuleTest

@@ -67,8 +67,7 @@ class notices_mod(InternalModule):
         self.critical_title = '<font color="red">CRITICAL Notices</font>'
         self.normal_title = '<font color="blue">General Notices</font>'
         
-        self.report_line = '<tr%s><td valign="top">%s</td><td valign="top">%s</td></tr>\n'
-        self.flip = ' bgcolor="#dddddd"'
+        self.report_line = '<tr><td valign="top">%s</td><td valign="top" width="90%%">%s</td></tr>\n'
 
     ##
     # Line matching routines
@@ -148,13 +147,11 @@ class notices_mod(InternalModule):
             reports[urg] = ''
             flipr = ''
             for system in rs.get_distinct((urg,)):
-                if flipr: flipr = ''
-                else: flipr = self.flip
                 mymap = rs.get_submap((urg, system,))
                 messages = []
                 for message in mymap.keys():
                     messages.append('%s(%d)' % (message[0], mymap[message]))
-                reports[urg] += self.report_line % (flipr, system,
+                reports[urg] += self.report_line % (system,
                                                     '<br>'.join(messages))
             
         if reports[self.critical]:
