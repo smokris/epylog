@@ -32,8 +32,13 @@ sys.path.insert(0, '%%PY_MODULE_DIR%%')
 from epylog import *
 
 DEFAULT_EPYLOG_CONFIG = '%%pkgconfdir%%/epylog.conf'
+EPYLOG_PIDFILE = '%%localstatedir%%/run/epylog.pid'
 
 def mkstamp(hours=0, days=0):
+    """
+    Make a timestamp out of now minus that many days/hours. Used when
+    invoked with --last.
+    """
     now = int(time.time())
     hours = hours + (days * 24)
     then = now - (hours * 60 * 60)
@@ -53,6 +58,9 @@ def getTextVal(node):
     return val
 
 def unxmlify_offsets(ofile, logger):
+    """
+    Take the XML file with offsets and return them as a dictionary.
+    """
     logger.put(5, '>epylog.unxmlify_offsets')
     logger.put(3, 'Checking if we can read "%s"' % ofile)
     if not os.access(ofile, os.R_OK):
@@ -86,6 +94,9 @@ def unxmlify_offsets(ofile, logger):
     return omap
 
 def xmlify_offsets(omap, ofile, logger):
+    """
+    Take a dictionary of offset data and stick it into an XML file.
+    """
     logger.put(5, '>epylog.xmlify_offsets')
     try:
         logger.put(3, 'Trying to open "%s" for writing.' % ofile)
@@ -127,6 +138,9 @@ def xmlify_offsets(omap, ofile, logger):
     logger.put(5, '<epylog.xmlify_offsets')
 
 def restore_offsets(epylog):
+    """
+    Restore offset data from disk and pass it to epylog.
+    """
     logger = epylog.logger
     logger.put(5, '>epylog.restore_offsets')
     ofile = os.path.join(epylog.vardir, 'offsets.xml')
@@ -139,12 +153,52 @@ def restore_offsets(epylog):
     logger.put(5, '<epylog.restore_offsets')
     
 def store_offsets(epylog):
+    """
+    Take offset data from epylog and store it on disk to be used later.
+    """
     logger = epylog.logger
     logger.put(5, '>epylog.store_offsets')
     ofile = os.path.join(epylog.vardir, 'offsets.xml')
     omap = epylog.logtracker.get_offset_map()
     xmlify_offsets(omap, ofile, logger)
     logger.put(5, '<epylog.store_offsets')
+
+def epylock(mode=0777):
+    """
+    Locking when running in cron mode, so in case of a WHOLE LOT of
+    entries the processes do not overlap.
+    """
+    mypid = str(os.getpid())
+    try:
+        fd = os.open(EPYLOG_PIDFILE, os.O_EXCL|os.O_CREAT|os.O_WRONLY, mode)
+    except OSError, msg:
+        if not msg.strerror == "File exists": raise msg
+        try:
+            pid = int(fd.read())
+        except ValueError:
+            msg = 'Pidfile %s contains non numeric value'
+            sys.exit(msg % EPYLOG_PIDFILE)
+        import errno
+        try: os.kill(pid, 0)
+        except OSError, why:
+            if why[0] == errno.ESRCH:
+                # The pid doesn't exists.
+                os.remove(EPYLOG_PIDFILE)
+            else:
+                msg = "Can't check status of PID %s from pidfile %s: %s"
+                sys.exit(msg % (pid, EPYLOG_PIDFILE, why[1]))
+        else:
+            msg = "Another Epylog process seems to be running, PID %s."
+            sys.exit(msg % pid)
+    else:
+        os.write(fd, mypid)
+        os.close(fd)
+
+def epyunlock():
+    """
+    Remove the lock.
+    """
+    os.unlink(EPYLOG_PIDFILE)
 
 def usage():
     print """
@@ -183,38 +237,36 @@ def main(args):
     debuglvl = 1
     o_stor = 0
     o_stamp = 0
+    o_cron = 0
     config_file = DEFAULT_EPYLOG_CONFIG
     cmdargs = args[1:]
     try:
         gopts, cmds = getopt.getopt(cmdargs, 'd:c:h',
                                     ['quiet', 'store-offsets', 'last=',
-                                     'help'])
+                                     'help', 'cron'])
         for o,a in gopts:
-            if o == '-d':
-                debuglvl = int(a)
-            elif o == '--quiet':
-                debuglvl = 0
-            elif o == '--store-offsets':
-                o_stor = 1
+            if o == '-d': debuglvl = int(a)
+            elif o == '--quiet': debuglvl = 0
+            elif o == '--store-offsets': o_stor = 1
+            elif o == '--cron': o_cron = 1
             elif o == '--last':
-                if a == 'hour':
-                    o_stamp = mkstamp(hours=1)
-                elif a == 'day':
-                    o_stamp = mkstamp(days=1)
-                elif a == 'week':
-                    o_stamp = mkstamp(days=7)
-                elif a == 'month':
-                    o_stamp = mkstamp(days=31)
-                else:
-                    usage()
-            elif o == '-c':
-                config_file = a
-            elif o == '-h' or o == '--help':
-                usage()
-                
+                if a == 'hour': o_stamp = mkstamp(hours=1)
+                elif a == 'day': o_stamp = mkstamp(days=1)
+                elif a == 'week': o_stamp = mkstamp(days=7)
+                elif a == 'month': o_stamp = mkstamp(days=31)
+                else: usage()
+            elif o == '-c': config_file = a
+            elif o == '-h' or o == '--help': usage()                
     except getopt.error, e:
         print 'Error: %s' % e
         usage()
+    if o_cron:
+        ##
+        # Cron mode. Try to lock, and set --quiet and --store-offsets
+        #
+        epylock()
+        o_stor = 1
+        debuglvl = 0        
     logger = Logger(debuglvl)
     logger.puthang(1, 'Initializing epylog')
     try:
@@ -252,6 +304,7 @@ def main(args):
     logger.puthang(1, 'Cleaning up')
     epylog.cleanup()
     logger.endhang(1, 'done')
+    if o_cron: epyunlock()
 
 if __name__ == '__main__':
     main(sys.argv)

@@ -1,5 +1,6 @@
 """
-Description will eventually go here.
+This module handles the... er... modules for epylog, both internal and
+external.
 """
 ##
 # Copyright (C) 2003 by Duke University
@@ -122,6 +123,9 @@ class Module:
         logger.put(5, '<Module.__init__')
 
     def is_internal(self):
+        """
+        Returns true if the module at hand is internal.
+        """
         if self.internal:
             self.logger.put(5, 'This module is internal')
             return 1
@@ -130,6 +134,10 @@ class Module:
             return 0
 
     def _init_internal_module(self):
+        """
+        Initializes an internal module by importing it and running
+        the __init__.
+        """
         logger = self.logger
         logger.put(5, '>Module._init_internal_module')
         dirname = os.path.dirname(self.executable)
@@ -160,6 +168,10 @@ class Module:
         logger.put(5, '<Module._init_internal_module')
 
     def message_match(self, message):
+        """
+        Used by internal modules to match the message of a syslog entry
+        against the list of regexes in the .regex_map.
+        """
         logger = self.logger
         logger.put(5, '>Module.message_match')
         handler = None
@@ -174,6 +186,9 @@ class Module:
         return (handler, match_regex)
 
     def put_filtered(self, line):
+        """
+        Puts a filtered line into the file with all filtered lines.
+        """
         logger = self.logger
         logger.put(5, '>Module.put_filtered')
         self.filtfh.write(line)
@@ -181,6 +196,9 @@ class Module:
         logger.put(5, '<Module.put_filtered')
 
     def no_report(self):
+        """
+        Cleanup routine in case there is no report for this module.
+        """
         self.logger.put(5, '>Module.no_report')
         self.logreport = None
         self.logfilter = None
@@ -188,12 +206,19 @@ class Module:
         self.logger.put(5, '<Module.no_report')
         
     def close_filtered(self):
+        """
+        Closes the file with filtered messages.
+        """
         logger = self.logger
         logger.put(5, '>Module.close_filtered')
         self.filtfh.close()
         logger.put(5, '<Module.close_filtered')
 
     def finalize_processing(self, rs):
+        """
+        Called at the end of all processing to generate the report,
+        return it, and delete the imported internal module.
+        """
         logger = self.logger
         logger.put(5, '>Module.finalize_processing')
         logger.put(3, 'Finalizing for module "%s"' % self.name)
@@ -220,6 +245,10 @@ class Module:
         logger.put(5, '<Module.finalize_processing')
     
     def invoke_external_module(self, cfgdir):
+        """
+        Invokes an external module by passing some config parameters
+        as ENV variables and then executing the module itself.
+        """
         logger = self.logger
         logger.put(5, '>Module._invoke_external_module')
         logger.put(3, 'Dumping strings into "%s"' % self.logdump)
@@ -268,6 +297,10 @@ class Module:
         logger.put(5, '<Module._invoke_external_module')
         
     def sanity_check(self):
+        """
+        Some sanity checks performed on a module before accepting it as
+        a valid one.
+        """
         logger = self.logger
         logger.put(5, '>Module.sanity_check')
         logger.put(3, 'Checking if executable "%s" is sane' % self.executable)
@@ -283,6 +316,10 @@ class Module:
         logger.put(5, '<Module.sanity_check')
         
     def get_html_report(self):
+        """
+        Get the report from a module, and if it's not HTML, making it HTML
+        first.
+        """
         logger = self.logger
         logger.put(5, '>Module.get_html_report')
         if self.logreport is None:
@@ -307,6 +344,9 @@ class Module:
         return report
 
     def get_filtered_strings_fh(self):
+        """
+        Get the file handle of the file with filtered strings.
+        """
         logger = self.logger
         logger.put(5, '>Module.get_filtered_strings_fh')
         if self.logfilter is None:
@@ -321,6 +361,10 @@ class Module:
         return fh
            
     def _dump_log_strings(self, filename):
+        """
+        Dumps all log strings from the collection of logs it keeps internally
+        into a provided filename.
+        """
         logger = self.logger
         logger.put(5, '>Module._dump_log_strings')
         logger.put(5, 'filename=%s' % filename)
@@ -334,6 +378,10 @@ class Module:
         return len
 
     def _make_into_html(self, report):
+        """
+        Utility function that turns plaintext into HTML by essentially
+        wrapping it into "<pre></pre>" and escaping the control chars.
+        """
         logger = self.logger
         logger.put(5, '>Module._make_into_html')
         logger.put(3, 'Regexing entities')

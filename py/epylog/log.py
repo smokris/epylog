@@ -1,5 +1,6 @@
 """
-Description will eventually go here.
+This operates on logfiles, including looking up strings, repeated data,
+handling rotated logs, figuring out the dates, etc.
 """
 ##
 # Copyright (C) 2003 by Duke University
@@ -32,6 +33,14 @@ import string
 import time
 
 def mkmonthmap():
+    """
+    The problem with syslog is that it does not log the year when the
+    event has taken place. This makes certain things difficult, including
+    looking up entries based on a timestamp. This function creates a mapping
+    for months to a year. Pad sets how many months ahead of the current one
+    should be considered in this year, and how many in the last year.
+    This function was largely contributed by Michael Stenner.
+    """
     pad = 2
     months = []
     for i in range(0, 12):
@@ -49,6 +58,9 @@ def mkmonthmap():
     return monthmap
 
 def mkstamp_from_syslog_datestr(datestr, monthmap):
+    """
+    Takes a syslog date string and makes a timestamp out of it.
+    """
     try:
         (m, d, t) = datestr.split()[:3]
         y = str(monthmap[m])
@@ -68,6 +80,10 @@ def mkstamp_from_syslog_datestr(datestr, monthmap):
     return timestamp
 
 def get_stamp_sys_msg(line, monthmap):
+    """
+    This function takes a syslog line and returns the timestamp of the event,
+    the system where it occured, and the message.
+    """
     mo = epylog.LOG_SPLIT_RE.match(line)
     if not mo: raise ValueError('Unknown line format: %s' % line)
     time, sys, msg = mo.groups()
@@ -76,7 +92,16 @@ def get_stamp_sys_msg(line, monthmap):
     return stamp, sys, msg
 
 class LogTracker:
+    """
+    This is a helper class to track the logfiles as requested by the modules,
+    so no logs are opened more often than needed. It also does tracking of
+    rotating logfiles, opening and initializing them as necessary.
+    """
     def __init__(self, config, logger):
+        """
+        Initializer code. Passing in config so we can use the variables
+        set by the admin.
+        """
         self.logger = logger
         logger.put(5, '>LogTracker.__init__')
         self.tmpprefix = config.tmpprefix
@@ -86,6 +111,10 @@ class LogTracker:
         logger.put(5, '<LogTracker.__init__')
 
     def getlog(self, entry):
+        """
+        Return a log object based on the entry provided by the module config
+        file. If it is not yet initialized, then initialize it first.
+        """
         logger = self.logger
         logger.put(5, '>LogTracker.getlog')
         logger.put(3, 'Checking if we have a log for entry "%s"' % entry)
@@ -99,6 +128,11 @@ class LogTracker:
         return log
 
     def get_offset_map(self):
+        """
+        Offset map is the virtual boundary that defines which log entries
+        out of the entire scope of a logfile/logfiles we are interested in.
+        It can span multiple rotated logfiles.
+        """
         logger = self.logger
         logger.put(5, '>LogTracker.get_offset_map')
         omap = []
@@ -116,6 +150,12 @@ class LogTracker:
         return omap
 
     def set_start_offset_by_entry(self, entry, inode, offset):
+        """
+        Takes an entry, inode, and suggested offset, and sets the omap
+        entries accordingly. If the inode doesn't match the one in the
+        current logfile, then it assumes logrotation and compensates
+        accordingly.
+        """
         logger = self.logger
         logger.put(5, '>LogTracker.set_offset_by_entry')
         logger.put(5, 'entry=%s' % entry)
@@ -139,6 +179,9 @@ class LogTracker:
         logger.put(5, '<LogTracker.set_offset_by_entry')
 
     def dump_all_strings(self, fh):
+        """
+        Dumps all strings in the internal omap into a specified fh.
+        """
         logger = self.logger
         logger.put(5, '>LogTracker.dump_all_strings')
         len = 0
@@ -150,10 +193,10 @@ class LogTracker:
         return len
 
     def get_stamps(self):
-        ##
-        # Returns a tuple with the earliest and the latest time stamp
-        # from all the logs.
-        #
+        """
+        Returns a tuple with the earliest and the latest time stamp
+        from all the logs.
+        """
         logger = self.logger
         logger.put(5, '>LogTracker.get_stamps')
         start_stamps = []
@@ -183,6 +226,10 @@ class LogTracker:
         return [start_stamp, end_stamp]
 
     def set_range_by_timestamps(self, start_stamp, end_stamp):
+        """
+        Sets offsets in the omap based on the timestamps passed in as
+        arguments.
+        """
         logger = self.logger
         logger.put(5, '>LogTracker.set_offsets_by_timestamp')
         for log in self.logs:
@@ -194,6 +241,9 @@ class LogTracker:
         logger.put(5, '<LogTracker.set_offsets_by_timestamp')
         
     def _init_log_by_entry(self, entry):
+        """
+        Initialize a log object based on an entry specified.
+        """
         logger = self.logger
         logger.put(5, '>LogTracker._init_log_by_entry')
         logger.puthang(3, 'Initializing log object for entry "%s"' % entry)
@@ -205,6 +255,9 @@ class LogTracker:
         return log
 
     def _get_log_by_entry(self, entry):
+        """
+        Return a log object based on the entry specified.
+        """
         logger = self.logger
         logger.put(5, '>LogTracker._get_log_by_entry')
         for log in self.logs:
@@ -217,6 +270,14 @@ class LogTracker:
         return None
 
 class OffsetRange:
+    """
+    This is a helper class that handles offset ranges. Since there can be
+    more than one logfile in the chains of rotated logs, specifying
+    offsets can be tricky. This, effectively, keeps four coordinates
+    internally -- the starting index, pointing at an index in the list of
+    log object, then an offset in that log object, then the end index, and
+    the end offset.
+    """
     def __init__(self, startix, start_offset, endix, end_offset, logger):
         self.logger = logger
         logger.put(5, '>OffsetRange.__init__')
@@ -232,6 +293,9 @@ class OffsetRange:
         logger.put(5, '<OffsetRange.__init__')
 
     def setstart(self, ix, offset, loglist):
+        """
+        Set the start offset -- takes two coordinates
+        """
         logger = self.logger
         logger.put(5, '>OffsetRange.setstart')
         self.startix = ix
@@ -242,6 +306,9 @@ class OffsetRange:
         logger.put(5, '<OffsetRange.setstart')
 
     def setend(self, ix, offset, loglist):
+        """
+        Set the end offset -- takes two coordinates.
+        """
         logger = self.logger
         logger.put(5, '<OffsetRange.setend')
         self.endix = ix
@@ -252,6 +319,10 @@ class OffsetRange:
         logger.put(5, '>OffsetRange.setend')
 
     def start_is_end(self):
+        """
+        Check whether the coordinates for start and end are the same
+        and return true if so, otherwise return false.
+        """
         logger = self.logger
         logger.put(5, '>OffsetRange.start_is_end')
         empty = 0
@@ -263,6 +334,10 @@ class OffsetRange:
         return empty
 
     def done_size(self, curix, offset, loglist):
+        """
+        This is a helper function to help calculate the percentage of
+        offset that has been processed already.
+        """
         if curix == self.startix:
             done = offset - self.start_offset
         else:
@@ -275,6 +350,9 @@ class OffsetRange:
         return done
         
     def is_inside(self, ix, offset):
+        """
+        Check if a proposed index is inside this offset.
+        """
         logger = self.logger
         logger.put(5, '>OffsetRange.is_inside')
         cond = 1
@@ -296,6 +374,11 @@ class OffsetRange:
         return cond
 
     def _recalc_total_size(self, loglist):
+        """
+        If the offsets change, recalculate total size of the range.
+        Useful for figuring out how much is left to do and how much is
+        done already.
+        """
         logger = self.logger
         total = 0
         logger.put(5, 'startix=%d, endix=%d' % (self.startix, self.endix))
@@ -309,6 +392,10 @@ class OffsetRange:
         self.total_size = total
 
 class LinePointer:
+    """
+    LinePointer is a two-dimensional coordinate that contains the index
+    and an offset of a certain line. This is like a half of an offset range.
+    """
     def __init__(self, ix, offset, logger):
         self.logger = logger
         logger.put(5, '>LinePointer.__init__')
@@ -328,6 +415,10 @@ class LinePointer:
         logger.put(5, '<LinePointer.set')
 
 class Log:
+    """
+    This class is the collection of LogFile objects all belonging to the same
+    entry.. It handles things like reading from files, looking up lines, etc.
+    """
     def __init__(self, entry, tmpprefix, monthmap, logger):
         logger.put(5, '>Log.__init__')
         logger.puthang(3, 'Initializing Log object for entry "%s"' % entry)
@@ -347,6 +438,10 @@ class Log:
         logger.put(5, '<Log.__init__')
 
     def set_range_param(self, ix, offset, whence=0):
+        """
+        Sets an offset parameter. If whence is 0, then the start offset
+        is assumed. If it's 1, then the end offset is assumed.
+        """
         logger = self.logger
         logger.put(5, '>Log.set_range_param')
         logger.put(5, 'ix=%d' % ix)
@@ -375,6 +470,9 @@ class Log:
         logger.put(5, '<Log.set_range_param')
 
     def getinode(self):
+        """
+        Get the inode of the file at index 0 (current logfile).
+        """
         logger = self.logger
         logger.put(5, '>Log.getinode')
         logfile = self.loglist[0]
@@ -384,6 +482,11 @@ class Log:
         return inode
 
     def nextline(self):
+        """
+        Fetch the next line in the log, based on the internally stored line
+        pointer. If the line pointer is not set, then the start offset is
+        used.
+        """
         logger = self.logger
         logger.put(5, '>Log.nextline')
         if self.lp is None:
@@ -434,6 +537,10 @@ class Log:
         return linemap
 
     def _lookup_repeated(self, system):
+        """
+        A helper method to resolve the pesky 'last message repeated' lines.
+        It takes a system name and tries to figure out the original line.
+        """
         logger = self.logger
         logger.put(5, '>Log._lookup_repeated')
         log = self.loglist[self.lp.ix]
@@ -470,7 +577,7 @@ class Log:
                 logger.put(5, 'line=%s' % line)
                 log.repeated_cache[offset_orig] = offset
                 break
-        if line is None:
+        if not line:
             msg = 'Could not find the original message'
             raise epylog.GenericError(msg, logger)
         try:
@@ -482,6 +589,9 @@ class Log:
         return message
                     
     def dump_strings(self, fh):
+        """
+        Dump all strings in the offset into the specified fh.
+        """
         logger = self.logger
         logger.put(5, '>Log.dump_strings')
         logger.put(3, 'Dumping strings for log entry "%s"' % self.entry)
@@ -525,6 +635,9 @@ class Log:
         return buflen
 
     def get_stamps(self):
+        """
+        Get the stamps in the offset. Start stamp and end stamp are returned.
+        """
         ##
         # Returns a list with the earliest and the latest stamp in the
         # current log range.
@@ -545,6 +658,9 @@ class Log:
         return [start_stamp, end_stamp]
 
     def set_range_by_timestamps(self, start_stamp, end_stamp):
+        """
+        Set the range by timestamps provided.
+        """
         logger = self.logger
         logger.put(5, '>Log.set_range_by_timestamps')
         if start_stamp > end_stamp:
@@ -626,6 +742,9 @@ class Log:
         logger.put(5, '<Log.set_range_by_timestamps')
 
     def is_range_empty(self):
+        """
+        Check if the range is empty and return an appropriate true or false.
+        """
         logger = self.logger
         logger.put(5, '>Log.is_range_empty')
         empty = 0
@@ -646,6 +765,9 @@ class Log:
         return empty
 
     def _get_orange_logs(self):
+        """
+        Get the logs in the offset range. Returns a list.
+        """
         logger = self.logger
         logger.put(5, '>Log._get_orange_logs')
         ologs = []
@@ -656,6 +778,9 @@ class Log:
         return ologs
 
     def _is_valid_ix(self, ix):
+        """
+        Check if the integer index points at a valid logfile in the list.
+        """
         logger = self.logger
         logger.put(5, '>Log._is_valid_ix')
         ixlen = len(self.loglist) - 1
@@ -667,6 +792,9 @@ class Log:
         return isvalid
 
     def _init_next_rotfile(self):
+        """
+        Initialize the next rotated logfile.
+        """
         logger = self.logger
         logger.put(5, '>Log._init_next_rotfile')
         ix = len(self.loglist)
@@ -682,6 +810,12 @@ class Log:
         return rotlog
 
     def _get_rotname_by_ix(self, ix):
+        """
+        The good thing about rotated files is that they are exactly at the same
+        position in the log list, as the identifier appended to them by
+        logrotate. E.g. messages.1 will be at position 1, messages.2 at
+        position 2, and just messages at position 0.
+        """
         logger = self.logger
         logger.put(5, '>Log._get_rotname_by_ix')
         logger.put(5, 'ix=%d' % ix)
@@ -705,6 +839,10 @@ class Log:
         return rotname
 
     def _get_filename(self):
+        """
+        Helper function to return the filename of the entry without any
+        rotation parameters.
+        """
         logger = self.logger
         logger.put(5, '>Log._get_filename')
         logger.put(5, 'entry=%s' % self.entry)
@@ -714,6 +852,10 @@ class Log:
         return filename
             
 class LogFile:
+    """
+    This class handles the log files themselves -- things like opening,
+    rewinding, reading, etc.
+    """
     def __init__(self, filename, tmpprefix, monthmap, logger):
         self.logger = logger
         logger.put(5, '>LogFile.__init__')
@@ -750,6 +892,12 @@ class LogFile:
         logger.put(5, '<LogFile.__init__')
 
     def _initfile(self):
+        """
+        Initialize the logfile. This usually consitutes opening it,
+        figuring out if it's gzipped or not, and recording where the log
+        ends. That is important, as logs are usually being appended during
+        epylog runs.
+        """
         logger = self.logger
         logger.put(5, '>LogFile._initfile')
         logger.put(3, 'Checking if we are gzipped (ends in .gz)')
@@ -797,6 +945,10 @@ class LogFile:
         logger.put(5, '<LogFile._initfile')
 
     def set_offset_range(self, start, end):
+        """
+        A two-dimensional coordinate is accepted that points to which
+        entries we are interested in.
+        """
         logger = self.logger
         logger.put(5, '>LogFile.set_offset_range')
         logger.put(5, 'start=%d' % start)
@@ -821,6 +973,9 @@ class LogFile:
         logger.put(5, '<LogFile.set_offset_range')
 
     def getinode(self):
+        """
+        Return the inode of this logfile.
+        """
         self.logger.put(5, '>LogFile.getinode')
         inode = os.stat(self.filename).st_ino
         self.logger.put(5, 'inode=%d' % inode)
@@ -828,6 +983,13 @@ class LogFile:
         return inode
 
     def stamp_in_log(self, searchstamp):
+        """
+        Check if the timestamp specified is inside this logfile.
+        Return values:
+            -1 = before this log
+             0 = in this log
+             1 = after this log
+        """
         logger = self.logger
         logger.put(5, '>LogFile.stamp_in_log')
         logger.put(5, 'searchstamp=%d' % searchstamp)
@@ -849,6 +1011,9 @@ class LogFile:
         return ret
         
     def find_offset_by_timestamp(self, searchstamp):
+        """
+        Find an offset by timestamp specified.
+        """
         logger = self.logger
         logger.put(5, '>LogFile.find_offset_by_timestamp')
         if self.start_stamp == 0 or self.end_stamp == 0:
@@ -865,6 +1030,10 @@ class LogFile:
         return offset
 
     def dump_strings(self, fh):
+        """
+        Dump all strings from this logfile into a provided fh. Only the
+        offset entries are used.
+        """
         logger = self.logger
         logger.put(5, '>LogFile.dump_strings')
         if self.range_end is None:
@@ -894,6 +1063,10 @@ class LogFile:
         return chunklen
 
     def get_range_stamps(self):
+        """
+        Get the timestamps at the beginning of the range offset, and at the
+        end.
+        """
         logger = self.logger
         logger.put(5, '>LogFile.get_range_stamps')
         logger.put(5, 'range_start=%s' % self.range_start)
@@ -907,6 +1080,9 @@ class LogFile:
         return [start_stamp, end_stamp]
 
     def get_line_at_offset(self, offset):
+        """
+        Get and return the line at a specified offset.
+        """
         logger = self.logger
         logger.put(5, '>LogFile.get_line_at_offset')
         self.fh.seek(offset)
@@ -916,14 +1092,16 @@ class LogFile:
         return [line, offset]
 
     def find_previous_entry_by_re(self, offset, regex, limit=1000):
+        """
+        Back up one line at a time and try to locate the one that
+        matches the provided regex.
+        """
         logger = self.logger
         logger.put(5, '>LogFile.find_previous_entry_by_re')
         self.fh.seek(offset)
         count = 0
         while 1:
             line = self._lineback()
-            #line = self.fh.readline()
-            #self._lineback()
             if regex.search(line):
                 logger.put(5, 'Found line: %s' % line)
                 break
@@ -937,6 +1115,10 @@ class LogFile:
         return line, self.fh.tell()
 
     def _crude_locate(self, stamp):
+        """
+        This is a binary search that would look for a line matching the
+        provided timestamp.
+        """
         logger = self.logger
         logger.put(5, '>LogFile._crude_locate')
         logger.put(3, 'Looking for "%d" in file %s' % (stamp, self.filename))
@@ -975,6 +1157,10 @@ class LogFile:
         logger.put(5, '<LogFile._crude_locate')
 
     def _fine_locate(self, stamp):
+        """
+        This search algorithm will locate the best match line by line.
+        It's best used after _crude_locate, otherwise it'll take forever.
+        """
         logger = self.logger
         logger.put(5, '>LogFile._fine_locate')
         lineloc = 0
@@ -1054,6 +1240,9 @@ class LogFile:
         logger.put(5, '<LogFile._fine_locate')
 
     def _lineover(self):
+        """
+        Go forward one line and return it.
+        """
         logger = self.logger
         logger.put(5, '>LogFile._lineover')
         offset = self.fh.tell()
@@ -1066,6 +1255,9 @@ class LogFile:
         return entry
 
     def _lineback(self):
+        """
+        Go back one line and return it.
+        """
         logger = self.logger
         logger.put(5, '>LogFile._lineback')
         #self._set_at_line_start()
@@ -1078,6 +1270,9 @@ class LogFile:
         return entry
 
     def _get_stamp(self):
+        """
+        Get the timestamp at current offset.
+        """
         logger = self.logger
         logger.put(5, '>LogFile._get_stamp')
         self._set_at_line_start()
@@ -1098,6 +1293,11 @@ class LogFile:
         return stamp
 
     def _rel_position(self, relative):
+        """
+        Position the offset within a file based on the "relative" variable
+        passed in as argument. It can be positive or negative. Then it will
+        position itself at the start of the line.
+        """
         logger = self.logger
         logger.put(5, '>LogFile._rel_position')
         offset = self.fh.tell()
@@ -1115,6 +1315,9 @@ class LogFile:
         return entry
     
     def _mkstamp_from_syslog_datestr(self, datestr):
+        """
+        Make a timestamp out of the syslog-format date entry.
+        """
         logger = self.logger
         logger.put(5, '>LogFile._mk_stamp_from_syslog_datestr')
         logger.put(5, 'datestr=%s' % datestr)
@@ -1128,6 +1331,9 @@ class LogFile:
         return timestamp
         
     def _accesscheck(self):
+        """
+        Quick sanity checks on the logfile.
+        """
         logger = self.logger
         logger.put(5, '>LogFile._accesscheck')
         logfile = self.filename
@@ -1147,6 +1353,9 @@ class LogFile:
         logger.put(5, '<LogFile._accesscheck')
 
     def _set_at_line_start(self):
+        """
+        Position ourselves at the beginning of the line.
+        """
         logger = self.logger
         logger.put(5, '>LogFile._set_at_line_start')
         orig_offset = self.fh.tell()

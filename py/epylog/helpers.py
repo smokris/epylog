@@ -1,5 +1,7 @@
 """
-Description will eventually go here.
+This helper module is useful for writing and debugging Epylog modules.
+It provides several useful methods for running the modules standalone
+without having to invoke them as part of Epylog.
 """
 ##
 # Copyright (C) 2003 by Duke University
@@ -32,6 +34,11 @@ import epylog
 import getopt
 
 class ModuleTest:
+    """
+    This class lets you debug and test your Epylog modules as standalone
+    apps, not as part of Epylog invocation. This is quicker and just as
+    effective.
+    """
     def __init__(self, epyclass, args):
         logger = epylog.Logger(5)
         cmdargs = args[1:]
@@ -110,6 +117,9 @@ class ModuleTest:
         logger.put(5, 'Done')
 
     def _mk_linemap(self, line, monthmap):
+        """
+        Create a linemap out of a line entry.
+        """
         try:
             stamp, sys, msg = epylog.log.get_stamp_sys_msg(line, monthmap)
         except ValueError:
@@ -123,17 +133,12 @@ class ModuleTest:
         return linemap
 
     def _die(self, message):
+        """
+        Hot Grits Death!
+        """
         print 'FATAL ERROR: %s' % message
         sys.exit(1)
     
-    def _mklinemap(self, system, message):
-        linemap = {'line': 'line',
-                   'stamp': 0,
-                   'system': system,
-                   'message': message,
-                   'multiplier': 1}
-        return linemap                   
-
     def _usage(self, name):
         print '''Usage:
     %s -i testcase [-r report] [-f filter] [-o EXTRAOPTS]

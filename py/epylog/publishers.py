@@ -1,5 +1,7 @@
 """
-Description will eventually go here.
+This module is used to publish the report into a set of predefined
+publisher classes. You can write your own, as long as they contain the
+__init__ and publish methods.
 """
 ##
 # Copyright (C) 2003 by Duke University
@@ -35,6 +37,10 @@ import gzip
 
 def make_html_page(template, starttime, endtime, title, module_reports,
                    unparsed, logger):
+    """
+    Make a html page out of a set of parameters, which include
+    module reports. Used by most, if not all, publishers.
+    """
     logger.put(5, '>make_html_page')
     logger.put(3, 'Making a standard report page')
     fmtstr = re.sub(re.compile('%'), '%%', template)
@@ -83,6 +89,9 @@ def make_html_page(template, starttime, endtime, title, module_reports,
     return endpage
 
 def do_chunked_gzip(infh, outfh, filename, logger):
+    """
+    A memory-friendly way of compressing the data.
+    """
     gzfh = gzip.GzipFile('rawlogs', fileobj=outfh)
     bartotal = infh.tell()
     bardone = 0
@@ -102,6 +111,9 @@ def do_chunked_gzip(infh, outfh, filename, logger):
     logger.endbar(1, bartitle, 'gzipped down to %d bytes' % outfh.tell())
 
 def mail_smtp(smtpserv, fromaddr, toaddr, msg, logger):
+    """
+    Send mail using smtp.
+    """
     logger.put(5, '>publishers.mail_smtp')
     import smtplib
     logger.puthang(3, 'Mailing it via the SMTP server %s' % smtpserv)
@@ -112,6 +124,9 @@ def mail_smtp(smtpserv, fromaddr, toaddr, msg, logger):
     logger.put(5, '<publishers.mail_smtp')
 
 def mail_sendmail(sendmail, msg, logger):
+    """
+    Send mail using sendmail.
+    """
     logger.put(5, '>publishers.mail_sendmail')
     logger.puthang(3, 'Mailing the message via sendmail')
     p = os.popen(sendmail, 'w')
@@ -121,6 +136,10 @@ def mail_sendmail(sendmail, msg, logger):
     logger.put(5, '<publishers.mail_sendmail')
     
 class MailPublisher:
+    """
+    This publisher sends the results of an epylog run as an email message.
+    """
+    
     name = 'Mail Publisher'
     
     def __init__(self, sec, config, logger):
@@ -291,6 +310,10 @@ class MailPublisher:
         logger.put(5, '<MailPublisher.publish')
 
     def _mk_both_rawlogs(self):
+        """
+        Make an email message that includes html, plaintext, and gzipped raw
+        logs sections. Most painful.
+        """
         self.logger.put(5, '>MailPublisher._mk_both_rawlogs')
         import base64
         logger = self.logger
@@ -327,6 +350,9 @@ class MailPublisher:
         self.logger.put(5, '<MailPublisher._mk_both_rawlogs')
 
     def _mk_html_rawlogs(self):
+        """
+        Make an email message that includes html and gzipped raw logs sections.
+        """
         self.logger.put(5, '>MailPublisher._mk_html_rawlogs')
         import base64
         logger = self.logger
@@ -352,6 +378,10 @@ class MailPublisher:
         self.logger.put(5, '<MailPublisher._mk_html_rawlogs')
 
     def _mk_plain_rawlogs(self):
+        """
+        Make an email message that includes plaintext and gzipped raw logs
+        sections.
+        """
         self.logger.put(5, '>MailPublisher._mk_plain_rawlogs')
         import base64
         logger = self.logger
@@ -377,6 +407,9 @@ class MailPublisher:
         self.logger.put(5, '<MailPublisher._mk_plain_rawlogs')
 
     def _mk_both_nologs(self):
+        """
+        Make a message that just includes html and plaintext sections.
+        """
         self.logger.put(5, '>MailPublisher._mk_both_nologs')
         logger = self.logger
         alt_mw = self.mw
@@ -400,6 +433,9 @@ class MailPublisher:
         self.logger.put(5, '<MailPublisher._mk_both_nologs')
 
     def _mk_html_nologs(self):
+        """
+        Make a message that just includes HTML-formatted section.
+        """
         self.logger.put(5, '>MailPublisher._mk_html_nologs')
         logger = self.logger
         alt_mw = self.mw
@@ -415,6 +451,9 @@ class MailPublisher:
         self.logger.put(5, '<MailPublisher._mk_html_nologs')
 
     def _mk_plain_nologs(self):
+        """
+        Make a message that just includes a plaintext-formatted section.
+        """
         self.logger.put(5, '>MailPublisher._mk_plain_nologs')
         logger = self.logger
         plain_mw = self.mw
@@ -426,6 +465,10 @@ class MailPublisher:
 
 
 class FilePublisher:
+    """
+    FilePublisher publishes the results of an Epylog run into a set of files
+    and directories on the hard drive.
+    """
     name = 'File Publisher'
     def __init__(self, sec, config, logger):
         logger.put(5, '>FilePublisher.__init__')
@@ -476,6 +519,9 @@ class FilePublisher:
         logger.put(5, '<FilePublisher.__init__')
 
     def _prune_old(self, path, dirmask, expire):
+        """
+        Removes the directories that are older than a certain date.
+        """
         logger = self.logger
         logger.put(5, '>FilePublisher._prune_old')
         logger.put(3, 'Pruning directories older than %d days' % expire)

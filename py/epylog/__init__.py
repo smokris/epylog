@@ -1,5 +1,5 @@
 """
-Description will eventually go here.
+This module contains the main classes and methods for Epylog.
 """
 ##
 # Copyright (C) 2003 by Duke University
@@ -40,7 +40,7 @@ from report import Report
 from module import Module
 from log import LogTracker
 
-VERSION = 'Epylog-0.9.4'
+VERSION = 'Epylog-0.9.5b'
 CHUNK_SIZE = 8192
 GREP_LINES = 10000
 QUEUE_LIMIT = 500
@@ -48,57 +48,95 @@ LOG_SPLIT_RE = re.compile(r'(.{15,15}) (\S+) (.*)$')
 SYSLOG_NG_STRIP = re.compile(r'.*[@/]')
 MESSAGE_REPEATED_RE = re.compile(r'last message repeated (\S+) times')
 
-
 class FormatError(exceptions.Exception):
+    """
+    This exception is raised when there are problems with the syslog
+    line processed.
+    """
     def __init__(self, message, logger):
         exceptions.Exception.__init__(self)
         logger.put(5, '!FormatError: %s' % message)
         self.args = message
 
 class ConfigError(exceptions.Exception):
+    """
+    This exception is raised when there are misconfiguration problems.
+    """
     def __init__(self, message, logger):
         exceptions.Exception.__init__(self)
         logger.put(5, '!ConfigError: %s' % message)
         self.args = message
 
 class AccessError(exceptions.Exception):
+    """
+    This exception is raised when there are errors accessing certain
+    components of Epylog, log files, or temporary writing spaces.
+    """
     def __init__(self, message, logger):
         exceptions.Exception.__init__(self)
         logger.put(5, '!AccessError: %s' % message)
         self.args = message
 
 class OutOfRangeError(exceptions.Exception):
+    """
+    This happens when Epylog tries to access a line in a logfile that is
+    outside the specified range.
+    """
     def __init__(self, message, logger):
         exceptions.Exception.__init__(self)
         logger.put(5, '!OutOfRangeError: %s' % message)
         self.args = message
 
 class ModuleError(exceptions.Exception):
+    """
+    This exception is raised when an Epylog module crashes or otherwise
+    creates a problem.
+    """
     def __init__(self, message, logger):
         exceptions.Exception.__init__(self)
         logger.put(5, '!ModuleError: %s' % message)
         self.args = message
 
 class SysCallError(exceptions.Exception):
+    """
+    This exception is raised when a call to a system binary is not
+    successful. Most notable ones are grep (only used with external modules)
+    and lynx/links/w3m.
+    """
     def __init__(self, message, logger):
         exceptions.Exception.__init__(self)
         logger.put(5, '!SysCallError: %s' % message)
         self.args = message
 
 class NoSuchLogError(exceptions.Exception):
+    """
+    This exception is raised when Epylog tries to access or initialize a
+    logfile that does not exist.
+    """
     def __init__(self, message, logger):
         exceptions.Exception.__init__(self)
         logger.put(5, '!NoSuchLogError: %s' % message)
         self.args = message
 
 class GenericError(exceptions.Exception):
+    """
+    This exception is raised for all other Epylog conditions.
+    """
     def __init__(self, message, logger):
         exceptions.Exception.__init__(self)
         logger.put(5, '!GenericError: %s' % message)
         self.args = message
 
 class Epylog:
+    """
+    This is the core class of Epylog. A UI would usually communicate
+    with it an it only.
+    """
     def __init__(self, cfgfile, logger):
+        """
+        UIs may override the included logger, which would be useful for
+        things like a possible GTK interface, a web interface, etc.
+        """
         self.logger = logger
         logger.put(5, '>Epylog.__init__')
 
@@ -250,6 +288,9 @@ class Epylog:
         logger.put(5, '<Epylog.__init__')
 
     def process_modules(self):
+        """
+        Invoke the modules to process the logfile entries.
+        """
         logger = self.logger
         logger.put(5, '>Epylog.process_modules')
         logger.put(3, 'Finding internal modules')
@@ -272,6 +313,9 @@ class Epylog:
         logger.put(5, '<Epylog.process_modules')
 
     def make_report(self):
+        """
+        Create the report based on the result of the Epylog run.
+        """
         logger = self.logger
         logger.put(5, '>Epylog.make_report')
         for module in self.modules:
@@ -298,6 +342,9 @@ class Epylog:
         return self.report.is_report_useful()
 
     def publish_report(self):
+        """
+        Publish the report.
+        """
         logger = self.logger
         logger.put(5, '>Epylog.publish_report')
         logger.put(3, 'Dumping all log strings into a temp file')
@@ -316,18 +363,27 @@ class Epylog:
         logger.put(5, '<Epylog.publish_report')
         
     def cleanup(self):
+        """
+        Clean up after ourselves.
+        """
         logger = self.logger
         logger.put(3, 'Cleanup routine called')
         logger.put(3, 'Removing the temp dir "%s"' % self.tmpprefix)
         shutil.rmtree(self.tmpprefix)
 
     def _get_unparsed(self):
+        """
+        Get all unparsed strings stored in the "unparsed" file.
+        """
         fh = open(self.unparsed, 'r')
         unparsed = fh.read()
         fh.close()
         return unparsed
 
     def _process_internal_modules(self):
+        """
+        Invoke and process internal (python) modules.
+        """
         logger = self.logger
         logger.put(5, '>Epylog._process_internal_modules')
         logger.puthang(1, 'Processing internal modules')
@@ -423,6 +479,10 @@ class Epylog:
         logger.put(5, '<Epylog._process_internal_modules')
 
 class ProcessingQueue:
+    """
+    This is a standard cookie-cutter helper class for using threads in a
+    Python application.
+    """
     def __init__(self, limit, logger):
         self.logger = logger
         logger.put(5, '>ProcessingQueue.__init__')
@@ -437,6 +497,9 @@ class ProcessingQueue:
         logger.put(5, '<ProcessingQueue.__init__')
 
     def put_linemap(self, linemap, handler, module):
+        """
+        Accepts a linemap and stores it to be picked up by a thread.
+        """
         self.mon.acquire()
         logger = self.logger
         logger.put(5, '>ProcessingQueue.put_linemap')
@@ -451,6 +514,10 @@ class ProcessingQueue:
         self.mon.release()
 
     def get_linemap(self):
+        """
+        This is used by a running thread, which gets the linemap
+        and processes it.
+        """
         self.mon.acquire()
         logger = self.logger
         logger.put(5, '>ProcessingQueue.get_linemap')
@@ -468,6 +535,10 @@ class ProcessingQueue:
         return item
 
     def put_result(self, line, result, module):
+        """
+        Once the running thread is done with the module, it returns the
+        result and places it here.
+        """
         self.mon.acquire()
         logger = self.logger
         logger.put(5, '>ProcessingQueue.put_result')
@@ -484,12 +555,19 @@ class ProcessingQueue:
         self.mon.release()
 
     def get_resultset(self, module):
+        """
+        When all threads are done, the resultset is returned to anyone
+        interested.
+        """
         self.logger.put(5, '>ProcessingQueue.get_resultset')
         rs = self.resultsets[module]
         self.logger.put(5, '<ProcessingQueue.get_resultset')
         return rs
     
     def tell_threads_to_quit(self, threads):
+        """
+        Tell all threads that they should exit as soon as possible.
+        """
         self.mon.acquire()
         logger = self.logger
         logger.put(5, '>ProcessingQueue.tell_threads_to_quit')
@@ -506,6 +584,10 @@ class ProcessingQueue:
         self.mon.release()
 
 class ConsumerThread(threading.Thread):
+    """
+    This class extends Thread, and is used to thread up the internal
+    module invocation.
+    """
     def __init__(self, queue, logger):
         threading.Thread.__init__(self)
         logger.put(5, '>ConsumerThread.__init__')
@@ -545,7 +627,13 @@ class ConsumerThread(threading.Thread):
         logger.put(5, '<ConsumerThread.run')
 
 class Result(dict):
+    """
+    Result is an extension of a standard dictionary.
+    """
     def add_result(self, result):
+        """
+        Adds another result to the resultset.
+        """
         try:
             restuple, mult = result.popitem()
             if restuple in self: self[restuple] += mult
@@ -553,6 +641,22 @@ class Result(dict):
         except KeyError: pass
 
     def get_distinct(self, matchtup, sort=1):
+        """
+        This is a helper method that allows one to do the following:
+        say you have this resultset:
+          {
+            (foo, bar, baz): 1,
+            (foo, bar, quux): 3,
+            (foo, zed, baz): 1,
+            (foo, zed, quux): 1
+          }
+        if you do .get_distinct((foo,)), you will get a list of all distinct
+        tuple members directly following (foo,), which would be
+        [bar, zed]. If you do .get_distinct((foo, bar)), you will get
+        [baz, quux].
+
+        Note, that this is slow and inefficient on large resultsets.
+        """
         lim = len(matchtup)
         matches = []
         reskeys = self.keys()
@@ -564,6 +668,23 @@ class Result(dict):
         return matches
 
     def get_submap(self, matchtup, sort=1, remove=0):
+        """
+        Similarly to get_distinct, this is a helper method.
+        say you have this resultset:
+          {
+            (foo, bar, baz): 1,
+            (foo, bar, quux): 3,
+            (foo, zed, baz): 1,
+            (foo, zed, quux): 1
+          }
+        If you do .get_submap((foo,)), it will return the following list:
+        [(bar, baz), (bar, quux), (zed, baz), (zed, quux)], and if you do
+        .get_submap((foo, bar)), you will get:
+        [(baz,), (quux,)]
+
+        Note, that this is slow and inefficient on large resultsets.
+
+        """
         lim = len(matchtup)
         matchmap = {}
         reskeys = self.keys()
@@ -576,33 +697,11 @@ class Result(dict):
                 if remove: del self[key]
         return matchmap
 
-    def get_distinct_values(self, matchtup):
-        submap = self.get_submap(matchtup)
-        if not submap: return []
-        values = []
-        while 1:
-            try: restuple, mult = submap.popitem()
-            except KeyError: break
-            for i in range(0, len(restuple)):
-                entry = restuple[i]
-                ##
-                # Get the list of values already at that position
-                #
-                try: vallist = values[i]
-                except IndexError:
-                    while 1:
-                        values.append([])
-                        try:
-                            vallist = values[i]
-                            break
-                        except IndexError: pass
-                if entry is None: continue
-                if entry not in vallist:
-                    vallist.append(entry)
-                    values[i] = vallist
-        return values
-
     def get_top(self, lim):
+        """
+        This method returns the top most common entries (the ones that have
+        the highest mult. The limit is passed as argument.
+        """
         if not lim: return {}
         sortlist = []
         for tuple, mult in self.items():
@@ -613,10 +712,16 @@ class Result(dict):
         return sortlist
 
     def is_empty(self):
+        """
+        Returns a 0 if this dict is empty.
+        """
         if self: return 0
         else: return 1
 
 class InternalModule:
+    """
+    This is a helper class to be extended by internal modules.
+    """
     def __init__(self):
         self._known_hosts = {}
         self._known_uids = {}
@@ -625,6 +730,9 @@ class InternalModule:
         self.gt_re  = re.compile('>')
 
     def htmlsafe(self, unsafe):
+        """
+        Escapes all x(ht)ml control characters.
+        """
         unsafe = re.sub(self.amp_re, '&amp;', unsafe)
         unsafe = re.sub(self.lt_re, '&lt;', unsafe)
         unsafe = re.sub(self.gt_re, '&gt;', unsafe)
@@ -654,9 +762,16 @@ class InternalModule:
         return name
         
     def get_smm(self, lm):
+        """
+        Return a systemname, message, and multiplier from a linemap, since
+        these are most commonly needed in a module.
+        """
         return (lm['system'], lm['message'], lm['multiplier'])
 
     def mk_size_unit(self, size):
+        """
+        Make a human-readable size unit from a size in bytes.
+        """
         ksize = int(size/1024)
         if ksize:
             msize = int(ksize/1024)
@@ -667,8 +782,11 @@ class InternalModule:
             return (ksize, 'KB')
         return (size, 'Bytes')
 
-
 class Logger:
+    """
+    A default command-line logger class. Other GUIs should use their own,
+    but fully implement the API.
+    """
     indent = '  '
     hangmsg = []
     hanging = 0
@@ -677,27 +795,34 @@ class Logger:
         self.loglevel = loglevel
 
     def is_quiet(self):
+        """Check if we should be quiet"""
         if self.loglevel == 0:
             return 1
         else:
             return 0
 
     def debuglevel(self):
+        """Return the current debug level"""
         return str(self.loglevel)
 
     def put(self, level, message):
+        """Log a message, but only if debug levels are lesser or match"""
         if (level <= self.loglevel):
             if self.hanging:
                 self.hanging = 0
             print '%s%s' % (self._getindent(), message)
 
     def puthang(self, level, message):
+        """
+        This indents the output, create an easier-to-read debug data.
+        """
         if (level <= self.loglevel):
             print '%sInvoking: "%s"...' % (self._getindent(), message)
             self.hanging = 1
             self.hangmsg.append(message)
 
     def endhang(self, level, message='done'):
+        """Must be called after puthang has been put in effect"""
         if (level <= self.loglevel):
             hangmsg = self.hangmsg.pop()
             if self.hanging:
@@ -708,6 +833,9 @@ class Logger:
                                                        hangmsg, message)
 
     def progressbar(self, level, title, done, total):
+        """
+        A simple command-line progress bar.
+        """
         if level != self.loglevel: return
         ##
         # Do some nifty calculations to present the bar
@@ -721,6 +849,10 @@ class Logger:
         sys.stdout.write("\r%s%s: %s\r" % (self._getindent(), title, bar))
 
     def endbar(self, level, title, message):
+        """
+        After the progress bar is no longer useful, let's replace it with
+        something useful.
+        """
         if level != self.loglevel: return
         if not message:
             print
@@ -734,5 +866,8 @@ class Logger:
         sys.stdout.write("\r%s%s: %s\n" % (self._getindent(), title, message))
 
     def _getindent(self):
+        """
+        Get the indent spaces.
+        """
         indent = self.indent * len(self.hangmsg)
         return indent

@@ -37,7 +37,7 @@ DOCFILES = AUTHORS ChangeLog INSTALL LICENSE README
 DOCDIRS = doc
 
 all:
-	sed -e 's|%%PYTHON_BIN%%|$(PYTHON_BIN)|g; s|%%pkgconfdir%%|$(pkgconfdir)|g; s|%%PY_MODULE_DIR%%|$(PY_MODULE_DIR)|g' epylog.in > epylog
+	sed -e 's|%%PYTHON_BIN%%|$(PYTHON_BIN)|g; s|%%pkgconfdir%%|$(pkgconfdir)|g; s|%%PY_MODULE_DIR%%|$(PY_MODULE_DIR)|g; s|%%localstatedir%%|$(localstatedir)|g' epylog.in > epylog
 	chmod +x epylog
 	for subdir in $(SUBDIRS) ; do \
 	  $(MAKE) -C $$subdir all ; \

@@ -1,5 +1,5 @@
 """
-Description will eventually go here.
+This module handles generating the reports.
 """
 ##
 # Copyright (C) 2003 by Duke University
@@ -35,12 +35,18 @@ import epylog.mytempfile as tempfile
 from publishers import *
 
 class ModuleReport:
+    """
+    A small helper class to hold Module HTML reports.
+    """
     def __init__(self, name, htmlreport):
         self.name = name
         self.htmlreport = htmlreport
         
-
 class Report:
+    """
+    This helper class holds the contents of a report before it is
+    published using publisher classes.
+    """
     def __init__(self, config, logger):
         logger.put(5, '>Report.__init__')
         logger.put(3, 'Starting Report object intialization')
@@ -125,6 +131,9 @@ class Report:
         logger.put(5, '<Report.__init__')
 
     def append_module_report(self, module_name, module_report):
+        """
+        Appends a module report.
+        """
         logger = self.logger
         logger.put(5, '>Report.append_module_report')
         if len(module_report) > 0:
@@ -139,6 +148,9 @@ class Report:
         logger.put(5, '<Report.append_module_report')
 
     def append_filtered_strings(self, module_name, fsfh):
+        """
+        Adds filtered strings to the report.
+        """
         logger = self.logger
         logger.put(5, '>Report.append_filtered_strings')
         if self.filt_fh is None:
@@ -165,6 +177,9 @@ class Report:
         logger.put(5, '<Report.append_filtered_strings')
 
     def set_stamps(self, stamps):
+        """
+        Set the timestamps of the report -- the starting and the ending one.
+        """
         logger = self.logger
         logger.put(5, '>Report.set_stamps')
         [self.start_stamp, self.end_stamp] = stamps
@@ -173,6 +188,11 @@ class Report:
         logger.put(5, '<Report.set_stamps')
 
     def mk_unparsed_from_raw(self, rawfh):
+        """
+        This is only ever invoked if external modules were used. It takes
+        raw strings, fgreps them against the weeded strings, and returns
+        all the strings that weren't touched by modules.
+        """
         logger = self.logger
         logger.put(5, '>Report.mk_unparsed_from_raw')
         if self.filt_fh is None: return None
@@ -193,6 +213,9 @@ class Report:
         return unparsed
     
     def publish(self, rawfh, unparsed):
+        """
+        Publishes the report using all enabled publishers.
+        """
         logger = self.logger
         logger.put(5, '>Report.publish')
         if self.filt_fh is not None:
@@ -218,9 +241,20 @@ class Report:
 
 
     def is_report_useful(self):
+        """
+        Returns 0 if the report is not useful (no new strings in logs).
+        """
         return self.useful
 
     def _memory_friendly_grep(self, rawfh, weedfh):
+        """
+        Utility method to do a memory-friendly grep. Fgrepping huge
+        logfiles may use up a LOT of memory and cause the process to
+        run away. This only uses a certain amount of lines at a time,
+        making sure that only a small fraction of memory is ever used.
+
+        This is only invoked if external modules were used.
+        """
         logger = self.logger
         logger.put(5, '>Report._memory_friendly_grep')
         tempfile.tmpdir = self.tmpprefix
@@ -278,6 +312,9 @@ class Report:
         logger.put(5, '<Report._memory_friendly_grep')
 
     def _dump_lines(self, fromfh, tofh, number):
+        """
+        Dumps lines from one fh into another.
+        """
         logger = self.logger
         logger.put(5, '>Report._dump_lines')
         logger.put(5, 'reading %d lines from "%s"' % (number, fromfh.name))
@@ -296,6 +333,9 @@ class Report:
         return chunksize
 
     def _call_fgrep(self, raw, filt, weed):
+        """
+        Makes a syscall to grep.
+        """
         logger = self.logger
         logger.put(5, '>Report._call_fgrep')
         fgrep = '/bin/fgrep -v -f %s %s > %s' % (filt, raw, weed)
