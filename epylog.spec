@@ -17,7 +17,7 @@ Vendor: Duke University
 BuildRoot: /var/tmp/%{name}-%{version}-root
 BuildArch: noarch
 BuildPrereq: perl, python, file, gzip, sed
-Requires: python >= 2.2, perl >= 5.6, elinks, grep
+Requires: /usr/bin/python2.2, perl >= 5.6, elinks, grep
 Obsoletes: dulog
 Provides: perl(epylog)
 
