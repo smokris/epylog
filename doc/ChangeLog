@@ -1,3 +1,9 @@
+Epylog-0.9.2
+	* Notices module reworked to support custom notifications.
+	* Weeder module now supports 'ALL' for enable
+	* Some changes to epylog core to return matched regex as part of 
+	  linemap.
+
 Epylog-0.9.1
 	* Bugfixes for errors/warnings found by pychecker.
 	* Added doc/INSTALL for those installing not from RPM.
