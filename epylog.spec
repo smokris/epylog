@@ -8,7 +8,7 @@
 Summary: New logs analyzer and parser.
 Name: epylog
 Version: 0.8
-Release: 0.1
+Release: 0.2
 License: GPL
 Group: Applications/System
 Source: http://www.dulug.duke.edu/epylog/download/%{name}-%{version}.tar.gz
@@ -18,6 +18,8 @@ BuildRoot: /var/tmp/%{name}-%{version}-root
 BuildArch: noarch
 BuildPrereq: perl, python, file, gzip, sed
 Requires: python >= 2.2, perl >= 5.6, elinks, grep
+Obsoletes: dulog
+Provides: perl(epylog)
 
 %description
 New log notifier and analyzer with modular analysis options.
@@ -60,7 +62,7 @@ for FILE in modules/*; do
     # file is a little not right in the head
     # This is really python
     #
-    text/x-java; charset=us-ascii)
+    "text/x-java; charset=us-ascii")
       echo "Not doing documentation for python modules yet. FIXME!"
       ;;
     *)
@@ -136,7 +138,6 @@ popd
 %defattr(-,root,root)
 %dir %{_vardir}/%{name}
 %dir %{_libdir}/%{name}
-%dir %{_libdir}/%{name}/modules
 %{_libdir}/%{name}/modules/*
 %{_pydir}/%{name}
 %{_sbindir}/%{name}
@@ -145,9 +146,7 @@ popd
 %{_mandir}/man3/*
 %{_mandir}/man5/*
 %{_mandir}/man8/*
-%config %dir %{_sysconfdir}/epylog
-%config %dir %{_sysconfdir}/epylog/modules.d
-%config(noreplace) %{_sysconfdir}/epylog/*
+%config(noreplace) %{_sysconfdir}/%{name}
 %doc doc/*
 
 %changelog

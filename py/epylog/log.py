@@ -236,7 +236,7 @@ class LogFile:
 
     def get_stamp_at_offset(self, offset):
         self.logger.put(5, 'Entering LogFile.get_stamp_at_offset')
-        if offset > 0:
+        if offset >= 0:
             if offset == self.end_offset:
                 self.fh.seek(offset - 2)
             else:
@@ -277,15 +277,15 @@ class LogFile:
             return self.log_start_stamp
 
     def __get_log_end_stamp(self):
-        self.logger.put(5, 'Enter/Exit LogFile.__get_log_end_stamp')
+        self.logger.put(5, 'Entering LogFile.__get_log_end_stamp')
         if self.log_end_stamp is None:
             self.fh.seek(self.log_end_offset)
             self.__rel_position(-2)
             endstamp = self.__mkstamp_from_syslog_datestr(self.fh.readline())
             self.log_end_stamp = endstamp
-            return endstamp
-        else:
-            return self.log_end_stamp
+        self.logger.put(5, 'log_end_stamp=%d' % self.log_end_stamp)
+        self.logger.put(5, 'Exiting LogFile.__get_log_end_stamp')
+        return self.log_end_stamp
 
     def __rel_position(self, relative):
         logger = self.logger
@@ -295,6 +295,9 @@ class LogFile:
         logger.put(5, 'offset=%d' % offset)
         logger.put(5, 'relative=%d' % relative)
         logger.put(5, 'new_offset=%d' % new_offset)
+        if new_offset < 0:
+            logger.put(5, 'new_offset less than 0. Setting to 0')
+            new_offset = 0
         self.fh.seek(new_offset)
         self.__set_at_line_start()
         logger.put(5, 'offset after __set_at_line_start: %d' % self.fh.tell())
@@ -366,17 +369,21 @@ class LogFile:
     def __set_at_line_start(self):
         logger = self.logger
         logger.put(5, 'Entering LogFile.__set_at_line_start')
-        offset = self.fh.tell()
-        if offset != 0:
-            self.fh.seek(offset - 1)
-        logger.put(5, 'init fh offset is at: %d' % self.fh.tell())
-        curchar = self.fh.read(1)
-        logger.put(5, 'init curchar is "%s"' % curchar)
-        while curchar != "\n":
-            offset = self.fh.tell()
-            self.fh.seek(offset - 2)
+        logger.put(5, 'starting the backstepping loop')
+        while 1:
             curchar = self.fh.read(1)
-            logger.put(5, 'loop offset is at: %d' % self.fh.tell())
-            logger.put(5, 'loop curchar is "%s"' % curchar)
+            if curchar == '\n':
+                logger.put(5, 'Found newline at offset %d' % self.fh.tell())
+                break
+            logger.put(5, 'curchar=%s' % curchar)
+            offset = self.fh.tell() - 1
+            self.fh.seek(offset)
+            if offset == 0:
+                logger.put(5, 'Beginning of file reached!')
+                break
+            offset = offset - 1
+            self.fh.seek(offset)
+        logger.put(5, 'Exited the backstepping loop')
+        logger.put(5, 'Line start found at offset "%d"' % offset)
         logger.put(5, 'Exiting LogFile.__set_at_line_start')
         
