@@ -1,0 +1,4 @@
+Apr  6 04:03:12 mail/mail postfix/smtpd[31840]: 2170BA77E0: client=web.phy.duke.edu[152.3.182.45]
+Apr  6 04:03:12 mail/mail postfix/cleanup[31852]: 2170BA77E0: message-id=<20030406080310.1AA0539B1@web.phy.duke.edu>
+Apr  6 04:03:12 mail/mail postfix/nqmgr[1372]: 2170BA77E0: from=<root@phy.duke.edu>, size=4311, nrcpt=1 (queue active)
+Apr  6 04:03:12 mail/mail postfix/local[31883]: 2170BA77E0: to=<hm@phy.duke.edu>, relay=local, delay=0, status=sent ("|/usr/bin/procmail")
