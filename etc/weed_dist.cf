@@ -136,5 +136,8 @@ logger: punching nameserver .* through the firewall
 HORDE\[\S*\s*\[imp\] Logout
 LOGIN ON tty.
 usb-uhci.c: interrupt, status
+PCI: Found IRQ
+PCI: Sharing IRQ
+PCI: Setting latency timer
 
 ## $Revision$ ##
