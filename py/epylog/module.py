@@ -109,9 +109,9 @@ class Module:
             self._invoke_external_module(tmpprefix, logdump, cfgdir)
         logger.put(5, '<Module.invoke_module')
 
-    def _invoke_internal_module(self, tmpprefix, logdump, cfgdir):
+    def init_internal_module(self):
         logger = self.logger
-        logger.put(5, '>Module._invoke_internal_module')
+        logger.put(5, '>Module.init_internal_module')
         dirname = os.path.dirname(self.executable)
         modname = os.path.basename(self.executable)
         modname = re.sub(re.compile('\.py'), '', modname)
@@ -121,51 +121,27 @@ class Module:
             module = _loader.load_module(modname, stuff)
         else:
             msg = 'Could not import module "%s"' % self.name
-            raise epylog.ModuleExecError(msg, logger)
+            raise epylog.ModuleError(msg, logger)
         logger.endhang(5)
         try:
             modclass = getattr(module, modname)
-            epymod = modclass(self.extraopts, logger)
+            self.intmodule = modclass(self.extraopts, logger)
         except AttributeError:
             msg = 'Could not instantiate class "%s" in module "%s"'
             msg = msg % (modname, self.executable)
-            raise epylog.ModuleExecError(msg, logger)
-        logger.put(5, 'Opening "%s" for readlining' % logdump)
-        dfh = open(logdump)
-        semaphore = threading.BoundedSemaphore(value=epymod.athreads)
-        logger.put(5, 'Semaphore thread limit set to "%s"' % epymod.athreads)
-        thread_limit = epylog.TOTAL_THREAD_LIMIT
-        logger.put(5, 'Total thread limit is "%s"' % thread_limit)
-        logreport = tempfile.mktemp('.%s.REPORT' % modname)
-        logfilter = tempfile.mktemp('.%s.FILTER' % modname)
+            raise epylog.ModuleError(msg, logger)
+        self.logreport = tempfile.mktemp('.%s.REPORT' % modname)
+        self.logfilter = tempfile.mktemp('.%s.FILTER' % modname)
         logger.put(2, 'logreport=%s' % logreport)
         logger.put(2, 'logfilter=%s' % logfilter)
-        ##
-        # Get a monthmap out of one of the logs
-        #
-        monthmap = self.logs[0].monthmap
-        threads = []
-        line = dfh.readline()
-        while line:
-            for regex in epymod.regex_map.keys():
-                if regex.search(line):
-                    logger.put(5, 'Match: %s' % line)
-                    while threading.activeCount() - 1 > thread_limit:
-                        time.sleep(0.01)
-                    handler = epymod.regex_map[regex]
-                    t = ThreadedLineHandler(line, handler, semaphore,
-                                            monthmap, logger)
-                    threads.append(t)
-                    logger.put(5, 'Starting handler thread')
-                    t.start()
-                    ##
-                    # Don't try other regexes
-                    #
-                    break
-            line = dfh.readline()
-        dfh.close()
-        logger.put(5, 'Done processing the lines')
-        logger.put(5, 'Waiting for threads to finish and collecting results')
+        self.threads = []
+        logger.put(5, '<Module.init_internal_module')
+
+    def finalize_processing(self):
+        ## HERE ##
+        ## move logreport, logfilter, and logdump file creation to init
+        ## Then continue
+        logger = self.logger
         rs = ResultSet()
         filtfh = open(logfilter, 'w+')
         for t in threads:
@@ -232,7 +208,7 @@ class Module:
         if exitcode and exitcode != 256:
             msg = ('External module "%s" exited abnormally (exit code %d)' %
                    (self.executable, exitcode))
-            raise epylog.ModuleExecError(msg, logger)
+            raise epylog.ModuleError(msg, logger)
         logger.put(2, 'Checking if we have the report')
         if os.access(logreport, os.R_OK):
             logger.put(2, 'Report "%s" exists and is readable' % logreport)
@@ -251,12 +227,12 @@ class Module:
         if not os.access(self.executable, os.F_OK):
             msg = ('Executable "%s" for module "%s" does not exist'
                    % (self.executable, self.name))
-            raise epylog.ModuleSanityError(msg, logger)
+            raise epylog.ModuleError(msg, logger)
         if not self.is_internal():
             if not os.access(self.executable, os.X_OK):
                 msg = ('Executable "%s" for module "%s" is not set to execute'
                        % (self.executable, self.name))
-                raise epylog.ModuleSanityError(msg, logger)
+                raise epylog.ModuleError(msg, logger)
         logger.put(5, '<Module.sanity_check')
         
     def get_html_report(self):
@@ -268,7 +244,7 @@ class Module:
         logger.put(3, 'Getting the report from "%s"' % self.logreport)
         if not os.access(self.logreport, os.R_OK):
             msg = 'Log report from module "%s" is missing' % self.name
-            raise epylog.ModuleSanityError(msg, logger)
+            raise epylog.ModuleError(msg, logger)
         logger.puthang(3, 'Reading the report from file "%s"' % self.logreport)
         fh = open(self.logreport)
         report = fh.read()
@@ -292,7 +268,7 @@ class Module:
         logger.put(3, 'Opening filtstrings file "%s"' % self.logfilter)
         if not os.access(self.logfilter, os.R_OK):
             msg = 'Filtered strings file for "%s" is missing' % self.name
-            raise epylog.ModuleSanityError(msg, logger)
+            raise epylog.ModuleError(msg, logger)
         fh = open(self.logfilter)
         logger.put(5, '<Module.get_filtered_strings_fh')
         return fh

@@ -6,6 +6,7 @@ import shutil
 import mytempfile as tempfile
 import re
 import time
+import threading
 
 from report import Report
 from module import Module
@@ -39,14 +40,9 @@ class OutOfRangeError(exceptions.Exception):
         logger.put(2, 'Raising OutOfRangeError with message: %s' % message)
         self.args = message
 
-class ModuleSanityError(exceptions.Exception):
+class ModuleError(exceptions.Exception):
     def __init__(self, message, logger):
-        logger.put(2, 'Raising ModuleSanityError with message: %s' % message)
-        self.args = message
-
-class ModuleExecError(exceptions.Exception):
-    def __init__(self, message, logger):
-        logger.put(2, 'Raising ModuleExecError with message: %s' % message)
+        logger.put(2, 'Raising ModuleError with message: %s' % message)
         self.args = message
 
 class SysCallError(exceptions.Exception):
@@ -120,14 +116,35 @@ class Epylog:
         except:
             self.multimatch = 0
         logger.put(5, 'multimatch=%d' % self.multimatch)
-
+        ##
+        # Get threading pref
+        #
+        try:
+            threads = config.getint('main', 'threads')
+            athreads = config.getint('main', 'active_threads')
+            if threads < 2:
+                logger.put(0, 'Threads set to less than 2, fixing')
+                threads = 2
+            if athreads < 1:
+                logger.put(0, 'Active threads set to less than 1, fixing')
+                athreads = 1
+            if athreads > threads:
+                logger.put(0, 'Config sets more active threads than total')
+                logger.put(0, 'Setting active threads equaling total threads')
+                athreads = threads
+            self.threads = threads
+            self.athreads = athreads
+        except:
+            self.threads = 100
+            self.athreads = 50
+        logger.put(5, 'threads=%d' % self.threads)
+        logger.put(5, 'athreads=%d' % self.athreads)
         ##
         # Initialize the Report object
         #
         logger.puthang(3, 'Initializing the Report')
         self.report = Report(config, logger)
         logger.endhang(3)
-
         ##
         # Initialize the LogTracker object
         #
@@ -135,7 +152,6 @@ class Epylog:
         logtracker = LogTracker(config, logger)
         self.logtracker = logtracker
         logger.endhang(3)
-
         ##
         # Process module configurations
         #
@@ -215,7 +231,7 @@ class Epylog:
                 logger.puthang(1, 'Processing module "%s"' % module.name)
                 try:
                     module.invoke_module(self.tmpprefix, self.cfgdir)
-                except ModuleExecError, e:
+                except ModuleError, e:
                     ##
                     # Module execution error!
                     # Do not die, but provide a visible warning.
@@ -269,11 +285,13 @@ class Epylog:
         logger.put(4, 'Collecting logfiles used by internal modules')
         logmap = {}
         for module in modules:
+            module.init_internal_module()
             for log in module.logs:
                 try: logmap[log.entry].append(module)
                 except KeyError: logmap[log.entry] = [module]
         logger.put(5, 'logmap follows')
         logger.put(5, logmap)
+        semaphore = threading.BoundedSemaphore(value=self.athreads)
         for entry in logmap.keys():
             log = self.logtracker.getlog(entry)
             while 1:
@@ -286,4 +304,20 @@ class Epylog:
                 logger.put(5, 'sys=%s' % sys)
                 logger.put(5, 'msg=%s' % msg)
                 logger.put(5, 'multiplier=%d' % multiplier)
-        ## HERE ##
+                for module in logmap[entry]:
+                    ## HERE
+                    ## Lines below are blind cut-paste.
+                    logger.put(5, 'Match: %s' % line)
+                    while threading.activeCount() - 1 > thread_limit:
+                        time.sleep(0.01)
+                    handler = epymod.regex_map[regex]
+                    t = ThreadedLineHandler(line, handler, semaphore,
+                                            monthmap, logger)
+                    threads.append(t)
+                    logger.put(5, 'Starting handler thread')
+                    t.start()
+                    ##
+                    # Don't try other regexes
+                    #
+                    break
+

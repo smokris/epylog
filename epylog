@@ -239,7 +239,7 @@ def main(args):
     logger.puthang(1, 'Initializing epylog')
     try:
         epylog = Epylog(config_file, logger)
-    except (ConfigError, ModuleSanityError), e:
+    except (ConfigError, ModuleError), e:
         logger.put(0, "Error returned: %s" % e)
         sys.exit(1)
     logger.endhang(1, 'done')
