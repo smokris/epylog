@@ -28,14 +28,18 @@ class logins_mod(epylog.module.PythonModule):
         self.pam_open_re = rc('.*for user (\S+) by\s(\S*)\s*\(uid=(\S+)\)')
         self.pam_failure_more_re = rc('(\S+)\smore\sauthentication\sfailures')
 
+        self.report_wrap = '<table width="90%%">%s</table>'
+        self.subreport_wrap = '<tr><th align="left" colspan="3"><h3>%s</h3></th></tr>\n%s\n'
 
-        self.root_failure_wrap = '<h4>ROOT Login FAILURES</h4><table border="0">%s</table>\n'
-        self.root_success_wrap = '<h4>ROOT Logins</h4><table border="0">%s</table>\n'
-        self.user_failure_wrap = '<h4>User Login FAILURES</h4><table border="0">%s</table>\n'
-        self.user_success_wrap = '<h4>User Logins</h4><table border="0">%s</table>\n'
+        self.root_failures_title = '<font color="red">ROOT FAILURES</font>'
+        self.root_logins_title = '<font color="blue">ROOT Logins</font>'
+        self.user_failures_title = '<font color="red">User Failures</font>'
+        self.user_logins_title = '<font color="blue">User Logins</font>'
 
-        self.line1_rep = '<tr bgcolor="%s"><td align="left" valign="top" rowspan="%d">%s:</td><td align="right" valign="top">%s:</td><td>%s</td></tr>\n'
-        self.line2_rep = '<tr><td align="right" valign="top">%s:</td><td>%s</td></tr>\n'
+        self.flip = ' bgcolor="#dddddd"'
+
+        self.line_rep = '<tr%s><td align="left" valign="top">%s</td><td align="right" valign="top">%s:</td><td>%s</td></tr>\n'
+        #self.line2_rep = '<tr><td align="right" valign="top">%s:</td><td>%s</td></tr>\n'
 
     def pam_failure(self, stamp, system, message, multiplier):
         action = self.failure
@@ -128,11 +132,8 @@ class logins_mod(epylog.module.PythonModule):
             systems = rrs.get_distinct((action,))
             systems.sort()
             sysrep[action] = ''
-            color = 'whitesmoke'
             flipper = ''
             for system in systems:
-                if flipper: flipper = ''
-                else: flipper = color
                 service_rep = []
                 for service in rrs.get_distinct((action, system)):
                     mymap = rrs.get_submap((action, system, service))
@@ -140,20 +141,21 @@ class logins_mod(epylog.module.PythonModule):
                     for remote in mymap.keys():
                         remotes.append('%s(%d)' % (remote[0], mymap[remote]))
                     service_rep.append([service, string.join(remotes, ', ')])
-                first = 1
+                blank = 0
                 for svcrep in service_rep:
-                    if first:
-                        sysrep[action] += (self.line1_rep %
-                                           (flipper, len(service_rep), system,
-                                            svcrep[0], svcrep[1]))
-                        first = 0
-                    else:
-                        sysrep[action] += self.line2_rep%(svcrep[0], svcrep[1])
+                    if blank: system = '&nbsp;'
+                    else: blank = 1
+                    if flipper: flipper = ''
+                    else: flipper = self.flip
+                    sysrep[action] += self.line_rep % (flipper, system,
+                                                       svcrep[0], svcrep[1])
                     
         if sysrep[self.failure]:
-            report += self.root_failure_wrap % sysrep[self.failure]
+            report += self.subreport_wrap % (self.root_failures_title,
+                                             sysrep[self.failure])
         if sysrep[self.open]:
-            report += self.root_success_wrap % sysrep[self.open]
+            report += self.subreport_wrap % (self.root_logins_title,
+                                             sysrep[self.open])
 
         ##
         # User Logins and failures
@@ -163,11 +165,8 @@ class logins_mod(epylog.module.PythonModule):
             users = urs.get_distinct((action,))
             users.sort()
             userrep[action] = ''
-            color = 'whitesmoke'
             flipper = ''
             for user in users:
-                if flipper: flipper = ''
-                else: flipper = color
                 service_rep = []
                 for service in urs.get_distinct((action, user)):
                     mymap = urs.get_submap((action, user, service))
@@ -175,20 +174,21 @@ class logins_mod(epylog.module.PythonModule):
                     for system in mymap.keys():
                         systems.append('%s(%d)' % (system[0], mymap[system]))
                     service_rep.append([service, string.join(systems, ', ')])
-                first = 1
+                blank = 0
                 for svcrep in service_rep:
-                    if first:
-                        userrep[action] += self.line1_rep % (flipper,
-                                                             len(service_rep),
-                                                             user, svcrep[0],
-                                                             svcrep[1])
-                        first = 0
-                    else:
-                        userrep[action] += self.line2_rep % (svcrep[0],
-                                                             svcrep[1])
+                    if blank: user = '&nbsp;'
+                    else: blank = 1
+                    if flipper: flipper = ''
+                    else: flipper = self.flip
+                    userrep[action] += self.line_rep % (flipper, user,
+                                                        svcrep[0], svcrep[1])
+
         if userrep[self.failure]:
-            report += self.user_failure_wrap % userrep[self.failure]
+            report += self.subreport_wrap % (self.user_failures_title,
+                                             userrep[self.failure])
         if userrep[self.open]:
-            report += self.user_success_wrap % userrep[self.open]
-        
+            report += self.subreport_wrap % (self.user_logins_title,
+                                             userrep[self.open])
+
+        report = self.report_wrap % report
         return report

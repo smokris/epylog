@@ -371,7 +371,7 @@ class MailPublisher:
         alt_mw.startmultipartbody('alternative')
         logger.put(4, 'Creating a text/html part')
         html_mw = alt_mw.nextpart()
-        html_mw.addheader('Content-Transfer-Encoding', 'quoted-printable')
+        html_mw.addheader('Content-Transfer-Encoding', '8bit')
         html_fh = html_mw.startbody('text/html; charset=iso-8859-1')
         html_fh.write(self.htmlrep)
         alt_mw.lastpart()

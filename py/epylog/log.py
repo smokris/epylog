@@ -341,15 +341,21 @@ class Log:
             ix -= 1
             offset = 0
         self.lp.set(ix, offset)
+        log.repeated_cache[system] = message
         logger.put(5, '<Log.nextline')
         return line, stamp, system, message, multiplier
 
     def _lookup_repeated(self, system):
         logger = self.logger
-        logger.put(5, '>Log.lookup_repeated')
+        logger.put(5, '>Log._lookup_repeated')
+        log = self.loglist[self.lp.ix]
+        try:
+            message = log.repeated_cache[system]
+            logger.put(5, 'Found in repeated_cache by system')
+            logger.put(5, '<Log._lookup_repeated')
+            return message
+        except KeyError: pass
         host_re = re.compile('.{15,15} .*[@/]*%s' % system)
-        ologs = self._get_orange_logs()
-        log = ologs[self.lp.ix]
         offset = self.lp.offset
         logger.put(5, 'Looking in "%s" for the previous report from %s' %
                    (log.filename, system))
@@ -361,18 +367,18 @@ class Log:
             except IOError: break
             if epylog.MESSAGE_REPEATED_RE.search(cline):
                 try:
-                    rep_offset = log.repeated_lines[offset]
+                    rep_offset = log.repeated_cache[offset]
                     logger.put(5, 'Found in cached values')
                     line = log.get_line_at_offset(rep_offset)
                     logger.put(5, 'line=%s' % line)
-                    log.repeated_lines[offset_orig] = rep_offset
+                    log.repeated_cache[offset_orig] = rep_offset
                     break
                 except KeyError: pass
             else:
                 logger.put(5, 'Found by backstepping')
                 line = cline
                 logger.put(5, 'line=%s' % line)
-                log.repeated_lines[offset_orig] = offset
+                log.repeated_cache[offset_orig] = offset
                 break
         if line is None:
             msg = 'Could not find the original message'
@@ -382,7 +388,7 @@ class Log:
         except epylog.FormatError, e:
             logger.put(0, 'Invalid syslog format string in %s: %s'
                        (log.filename, line))
-        logger.put(5, '<Log.lookup_repeated')
+        logger.put(5, '<Log._lookup_repeated')
         return message
                     
     def dump_strings(self, fh):
@@ -654,10 +660,12 @@ class LogFile:
         self.range_start = 0
         self.range_end = None
         ##
-        # repeated_lines: map of offsets to repeated lines for
+        # repeated_cache: map of offsets to repeated lines for
         #                 unwrapping those pesky "last message repeated"
         #                 entries
-        self.repeated_lines = {}
+        #                 also a map of last lines for systems.
+        #
+        self.repeated_cache = {}
         
         logger.put(3, 'Running sanity checks on the logfile')
         self._accesscheck()
