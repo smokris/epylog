@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<!--
+
+This is where you should put your own notice rules. The format is
+simple:
+  <notice id="uniqueid" [critical="yes"]>
+    <regex>python compliant regex string</regex>
+    <regex>another regex, if more than one string is needed</regex>
+    <report>What should go into the report</report>
+  </notice>
+
+See notice_dist.xml for examples. Any custom notices you add here do
+not need to be added into the notices.conf file, as they will be
+enabled automatically.
+
+-->
+
+<notices>
+</notices>
