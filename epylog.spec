@@ -37,7 +37,7 @@ loghost using syslog or syslog-ng.
 %package perl
 Summary:        Perl module for writing external Epylog modules
 Group:          Development/Libraries
-Requires:       epylog, perl >= 5.6
+Requires:       epylog = %{version}, perl >= 5.6
 Provides:       perl(epylog)
 
 %description perl
@@ -96,7 +96,8 @@ external perl modules, or intend to write some of your own.
 %{_pydir}/%{name}
 %{_sbindir}/%{name}
 %{_sysconfdir}/cron.daily/%{name}.cron
-%{_mandir}/man?/*
+%{_mandir}/man5/*
+%{_mandir}/man8/*
 
 #------------------------------------------------------------------------------
 
