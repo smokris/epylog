@@ -1,22 +1,21 @@
-Apr  6 12:00:00 hagrid sshd[30260]: Accepted rhosts-rsa for jcd from 152.3.182.36 port 32901 ruser jcd
-Apr  6 12:00:00 hagrid sshd[28091]: Accepted publickey for icon from 152.16.65.208 port 36269 ssh2
-Apr  6 12:00:00 hagrid sshd[316]: Accepted password for shwetket from 152.3.25.84 port 47030
-Apr  6 12:00:00 hagrid sshd[7136]: Failed password for boyd from 63.214.104.191 port 565
-Apr  6 12:00:00 hagrid sshd[31221]: Failed none for illegal user Mike from 152.3.183.188 port 32982 ssh2
-Apr  6 12:00:00 hagrid imapd[16091]: Authenticated user=djcecile host=login2.phy.duke.edu [152.3.182.75]
-Apr  6 12:00:00 hagrid imapd[16035]: Login failed user=AryaBhatta auth=AryaBhatta host=login1.phy.duke.edu [152.3.182.74]
-Apr  6 12:00:00 hagrid ipop3d[5613]: Login user=shke host=momentum.chem.duke.edu [152.3.169.5] nmsgs=144/144
-Apr  6 12:00:00 hagrid ipop3d[804]: Login failed user=leluo auth=leluo host=res-152-16-222-235.dorm.duke.edu [152.16.222.235]
-Apr  6 12:00:00 hagrid IMP[15435]: Login 152.3.182.140 to mail.phy.duke.edu:993 as kinast
-Apr  6 12:00:00 hagrid IMP[15398]: FAILED 152.3.182.140 to mail.phy.duke.edu:993 as kinast
-Apr  6 12:00:00 hagrid HORDE[27127]: [imp] Login success for wjs [208.61.133.234] to {mail-wj.acpub.duke.edu:993} [on line 64 of "/usr/share/horde/imp/redirect.php"]
-Apr  6 12:00:00 hagrid HORDE[27126]: [imp] FAILED LOGIN 208.61.133.234 to mail.cs.duke.edu:993[imap/ssl/novalidate-cert] as wjs [on line 270 of "/usr/share/horde/imp/lib/IMP.php"]
-Apr 10 12:59:39 login1/login1 time(pam_unix)[13050]: session opened for user judy by (uid=0)
-Apr 10 12:59:39 login1/login1 gdm(pam_unix)[13050]: session opened for user judy by (uid=0)
-Apr 10 13:18:17 hagrid/hagrid xscreensaver(pam_unix)[1903]: authentication failure; logname= uid=1567 euid=1567 tty=:0.0 ruser= rhost=  user=icon
+Apr  6 12:00:00 hagrid sshd[30260]: Accepted rhosts-rsa for jacd from 192.168.1.3 port 32901 ruser jacd
+Apr  6 12:00:00 hagrid sshd[28091]: Accepted publickey for ivon from 192.168.65.208 port 36269 ssh2
+Apr  6 12:00:00 hagrid sshd[316]: Accepted password for shwetcat from 192.168.25.84 port 47030
+Apr  6 12:00:00 hagrid sshd[7136]: Failed password for boyz from 192.168.104.191 port 565
+Apr  6 12:00:00 hagrid sshd[31221]: Failed none for illegal user Bogus from 192.168.183.188 port 32982 ssh2
+Apr  6 12:00:00 hagrid imapd[16091]: Authenticated user=jdcecile host=login2.dept.school.edu [192.168.182.75]
+Apr  6 12:00:00 hagrid ipop3d[5613]: Login user=shka host=momentum.dept.school.edu [192.168.169.5] nmsgs=144/144
+Apr  6 12:00:00 hagrid ipop3d[804]: Login failed user=elulo auth=elulo host=res-192-168-222-235.dorm.school.edu [192.168.222.235]
+Apr  6 12:00:00 hagrid IMP[15435]: Login 192.168.182.140 to mail.dept.school.edu:993 as kino
+Apr  6 12:00:00 hagrid IMP[15398]: FAILED 192.168.182.140 to mail.school.edu:993 as kino
+Apr  6 12:00:00 hagrid HORDE[27127]: [imp] Login success for hal [192.168.133.234] to {mail.dept.school.edu:993} [on line 64 of "/usr/share/horde/imp/redirect.php"]
+Apr  6 12:00:00 hagrid HORDE[27126]: [imp] FAILED LOGIN 192.168.133.234 to mail.dept.school.edu:993[imap/ssl/novalidate-cert] as hal [on line 270 of "/usr/share/horde/imp/lib/IMP.php"]
+Apr 10 12:59:39 login1/login1 time(pam_unix)[13050]: session opened for user jove by (uid=0)
+Apr 10 12:59:39 login1/login1 gdm(pam_unix)[13050]: session opened for user jove by (uid=0)
+Apr 10 13:18:17 hagrid/hagrid xscreensaver(pam_unix)[1903]: authentication failure; logname= uid=1567 euid=1567 tty=:0.0 ruser= rhost=  user=ivon
 Apr 10 15:07:18 public0/public0 gdm(pam_unix)[1466]: authentication failure; logname= uid=0 euid=0 tty=:0 ruser= rhost=
-Apr 11 17:11:21 mail/mail imapd[23246]: Login user=matveev host=tonatiu.phy.duke.edu [152.3.183.16]
-Apr 16 00:45:26 src@monserv sshd(pam_unix)[13904]: authentication failure; logname= uid=0 euid=0 tty=NODEVssh ruser= rhost=fleur.adsl.duke.edu  user=root
-Apr 16 00:45:29 src@monserv sshd[13904]: Failed password for root from 152.16.65.208 port 43410 ssh2
-Apr 16 00:45:31 src@monserv sshd[13904]: Accepted password for root from 152.16.65.208 port 43410 ssh2
+Apr 11 17:11:21 mail/mail imapd[23246]: Login user=matvey host=tonatiu.dept.school.edu [192.168.183.16]
+Apr 16 00:45:26 src@monserv sshd(pam_unix)[13904]: authentication failure; logname= uid=0 euid=0 tty=NODEVssh ruser= rhost=fleur.adsl.school.edu  user=root
+Apr 16 00:45:29 src@monserv sshd[13904]: Failed password for root from 192.168.65.208 port 43410 ssh2
+Apr 16 00:45:31 src@monserv sshd[13904]: Accepted password for root from 192.168.65.208 port 43410 ssh2
 Apr 16 00:45:31 src@monserv sshd(pam_unix)[13904]: session opened for user root by (uid=0)

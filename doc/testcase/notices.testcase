@@ -1,5 +1,5 @@
-Apr  6 12:00:00 hagrid ypserv[17381]: refused connect from 152.3.182.2:59557 to procedure ypproc_match
-Apr  6 12:00:00 hagrid sshd[17779]: Did not receive identification string from 152.3.182.3
+Apr  6 12:00:00 hagrid ypserv[17381]: refused connect from 192.168.182.2:59557 to procedure ypproc_match
+Apr  6 12:00:00 hagrid sshd[17779]: Did not receive identification string from 192.168.182.3
 Apr  6 12:00:00 hagrid kernel: Linux version 2.4.18-27.7.x (bhcompile@stripples.devel.redhat.com) (gcc version 2.96 20000731 (Red Hat Linux 7.3 2.96-112)) #1 Fri Mar 14 05:51:23 EST 2003
 Apr  9 15:02:11 grads-14/grads-14 kernel: VFS: busy inodes on changed media.
 Apr 15 23:26:41 grads-29/grads-29 kernel: attempt to access beyond end of device
