@@ -51,7 +51,7 @@ external perl modules, or intend to write some of your own.
 # run.
 #
 %configure \
-    --with-python=%{_python} \
+    --with-python=%{__python} \
     --with-lynx=%{_bindir}/links
 ##
 # Fix version.
