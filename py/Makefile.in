@@ -43,7 +43,7 @@ all:
 	done
 
 install: all installdirs
-	for PYFILE in $(PYDIR)/*.py $(PYDIR)/*.pyc $(PYDIR)/*.pyo; do \
+	for PYFILE in $(PYDIR)/*.py $(PYDIR)/*.pyc; do \
 	  $(INSTALL_DATA) $$PYFILE $(DESTDIR)$(PY_MODULE_DIR)/$(PYDIR); \
 	done
 	for subdir in $(SUBDIRS) ; do \
