@@ -144,6 +144,10 @@ popd
 %doc doc/*
 
 %changelog
+* Mon Mar 03 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.8.13-1
+- Two new features for module configs: you can now specify the priority
+  and extra options for modules.
+
 * Fri Feb 28 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.8.12-1
 - Two small bugfixes which prevented some modules from ever being 
   executed when the last log was 0 length.
