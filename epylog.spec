@@ -8,7 +8,7 @@
 
 Summary: New logs analyzer and parser.
 Name: epylog
-Version: 0.9.1
+Version: 0.9.2
 Release: 1
 License: GPL
 Group: Applications/System
@@ -81,7 +81,7 @@ popd
 %{__install} -m 644 etc/modules.d/*.conf \
     %{buildroot}%{_sysconfdir}/%{name}/modules.d/
 FILES="epylog.conf report_template.html trojans.list"
-FILES="$FILES weed_dist.cf weed_local.cf"
+FILES="$FILES weed_dist.cf weed_local.cf notice_dist.xml"
 for FILE in $FILES; do
   %{__install} -m 644 etc/$FILE %{buildroot}%{_sysconfdir}/%{name}/$FILE
 done
@@ -136,6 +136,11 @@ popd
 %doc doc/*
 
 %changelog
+* Tue Apr 29 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.9.2-1
+- Notices module reworked to support custom notifications.
+- Weeder module now supports 'ALL' for enable
+- Some changes to epylog core to return matched regex as part of linemap.
+
 * Fri Apr 25 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.9.1-1
 - Some bugfixes after running pychecker
 - Added doc/INSTALL for people not running RPM.
