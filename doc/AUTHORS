@@ -5,11 +5,15 @@ Konstantin ("Icon") Riabitsev -- icon@phy.duke.edu
 Modules
 --------
 Konstantin ("Icon") Riabitsev (icon@phy.duke.edu):
-		- annoy.mod.pl
-		- reboots.mod.pl
-		- logins.mod.pl
-		- mail.mod.pl
-		- weedeater.mod.sh
-		- epylog.pm
-Michael Stenner (mstenner@phy.duke.edu):
-		- firewall.mod.pl
+		- notices_mod.py
+		- logins_mod.py
+		- mail_mod.py
+		- weeder_mod.py
+        - spamd_mod.py
+        - packets_mod.py
+
+Special thanks to:
+        - Michael Stenner for many of the original modules, plus
+          contributions in both code and ideas
+        - Heather Sarik for IMP3 support
+        - Chris Geddings for ipfilter support
