@@ -4,19 +4,21 @@
 %define _pydir   %{_libdir}/python2.2/site-packages
 %define _perldir %{_libdir}/perl5/site_perl
 
-Summary: New logs analyzer and parser.
-Name: epylog
-Version: 0.9.4
-Release: 0.1
-License: GPL
-Group: Applications/System
-Source: http://linux.duke.edu/projects/epylog/download/%{name}-%{version}.tar.gz
-Packager: Konstantin Riabitsev <icon@phy.duke.edu>
-Vendor: Duke University
-BuildRoot: %{_tmppath}/%{name}-%{version}-root
-BuildArch: noarch
-BuildPrereq: perl, python, gzip, sed
-Requires: /usr/bin/python2, elinks
+#------------------------------------------------------------------------------
+
+Summary:        New logs analyzer and parser.
+Name:           epylog
+Version:        0.9.4
+Release:        1
+Epoch:          0
+License:        GPL
+Group:          Applications/System
+Source:         http://linux.duke.edu/projects/epylog/download/%{name}-%{version}.tar.gz
+URL:            http://linux.duke.edu/projects/epylog/
+BuildRoot:      %{_tmppath}/%{name}-%{version}-root
+BuildArch:      noarch
+BuildPrereq:    perl, python, gzip, sed
+Requires:       /usr/bin/python2, elinks
 #Obsoletes: dulog
 
 %description
@@ -27,17 +29,21 @@ output. It is written specifically with large network clusters in mind
 where a lot of machines (around 50 and upwards) log to the same
 loghost using syslog or syslog-ng.
 
+#------------------------------------------------------------------------------
+
 %package perl
-Summary: Perl module for writing external Epylog modules
-Group: Development/Libraries
-Requires: epylog, perl >= 5.6
-Provides: perl(epylog)
+Summary:        Perl module for writing external Epylog modules
+Group:          Development/Libraries
+Requires:       epylog, perl >= 5.6
+Provides:       perl(epylog)
 
 %description perl
 This package provides a perl module for epylog. It is useful for
 writing epylog modules that use external module API. No modules shipping
 with epylog by default use that API, so install this only if you are using
 external perl modules, or intend to write some of your own.
+
+#------------------------------------------------------------------------------
 
 %prep
 %setup -q
@@ -51,26 +57,35 @@ external perl modules, or intend to write some of your own.
     "s/^VERSION\s*=\s*.*/VERSION = '%{name}-%{version}-%{release}'/g" \
     py/epylog/__init__.py
 
+#------------------------------------------------------------------------------
+
 %build
 %{__make}
+
+#------------------------------------------------------------------------------
 
 %install
 %{__rm} -rf %{buildroot}
 %{__make} install DESTDIR=%{buildroot}
 ##
-# Remove docs
+# Remove installed docs
 #
 %{__rm} -rf %{buildroot}%{_defaultdocdir}
 ##
 # Gzip up manpages
 #
-find %{buildroot}%{_mandir} -type f -exec %{__gzip} {} \;
+%{__gzip} %{buildroot}%{_mandir}/man*/*
 ##
 # Move docs to doc
-mv AUTHORS ChangeLog INSTALL LICENSE README doc/
+#
+%{__mv} AUTHORS ChangeLog INSTALL LICENSE README doc/
+
+#------------------------------------------------------------------------------
 
 %clean
 %{__rm} -rf %{buildroot}
+
+#------------------------------------------------------------------------------
 
 %files
 %defattr(-,root,root)
@@ -85,12 +100,22 @@ mv AUTHORS ChangeLog INSTALL LICENSE README doc/
 %config(noreplace) %{_sysconfdir}/%{name}
 %doc doc/*
 
+#------------------------------------------------------------------------------
+
 %files perl
 %defattr(-,root,root)
 %{_perldir}/%{name}.pm
 %{_mandir}/man3/*
 
+#------------------------------------------------------------------------------
+
 %changelog
+* Tue May 20 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.9.4-1
+- Specfile cleanups to make it more easily adaptable for Linux@DUKE.
+- Fix for bug 38 (incorrect offsets were causing backtrace)
+- Normalized logger calls (bug 9)
+- Enhancements to mail and packets modules
+
 * Thu May  1 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.9.3-1
 - Now using autoconf to do the building.
 - Added qmail support in mail module.
