@@ -1,3 +1,9 @@
+Epylog-0.9.5
+	* Fix for quasi-bug #6 (docstrings added)
+	* Fix for bug #57
+	* Fix for bug #53
+	* Cron mode of operation added -- checks for a lockfile (bug #79)
+	
 Epylog-0.9.4
 	* Fix for bug #38 (incorrect offsets were causing backtrace)
 	* Normalized logger calls (bug #9)
