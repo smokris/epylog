@@ -8,7 +8,7 @@
 Summary: New logs analyzer and parser.
 Name: epylog
 Version: 0.8.5
-Release: 0.2
+Release: 1
 License: GPL
 Group: Applications/System
 Source: http://www.dulug.duke.edu/epylog/download/%{name}-%{version}.tar.gz
@@ -144,7 +144,13 @@ popd
 %doc doc/*
 
 %changelog
-* Sat Jan 18 2003 Konstantin Riabitsev <icon@phy.duke.edu>
+* Mon Jan 27 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.8.5-1
+- Big rewrite of logfile handling routines. This works much-much-much
+  better!
+- A useful usage().
+- Lots of bugfixes.
+
+* Sat Jan 18 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.8-1
 - First attempt at building a semi-usable epylog. It even works.
   Sometimes. :)
 - Removed DULog-related changelogs.
