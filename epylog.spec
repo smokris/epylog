@@ -1,6 +1,7 @@
 # $Id$
 
-%{!?_pyver:%define _pyver 2.2}
+%define _pyver      %(python -c 'import sys; print sys.version[:3],')
+%define _next_pyver %(python -c 'import sys; print "%d.%d" % (sys.version_info[0], sys.version_info[1]+1),')
 
 %define _python  %{_bindir}/python%{_pyver}
 %define _vardir  %{_localstatedir}/lib
@@ -113,6 +114,9 @@ external perl modules, or intend to write some of your own.
 #------------------------------------------------------------------------------
 
 %changelog
+* Wed May 19 2004 Konstantin Ryabitsev <icon@linux.duke.edu> 1.0-2
+- Use automatic _pyver determination to make rebuilds simpler.
+
 * Fri Apr 09 2004 Konstantin Ryabitsev <icon@linux.duke.edu> 1.0-1
 - Version 1.0
 - Do not depend on elinks to make things simpler
