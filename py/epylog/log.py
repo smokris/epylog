@@ -384,6 +384,6 @@ class LogFile:
             offset = offset - 1
             self.fh.seek(offset)
         logger.put(5, 'Exited the backstepping loop')
-        logger.put(5, 'Line start found at offset "%d"' % offset)
+        logger.put(5, 'Line start found at offset "%d"' % self.fh.tell())
         logger.put(5, 'Exiting LogFile.__set_at_line_start')
         
