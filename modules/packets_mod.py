@@ -278,14 +278,17 @@ class packets_mod(InternalModule):
             if flipper: flipper = ''
             else: flipper = self.flip
             if self.sortby == 'packets':
-                packets, source, system, port, rawport, logtype = entry
+                packets, source, system, port, logtype = entry
             elif self.sortby == 'source':
-                source, packets, system, port, rawport, logtype = entry
+                source, packets, system, port, logtype = entry
             elif self.sortby == 'system':
-                system, packets, source, port, rawport, logtype = entry
+                system, packets, source, port, logtype = entry
             elif self.sortby == 'port':
-                rawport, packets, source, system, port, logtype = entry
-            port = self._mk_port("%s/%s" % port)
+                port, packets, source, system, logtype = entry
+            if port[0] == -1:
+                    port = self.collapsed_ports_rep % port[1]                
+            else:
+                port = self._mk_port("%s/%s" % port)
             report += self.line_rep % (flipper, packets, source, system,
                                        logtype, port)
 
