@@ -105,6 +105,23 @@ class logins_mod(InternalModule):
             rc('\sLOGIN,\suser=\S+,\sip=\[\S+\]'): self.courier_open,
             rc('\sLOGIN FAILED,\sip=\[\S+\]'): self.courier_failure
             }
+        ##
+        # Cyrus-IMAP
+        #
+        cyrus_map = {
+            rc('imapd\[\S*: login:'): self.cyrus_open,
+            rc('pop3d\[\S*: login:'): self.cyrus_open,
+            rc('imapd\[\S*: badlogin:'): self.cyrus_failure,
+            rc('pop3d\[\S*: badlogin:'): self.cyrus_failure
+            }
+        ##
+        # Qpopper
+        #
+        qpopper_map = {
+            rc('apop\[\S*:\s\S+\sat\s.*\s\(\S*\):\s-ERR\s\[AUTH\]'): self.qpopper_failure,
+            rc('apop\[\S*:\s\S+\sat\s.*\s\(\S*\):\s-ERR\s\[IN-USE\]'): self.qpopper_failure,
+            rc('apop\[\S*:\s\(\S*\)\sPOP\slogin'): self.qpopper_open
+            }
 
         ##
         # ProFTPD
@@ -127,6 +144,8 @@ class logins_mod(InternalModule):
         if opts.get('enable_imp', "0") != "0": regex_map.update(imp_map)
         if opts.get('enable_dovecot',"0") != "0": regex_map.update(dovecot_map)
         if opts.get('enable_courier',"0") != "0": regex_map.update(courier_map)
+        if opts.get('enable_cyrus', "0") != "0": regex_map.update(cyrus_map)
+        if opts.get('enable_qpopper',"0") != "0": regex_map.update(qpopper_map)
         if opts.get('enable_proftpd',"0") != "0":
             regex_map.update(proftpd_map)
             self.pam_ignore.append('ftp')
@@ -172,6 +191,11 @@ class logins_mod(InternalModule):
         self.proftpd_open_re = rc('proftpd\[\S*:.*\[(\S+)\].*USER\s(.*):\sLogin\ssuccessful')
         self.proftpd_failure_re = rc('proftpd\[\S*:.*\[(\S+)\].*USER\s([^:\s]*)')
         self.fake_ipv6_re = rc('^::ffff:(\S+)')
+        self.qpopper_open_re = rc('user "(.*)" at \(.*\)\s(\S*)')
+        self.qpopper_fail_re = rc(':\s(.*)\sat\s(\S*)')
+        self.cyrus_open_re = rc('login:.*\[(\S*)\]\s(\S*)\s')
+        self.cyrus_fail_re = rc('badlogin:.*\[(\S*)\]\s\S\s(\S*)\sSASL')
+        self.cyrus_service_re = rc('^(\S*)\[\d*\]:')
         
         self.sshd_methods = {'password': 'pw',
                              'publickey': 'pk',
@@ -525,7 +549,57 @@ class logins_mod(InternalModule):
         restuple = self._mk_restuple(action, system, service, user, '', rhost)
         return {restuple: mult}
 
+    def cyrus_failure(self,linemap):
+        action = self.failure
+        system, message , mult = self.get_smm(linemap)
+        service = self._get_cyrus_service(message)
+        mo = self.cyrus_fail_re.search(message)
+        if not mo:
+            self.logger.put(3, 'Odd cyrus FAILURE string: %s' % message)
+            return None
+        rhost, user = mo.groups()
+        rhost = self.gethost(rhost)
+        restuple = self._mk_restuple(action,sytem,service,user,'',rhost)
+        return {restuple: mult}
 
+    def cyrus_open(self,linemap):
+        action = self.open
+        system, message , mult = self.get_smm(linemap)
+        service = self._get_cyrus_service(message)
+        mo = self.cyrus_open_re.search(message)
+        if not mo:
+            self.logger.put(3, 'Odd cyrus open string: %s' % message)
+            return None
+        rhost, user = mo.groups()
+        rhost = self.gethost(rhost)
+        restuple = self._mk_restuple(action,sytem,service,user,'',rhost)
+        return {restuple: mult}
+
+    def qpopper_failure(self, linemap):
+        action = self.failure
+        system, message, mult = self.get_smm(linemap)
+        mo = self.qpopper_fail_re.search(message)
+        if not mo:
+            self.logger.put(3, 'Odd qpopper FAILURE string: %s' % message)
+            return None
+        user, rhost = mo.groups()
+        rhost = self.gethost(rhost)
+        service = 'qpopper'
+        restuple = self._mk_restuple(action, system, service, user, '', rhost)
+        return {restuple: mult}
+                                                                                                                       
+    def qpopper_open(self, linemap):
+        action = self.open
+        system, message, mult = self.get_smm(linemap)
+        mo = self.qpopper_open_re.search(message)
+        if not mo:
+            self.logger.put(3, 'Odd qpopper open string: %s' % message)
+            return None
+        user, rhost = mo.groups()
+        rhost = self.gethost(rhost)
+        service = 'qpopper'
+        restuple = self._mk_restuple(action, system, service, user, '', rhost)
+        return {restuple: mult}
     ##
     # HELPER METHODS
     #
@@ -577,6 +651,12 @@ class logins_mod(InternalModule):
         mo = self.fake_ipv6_re.search(rhost)
         if mo: rhost = mo.group(1)
         return rhost
+
+    def _get_cyrus_service(self, str):
+        service = 'unknown'
+        mo = self.cyrus_service_re.search(str)
+        if mo: service = mo.group(1)
+        return service
 
     ##
     # FINALIZE!!
