@@ -174,7 +174,7 @@ def epylock(mode=0777):
     except OSError, msg:
         if not msg.strerror == "File exists": raise msg
         try:
-            pid = int(fd.read())
+            pid = int(open(EPYLOG_PIDFILE).read())
         except ValueError:
             msg = 'Pidfile %s contains non numeric value'
             sys.exit(msg % EPYLOG_PIDFILE)
