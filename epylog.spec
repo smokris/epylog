@@ -76,10 +76,6 @@ external perl modules, or intend to write some of your own.
 #
 %{__rm} -rf %{buildroot}%{_defaultdocdir}
 ##
-# Gzip up manpages
-#
-%{__gzip} %{buildroot}%{_mandir}/man*/*
-##
 # Move docs to doc
 #
 %{__mv} AUTHORS ChangeLog INSTALL LICENSE README doc/
