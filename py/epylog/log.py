@@ -389,7 +389,7 @@ class Log:
         logger = self.logger
         logger.put(5, '>Log.nextline')
         logger.put(3, 'Testing if this log is empty')
-        if self.orange.start_is_end:
+        if self.orange.start_is_end():
             msg = 'This log is empty.'
             raise epylog.OutOfRangeError(msg, logger)
         if self.lp is None:
