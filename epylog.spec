@@ -113,7 +113,7 @@ external perl modules, or intend to write some of your own.
 #------------------------------------------------------------------------------
 
 %changelog
-* Fri Apr 09 2004 Konstantin Ryabitsev <icon@linux.duke.edu> 1.0
+* Fri Apr 09 2004 Konstantin Ryabitsev <icon@linux.duke.edu> 1.0-1
 - Version 1.0
 - Do not depend on elinks to make things simpler
 
