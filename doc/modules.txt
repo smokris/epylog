@@ -1,1 +1,236 @@
-See "man epylog-modules".
+Modules
+--------
+
+Modules are the essential part of epylog -- the one that actually does
+string parsing and report generation. This document helps describe how
+modules operate.
+
+Internal vs. External
+----------------------
+
+There are generally two types of modules -- internal and
+external. External modules are more or less a legacy device left over
+since the days of DULog and they use the same API as in DULog
+days. All internal modules must be written in Python and adhere to a
+very strict API described further down in the document. External
+modules can be written in any language and intercommunicate with
+Epylog using a system of environment variables and temporary files.
+
+External modules exist only as a convenience feature -- addition of
+any external modules will make the processing generally less
+efficient.
+
+Internal module API
+--------------------
+
+Here is how things go when an internal module is invoked:
+
+     1. Epylog initializes the logfiles and sets the offsets based
+        either on timestamps, or on hard offsets from offsets.xml.
+        Rotated logfiles are initialized and used as necessary.
+     2. Epylog starts going through each log line-by-line, unwrapping
+        "Last message repeated" lines as necessary.
+     3. As each line is received, Epylog consults which modules
+        requested the logfile being processed. Only modules requesting
+        that logfile are invoked.
+     4. For matching, Epylog checks the regex_map dictionary provided
+        by each module.
+     5. If there is a match, the handler method for the matching
+        module and the matching line are placed in the processing
+        queue.
+     6. One of the processing threads picks up the handler and the
+        line and executes the handler.
+     7. The result returned by the handler is placed back into the
+        queue, where it is added to the result set.
+     8. Once there is a match, Epylog does not process other handlers
+        and goes on to the next line. This happens unless multimatch
+        is set in epylog.conf. If that option is set, Epylog will try
+        all regexes whether or not one of them matched already. This
+        slows things down significantly.
+     9. Once all lines have been processed, Epylog notifies all of the
+        threads that they can quit now.
+     10. Once all threads exited, finalize method of each module is
+         called with the resultset passed to it. The "finalize" method
+         is supposed to return the module report to be added to the
+         final report.
+ 
+Keeping this procedure in mind, it is important to remember the
+following things when writing an internal module:
+
+1. It must be written in python.
+2. It will be invoked with -tt, meaning that you need to make sure
+   that either all your tabs are tabs, or they are spaces. No mixing!
+3. __init__ of each module is invoked during Epylog initialization. Do
+   all your regex compiles at that time. Do not do any regex compiles
+   in the handlers -- that is most inefficient.
+4. Handler methods will be invoked by processing threads, meaning that
+   they MUST be thread-safe. The purpose of handler methods is to
+   parse the line, do any and all hostname lookups and such, and
+   return a result that can be easily processed in the "finalize"
+   stage. Do NOT access any external module methods for writing --
+   there is a very good chance that it will cause hemmorhage when
+   several threads modify an object at the same time. Accessing
+   external objects for read-only is OK -- e.g. the regexes you
+   compiled earlier during the __init__ stage.
+5. Keep results consistent -- see Results and Resultsets for more
+   info.
+6. A resultset is a dictionary, so you cannot rely on the order in
+   which things appeared in the logs. This is not reliable in any case
+   -- with threaded processing some results can arrive in any order,
+   if the processing, such as a hostname lookup, took a long time.
+7. Finalize step is not threaded, so feel free to go crazy with the
+   results.
+8. Return a report that looks consistent with the rest of the
+   message. Do not go nuts with colors, though -- only highlight the
+   most important information. You will get used to excessive
+   highlighting very quickly and it will lose any meaning. Do not
+   overdo gray/white alternating rows in your report -- they are only
+   useful when there are more than two columns in the row.
+
+Results and Resultsets
+
+Epylog uses a resultset to keep track of repeating messages. This
+helps save on memory and simplifies the processing in the finalize
+stage for most modules. Your handler method should return a dictionary
+looking like this:
+
+{key: int}
+
+The key can be any hashable value you've obtained from processing the
+line given to you. The int is the "multiplier" by which you indicate
+how many times this event occured. Most commonly you will just pass
+through the "multiplier" field passed to the handler function, but
+depending on the data in the line itself, you might need to change the
+value. E.g. consider the following entries:
+
+Apr 10 10:01:20 cartman kernel: 5 underpant gnomes spotted
+Apr 10 10:01:21 cartman last message repeated 15 times
+
+The "message" field of the linemap passed to you will be identical,
+since epylog will unwrap the "last message repeated" line. However,
+the "multiplier" field will be "1" in the first case, and "15" in the
+second case. The result you will return for the first line will be
+something like:
+
+{('cartman', 'underpant gnome'): 5}
+
+but for the second line you will need to make sure you do 5*15 for the
+multiplier value, so your result will look like so:
+
+{('cartman', 'underpant gnome'): 75}
+
+When Epylog receives these results, it will automatically do the math,
+so the resultset will only contain one mention of 'underpant gnome' at
+least as related to hostname 'cartman':
+
+{('cartman', 'underpant gnome'): 80}
+
+It is therefore useful to key the result by a tuple of values. The
+epylog.Result class is built around that, which helps during the
+finalize stage. E.g. to process the resultset from the above two
+lines, the snippet of code would be:
+
+report = ''
+for hostname in resultset.get_distinct(()):
+    submap = resultset.get_submap((hostname,))
+    while 1:
+          try: key, mult = submap.popitem()
+          except KeyError: break
+          message = key[0]
+          report += '%s: %s(%d)' % (hostname, message, mult)
+return report
+
+This will produce the following report:
+
+cartman: underpant gnome(80)
+
+Result class provides several convenience methods, such as
+get_distinct, get_submap, and get_top, however be aware that they
+should not be used if you have thousands of entries in the resultset,
+as they are not very efficient. They are only useful if you go
+directly from a resultset to a report, without any additional
+processing. If you have (or anticipate to have) thousands of entries,
+it is easier to iterate through them one-by-one in order to present
+the final report.
+
+A resultset is, after all, a dictionary, so if you do not want to use
+any methods from the Result class, you may always just treat the data
+passed to finalize as a common dict.
+
+If your handler method returns {} as a result, the line will be
+considered processed, but nothing will be added to the resultset
+(useful when you want to just ignore a line, though weeder_mod.py will
+do this better). If your method returns a None, it is considered that
+you could not parse the line, and it will not be considered
+matched. Nothing will be added to the resultset, and the matching will
+continue. This is useful if you couldn't parse the line for some
+reason. Just return a None and let it be added to the unparsed
+strings.
+
+See the code for more info
+
+See existing modules for more information, and consult
+doc/templates/template_mod.py for more details on actual code
+writing. See also InternalModule, Result, and other classes in the
+__init__ module of epylog.
+
+External module API
+--------------------
+
+You are discouraged from using external module API, but you might find
+it useful if you prefer to use something like perl for parsing.
+
+All communication between the core of Epylog and external modules is
+done via the environment variables. There are several variables you
+should pay attention to:
+
+LOGCAT
+        This variable contains the location of a file. The file in
+        question contains raw log entries that the module needs to
+        analyze.
+
+LOGREPORT
+        This variable also contains the location of a file, but this
+        file most likely doesn't exist yet. After the module completes
+        its run, it needs to put whatever report it generates into
+        that file.
+ 
+LOGFILTER 
+        This variable contains the location of a file as well.  All
+        log entries analyzed by the module should go into this file so
+        DULog can fgrep the results against the original file and have
+        only the unparsed data in the end.
+
+CONFDIR 
+        The location of the config directory. If your module uses any
+        config files, they should be placed into that dir. See
+        epylog.conf(5) for more info.
+
+TMPDIR and TMPPREFIX 
+       Both these variables are available if you need to create any
+       temporary files, but the use of TMPDIR is STRONGLY discouraged,
+       as well as the use of /tmp or other world-writable locations:
+       since Epylog runs as user root, that makes it succeptible to
+       race-condition attacks, leading to root-exploits. If you need
+       to create a temporary file, use TMPPREFIX as your base and
+       append data to the end of it, i.e. $TMPPREFIX.my.
+
+QUIET and DEBUG 
+      If QUIET exists and is set, then you shouldn't output anything
+      but critical errors during the run. DEBUG, on the other hand,
+      can have any value from 2 to infinity, but probably not more
+      than 5 for all useful cases. The higher is the DEBUG level, the
+      wordier modules output becomes, although this is up to the
+      module authors. If neither QUIET nor DEBUG are set, then debug
+      level 1 is assumed, at which only useful data is output onto the
+      console.
+
+Perl external modules
+
+Modules written in Perl can use an Epylog perl module. For more info
+see Epylog(3).
+
+Module Configuration
+---------------------
+
+See epylog-modules(5) for more info on the epylog module config files.
