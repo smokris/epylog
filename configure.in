@@ -66,6 +66,12 @@ The one you have seems to be $PyVERSION.  You can specify an alternate python
 by using (for example) --with-python=/usr/bin/python2.2])
 fi
 
+# check for libxml2
+if ! $PYTHON_BIN -c 'import libxml2' 2>/dev/null; then
+   AC_MSG_ERROR([This version of epylog requires libxml2-python. 
+See http://xmlsoft.org/ or install libxml2-python rpm.])
+fi
+
 # find out compiled in install prefix
 AC_MSG_CHECKING(Python install prefix)
 PyEXEC_INSTALLDIR=`$PYTHON_BIN -c "import sys; print sys.exec_prefix"`
