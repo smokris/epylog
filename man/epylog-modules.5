@@ -1,0 +1,77 @@
+.TH "epylog-modules" "5" "0.9" "Konstantin Riabitsev" "Applications/System"
+
+.SH NAME
+\fBepylog-modules\fR \- epylog module API.
+
+.SH SYNOPSIS
+\fBepylog\fR uses separate executables ("modules") to parse the new
+logs. This is done for speed and efficiency - this way the modules can
+be written in any language and employ whatever extra resources
+necessary for data parsing. This document outlines the API used by
+epylog to pass the data from and to the modules.
+
+.SH "ENVIRONMENT VARIABLES"
+All communication between the core of epylog and the modules is done
+via the environment variables. There are several variables you should
+pay attention to:
+.TP
+.B LOGCAT
+This variable contains the location of a file. The file in question
+contains raw log entries that the module needs to analyze.
+.TP
+
+.B LOGREPORT
+This variable also contains the location of a file, but this file most
+likely doesn't exist yet. After the module completes its run, it needs
+to put whatever report it generates into that file.
+.TP
+
+.B LOGFILTER
+This variable contains the location of a file as well. All log entries
+analyzed by the module should go into this file so epylog can fgrep the
+results against the original file and have only the unparsed data in
+the end.
+.TP
+
+.B CONFDIR
+The location of the config directory. If your module uses any config
+files, they should be placed into that dir. See \fIepylog(8)\fR for
+more information.
+.TP
+
+.B TMPDIR and TMPPREFIX
+Both these variables are available if you need to create any temporary
+files, but the use of TMPDIR is STRONGLY discouraged, as well as the
+use of /tmp or other world-writable locations: since epylog runs as
+user root, that makes it succeptible to race-condition attacks,
+leading to root-exploits. If you need to create a temporary file, use
+TMPPREFIX as your base and append data to the end of it,
+i.e. $TMPPREFIX.my.
+.TP
+
+.B QUIET and DEBUG
+If QUIET exists and is set, then you shouldn't output anything but
+critical errors during the run. DEBUG, on the other hand, can have any
+value from 2 to infinity, but probably not more than 5 for all useful
+cases. The higher is the DEBUG level, the wordier modules output
+becomes, although this is up to the module authors. If neither QUIET
+nor DEBUG are set, then debug level 1 is assumed, at which only useful
+data is output onto the console.
+
+.SH "ENABLING MODULES"
+Each module needs to be placed in the modules directory, specified in
+the main epylog config file using MODDIR setting. Set execution bits on
+it and edit the \fImodules.list\fR file, adding the module name there.
+
+.SH PERL MODULES and epylog.pm
+Modules writtein in Perl can use a epylog perl module. For more
+information see \fIepylog(3)\fR.
+
+.SH "AUTHORS"
+.LP 
+Konstantin Riabitsev <icon@phy.duke.edu>
+
+.SH "SEE ALSO"
+.LP 
+epylog(8), epylog(3)
+

@@ -1,0 +1,207 @@
+.TH "epylog" "8" "0.9" "Konstantin Riabitsev" "Applications/System"
+
+.SH NAME
+\fBepylog\fR \- Syslog new log notifier and parser.
+
+.SH SYNOPSIS
+\fBepylog\fR [\-\-quiet]
+
+.SH DESCRIPTION
+epylog is a simple new log notifier and parser which runs periodically
+(hourly or daily, whichever you prefer), looks at your logs, processes
+some of the entries in order to present them in a more comprehensive
+format, and then mails you the output. It is written specifically for
+large network clusters where a lot of machines (around 50 and upwards)
+log to the same loghost using syslog or syslog\-ng.
+
+.SH OPTIONS
+.TP
+.B \-\-quiet
+Do not output anything onto the console except for critical
+errors. Useful when you are running epylog from cron.
+
+.SH COMPONENTS
+.B CORE
+.RS
+Core is written in bash and is very basic. It will tail the logs,
+append them together, then call the parsing modules. After each module
+exits, epylog will append the module report to the global report, which
+gets mailed to the administrator at the end of the run.
+.LP
+If the logs happened to be rotated, epylog will notice that and
+intelligently compensate. At the end of the run the report is sent
+using metamail, and gzipped raw logs used in the analysis will be
+appended to the message, unless they are larger than the value defined
+in the config file.
+.RE
+
+.B MODULES
+.RS
+Modules are the parsing engine of epylog. Most of them are written in
+perl, since perl provides the most convenient and speedy text-parsing
+tools. Each module is a separate executable, which communicates with
+the core using the epylog API. See \fIepylog\-modules(5)\fR for more info
+on the API.
+
+.SH CONFIG
+Config file for epylog is located in \fI/etc/epylog/epylog.conf\fR. It is
+simply a bash script file that is sourced into the core, so the format
+is just that. These are the parameters used for epylog configuration:
+.TP
+
+.B CONFDIR
+This where your config files are located. Obviously, since this
+directive is itself in the config file, it doesn't include
+epylog.conf. However, other configuration files such as
+\fImodules.list\fR, \fIweed.list\fR, and other module-related config
+files should be placed in the directory specified here. The default is
+CONFDIR="/etc/epylog". Exported so modules can use it.
+.TP
+
+.B TMPDIR
+Storage directory for temporary files. epylog will create a
+sub-directory in the specified location and use it for all temporary
+files. After the end of the run, that directory is deleted. Default is
+TMPDIR="/tmp". Exported so modules can use it.
+.TP
+
+.B VARDIR
+This location is used for the storage of logfile offsets, the
+lockfile, and other non-static information. Default location is
+VARDIR="/var/lib/epylog".
+.TP
+
+.B MODDIR
+This is where the parsing modules are located. Each module is an
+executable file that parses the logs and outputs the report, which is
+latter appended by the core to the global report. All modules should
+be located in one directory and the default is
+MODDIR="/usr/lib/epylog/modules".
+.TP
+
+.B WEED
+No, not that kind. After a module completes its run, it will output
+all the strings it parsed into a separate file. If this option is set
+to "YES", the core will then remove all parsed strings from the final
+output, so only unmatched entries are appended to the end of the
+report. Default setting is WEED="YES". Any other setting will evaluate
+to false.
+.TP
+
+.B LOGDIR
+This is where your logs are. For most Red Hat Linux installations,
+this setting would be LOGDIR="/var/log".
+.TP
+
+.B LOGFILES
+This is a space-separated listing of logfiles that should be watched
+and processed. The default setting goes like this: LOGFILES="messages
+secure maillog".
+.TP
+
+.B ROTATEDIR
+Some installations put the rotated logfiles into a separate directory,
+although this is not true for the default Red Hat Linux installation,
+hence the value it comes with is: ROTATEDIR="$LOGDIR".
+.TP
+
+.B ROTATEEXT
+Logrotate usually appends a .# onto the end of the rotated
+logfile. Sometimes those start with 0, somethimes with 1. Moreover,
+given an option to gzip the logs after rotation, logrotate will do so
+and the file will receive a .1.gz, for example. This setting lets you
+specify which extension is added to the rotated file. The default is
+ROTATEEXT=".1".
+.TP
+
+.B MAILTITLE
+This will be the title of the e-mail sent to you. The default setting
+is MAILTITLE="$HOSTNAME system events:".
+.TP
+
+.B MAILTO
+Whom to mail the log report. Defaults to MAILTO="root".
+.TP
+
+.B UNPARSED_AT_TOP
+Unless you specify "YES" here, all log entries that were unparsed by
+epylog will be appended AFTER the report. If you would like to see
+those at the top, then set it to "YES". Default setting is
+UNPARSED_AT_TOP="NO".
+.TP
+
+.B RM
+Which command to use when removing temporary files. Some more paranoid
+types may specify the path to "secure rm", although I consider this an
+overkill. Whatever you specify, it needs to be able to do take an
+"\-rf" flag to do a forceful recursive removal. The default is
+RM="/bin/rm".
+.TP
+
+.B METASEND, RAWLOGS_LIMIT
+These parameters specify whether you want to use metasend command to
+send you the report with raw logs being in an attachment. Comment them
+out if you don't want to receive gzipped raw logs with the
+report. RAWLOGS_LIMIT sets the maximum size of the file to append in
+Kb. If The file is larger than this value, it will not be appended,
+and a warning will be issued instead. Default:
+METASEND="/usr/bin/metasend", RAWLOGS_LIMIT=200.
+
+NOTE: This is mutually exclusive with WEED. If "WEED" is unset, then
+METASEND will not be used whether configured to or not.
+.TP
+
+.B ADDITIONAL SETTINGS
+Some modules will check for an environment variable and alter their
+output based on that setting. Check the module documentation to see
+what settings are possible.
+
+.SH "MODULES.LIST"
+A special file called \fImodules.list\fR is located in $CONFDIR (as
+specified in the main config file, described above). This file lists
+the modules that should be called in order to parse the logs. The
+format of the file is very simple \-\- anything starting with a "#" is
+a comment and is ignored. The modules are listed namely without the
+path and will be called in the order they are listed.
+
+.SH "FILES"
+.LP 
+.I /etc/epylog/epylog.conf
+.br
+.I /usr/sbin/epylog
+.br
+.I /etc/cron.daily/epylog.cron
+.br
+.I /etc/epylog/*
+.br
+.I /var/lib/epylog/*
+.br
+.I /usr/lib/epylog/modules/*
+
+.SH "ENVIRONMENT VARIABLES"
+.LP 
+.TP 
+\fBDEBUG\fP 
+The higher you set this, the wordier modules will become (in
+theory). In practice, this is not followed that closely and specifying
+DEBUG=5 will likely not produce any more output than DEBUG=2. Note that
+specifying \-\-quiet on the command line will override this setting.
+
+.SH "EXAMPLES"
+.LP 
+To run with some output:
+.LP 
+.B epylog
+.LP 
+Alternativly, if you don't want any output on stdout (except for critical
+error messages), use:
+.LP 
+.B epylog \-\-quiet
+
+.SH "AUTHORS"
+.LP 
+Konstantin Riabitsev <icon@phy.duke.edu>
+
+.SH "SEE ALSO"
+.LP 
+epylog-modules(5)

@@ -1,0 +1,15 @@
+epylog
+-----
+Konstantin ("Icon") Riabitsev -- icon@phy.duke.edu
+
+Modules
+--------
+Konstantin ("Icon") Riabitsev (icon@phy.duke.edu):
+		- annoy.mod.pl
+		- reboots.mod.pl
+		- logins.mod.pl
+		- mail.mod.pl
+		- weedeater.mod.sh
+		- epylog.pm
+Michael Stenner (mstenner@phy.duke.edu):
+		- firewall.mod.pl

@@ -1,0 +1,117 @@
+#!/usr/bin/python2 -tt
+
+import sys
+import getopt
+
+sys.path.insert(0, './py/')
+from epylog import *
+
+class Logger:
+    indent = '  '
+    hangmsg = []
+    hanging = 0
+    
+    def __init__(self, loglevel):
+        self.loglevel = loglevel
+
+    def is_quiet(self):
+        if self.loglevel == 0:
+            return 1
+        else:
+            return 0
+
+    def debuglevel(self):
+        return str(self.loglevel)
+
+    def put(self, level, message):
+        if (level <= self.loglevel):
+            if self.hanging:
+                print '(output follows):'
+                self.hanging = 0
+            print '%s%s' % (self.__getindent(), message)
+
+    def puthang(self, level, message):
+        if (level <= self.loglevel):
+            if self.hanging:
+                print '(output follows):'
+            print '%s%s...' % (self.__getindent(), message),
+            self.hanging = 1
+            self.hangmsg.append(message)
+
+
+    def endhang(self, level, message='done'):
+        if (level <= self.loglevel):
+            hangmsg = self.hangmsg.pop()
+            if self.hanging:
+                self.hanging = 0
+                print '%s' % message
+            else:
+                print '%s(Hanging from "%s")....%s' % (self.__getindent(),
+                                                       hangmsg, message)
+
+    def __getindent(self):
+        indent = self.indent * len(self.hangmsg)
+        return indent
+    
+
+def usage():
+    print 'YOU know what to do, dumbass'
+    sys.exit(1)
+
+def main(args):
+    debuglvl = 1
+    store_offsets = 0
+    cmdargs = args[1:]
+    try:
+        gopts, cmds = getopt.getopt(cmdargs, 'd:',
+                                    ['quiet', 'store-offsets'])
+        for o,a in gopts:
+            if o == '-d':
+                debuglvl = int(a)
+            elif o == '--quiet':
+                debuglvl = 0
+            elif o == '--store-offsets':
+                store_offsets = 1
+                
+    except getopt.error, e:
+        print 'Error: %s' % e
+    logger = Logger(debuglvl)
+    logger.puthang(1, 'Initializing epylog')
+    try:
+        epylog = Epylog('etc/epylog.conf', logger)
+    except (ConfigError, ModuleSanityError), e:
+        logger.put(0, "Error returned: %s" % e)
+        sys.exit(1)
+    logger.endhang(1, 'done')
+    logger.puthang(1, 'Restoring log offsets')
+    epylog.restore_log_offsets()
+    logger.endhang(1, 'done')
+    logger.put(1, 'Invoking the module execution routines:')
+    epylog.process_modules()
+    logger.put(1, 'Finished processing modules')
+    logger.puthang(1, 'Making the report')
+    epylog.make_report()
+    logger.endhang(1, 'done')
+    if epylog.something_to_report():
+        logger.puthang(1, 'Publishing the report')
+        epylog.publish_report()
+        logger.endhang(1, 'done')
+        if store_offsets:
+            logger.puthang(1, 'Storing the offsets')
+            epylog.store_log_offsets()
+            logger.endhang(1, 'done')
+        
+    else:
+        logger.put(1, 'Report is emtpy. Exiting.')
+
+    logger.puthang(1, 'Cleaning up')
+    epylog.cleanup()
+    logger.endhang(1, 'done')
+
+if __name__ == '__main__':
+    main(sys.argv)
+
+##
+# Local Variables:
+# mode: python
+# End:

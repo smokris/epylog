@@ -1,0 +1,92 @@
+##
+# NOTE:
+# Editing this file is not recommended. If you do, you might miss newer 
+# revisions of this list in the future versions. If you want to remove
+# some rule from this set, place that rule verbatim into the 
+# weed.list.except file. If you want to add some weeding rules of your own,
+# place them into the weed.list.local file.
+#
+
+# dhcpd
+dhcpd: DHCPREQUEST for
+dhcpd: DHCPACK on
+dhcpd: DHCPDISCOVER
+dhcpd: DHCPOFFER
+dhcpd: DHCPRELEASE
+dhcpd: DHCPINFORM
+
+# various RPC messages
+rpc.mountd: authenticated mount request from
+rpc.mountd: authenticated unmount request
+rpc.statd.*: Version .* Starting
+rpc.statd.*: Caught signal 15, un-registering and exiting
+
+# automounter
+automount.*: expired
+automount.*: attempting to mount entry
+automount.*: lookup(file): .* failed
+automount.*: starting automounter
+automount.*: using kernel protocol
+automount.*: shutting down
+automount.*: .* No such key in map
+
+# CROND
+CROND.*: (mailman) CMD (/usr/bin/python
+CROND.*: (root) CMD (.*/sbin/rmmod -as)
+CROND.*: (root) CMD (/usr/lib/sa/sa1
+CROND.*: (root) CMD (run-parts
+
+# named
+named.*: Lame server
+named.*: .* NS points to CNAME
+named.*: Response from unexpected source
+named.*: .* All possible A RR's lame
+named.*: bad referral
+named.*: Cleaned cache
+named.*: USAGE
+named.*: NSTATS
+named.*: XSTATS
+named.*: .* points to a CNAME
+named.*: denied update from
+named.*: .* Bogus LOOPBACK
+
+# gnome-name-server
+gnome-name-server.*: input condition is:
+gnome-name-server.*: name server starting
+gnome-name-server.*: starting
+gnome-name-server.*: name server was running
+
+# Gconfd
+gconfd.*: GConf server is not in use
+gconfd.*: Exiting
+gconfd.*: starting
+gconfd.*: .* shutting down cleanly
+
+# sshd
+sshd.*: Generating new .* key.
+sshd.*: .* key generation complete
+
+# xinetd
+xinetd.*: .* Transport endpoint is not connected
+
+# printer
+printer: ready to print
+printer: status change
+printer: printing
+printer: peripheral low-power state
+
+# pumpd
+pumpd.*: renewed lease for interface
+pumpd.*: configured interface
+
+# afpd
+afpd.*: ASIP session:
+afpd.*: afp_flushfork:
+
+# misc
+cdrom: This disc doesn't have any tracks
+ntpd.*: kernel time discipline status change
+modprobe: Can't locate module
+logger: punching nameserver .* through the firewall
+
+## $Revision$ ##

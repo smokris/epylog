@@ -1,0 +1,425 @@
+udp:1:Sockets des Troie
+tcp:2:Death
+tcp:20:Senna Spy FTP server
+tcp:21:Back Construction, Blade Runner, Cattivik FTP Server, CC Invader, Dark FTP, Doly Trojan, Fore, Invisible FTP, Juggernaut 42, Larva, MotIv FTP, Net Administrator, Ramen, Senna Spy FTP server, The Flu, Traitor 21, WebEx, WinCrash
+tcp:22:Shaft
+tcp:23:Fire HacKer, Tiny Telnet Server - TTS, Truva Atl
+tcp:25:Ajan, Antigen, Barok, Email Password Sender - EPS, EPS II, Gip, Gris, Happy99, Hpteam mail, Hybris, I love you, Kuang2, Magic Horse, MBT (Mail Bombing Trojan), Moscow Email trojan, Naebi, NewApt worm, ProMail trojan, Shtirlitz, Stealth, Tapiras, Terminator, WinPC, WinSpy
+tcp:30:Agent 40421
+tcp:31:Agent 31, Hackers Paradise, Masters Paradise
+tcp:41:Deep Throat, Foreplay
+tcp:48:DRAT
+tcp:50:DRAT
+tcp:58:DMSetup
+tcp:59:DMSetup
+tcp:79:CDK, Firehotcker
+tcp:80:711 trojan (Seven Eleven), AckCmd, Back End, Back Orifice 2000 Plug-Ins, Cafeini, CGI Backdoor, Executor, God Message, God Message Creator, Hooker, IISworm, MTX, NCX, Reverse WWW Tunnel Backdoor, RingZero, Seeker, WAN Remote, Web Server CT, WebDownloader
+tcp:81:RemoConChubo
+tcp:99:Hidden Port, NCX
+tcp:110:ProMail trojan
+tcp:113:Invisible Identd Deamon, Kazimas
+tcp:119:Happy99
+tcp:121:Attack Bot, God Message, JammerKillah
+tcp:123:Net Controller
+tcp:133:Farnaz
+tcp:137:Chode
+udp:137:Msinit
+tcp:138:Chode
+tcp:139:Chode, God Message worm, Msinit, Netlog, Network, Qaz
+tcp:142:NetTaxi
+tcp:146:Infector
+udp:146:Infector
+tcp:170:A-trojan
+tcp:334:Backage
+tcp:411:Backage
+tcp:420:Breach, Incognito
+tcp:421:TCP Wrappers trojan
+tcp:455:Fatal Connections
+tcp:456:Hackers Paradise
+tcp:513:Grlogin
+tcp:514:RPC Backdoor
+tcp:531:Net666, Rasmin
+tcp:555:711 trojan (Seven Eleven), Ini-Killer, Net Administrator, Phase Zero, Phase-0, Stealth Spy
+tcp:605:Secret Service
+tcp:666:Attack FTP, Back Construction, BLA trojan, Cain & Abel, NokNok, Satans Back Door - SBD, ServU, Shadow Phyre, th3r1pp3rz (= Therippers)
+tcp:667:SniperNet
+tcp:669:DP trojan
+tcp:692:GayOL
+tcp:777:AimSpy, Undetected
+tcp:808:WinHole
+tcp:911:Dark Shadow
+tcp:999:Deep Throat, Foreplay, WinSatan
+tcp:1000:Der Späher / Der Spaeher, Direct Connection
+tcp:1001:Der Späher / Der Spaeher, Le Guardien, Silencer, WebEx
+tcp:1010:Doly Trojan
+tcp:1011:Doly Trojan
+tcp:1012:Doly Trojan
+tcp:1015:Doly Trojan
+tcp:1016:Doly Trojan
+tcp:1020:Vampire
+tcp:1024:Jade, Latinus, NetSpy
+tcp:1025:Remote Storm
+udp:1025:Remote Storm
+tcp:1035:Multidropper
+tcp:1042:BLA trojan
+tcp:1045:Rasmin
+tcp:1049:/sbin/initd
+tcp:1050:MiniCommand
+tcp:1053:The Thief
+tcp:1054:AckCmd
+tcp:1080:WinHole
+tcp:1081:WinHole
+tcp:1082:WinHole
+tcp:1083:WinHole
+tcp:1090:Xtreme
+tcp:1095:Remote Administration Tool - RAT
+tcp:1097:Remote Administration Tool - RAT
+tcp:1098:Remote Administration Tool - RAT
+tcp:1099:Blood Fest Evolution, Remote Administration Tool - RAT
+tcp:1150:Orion
+tcp:1151:Orion
+tcp:1170:Psyber Stream Server - PSS, Streaming Audio Server, Voice
+udp:1200:NoBackO
+udp:1201:NoBackO
+tcp:1207:SoftWAR
+tcp:1208:Infector
+tcp:1212:Kaos
+tcp:1234:SubSeven Java client, Ultors Trojan
+tcp:1243:BackDoor-G, SubSeven, SubSeven Apocalypse, Tiles
+tcp:1245:VooDoo Doll
+tcp:1255:Scarab
+tcp:1256:Project nEXT
+tcp:1269:Matrix
+tcp:1272:The Matrix
+tcp:1313:NETrojan
+tcp:1338:Millenium Worm
+tcp:1349:Bo dll
+tcp:1394:GoFriller, Backdoor G-1
+tcp:1441:Remote Storm
+tcp:1492:FTP99CMP
+tcp:1524:Trinoo
+tcp:1568:Remote Hack
+tcp:1600:Direct Connection, Shivka-Burka
+tcp:1703:Exploiter
+tcp:1777:Scarab
+tcp:1807:SpySender
+tcp:1966:Fake FTP
+tcp:1967:WM FTP Server
+tcp:1969:OpC BO
+tcp:1981:Bowl, Shockrave
+tcp:1999:Back Door, SubSeven, TransScout
+tcp:2000:Der Späher / Der Spaeher, Insane Network, Last 2000, Remote Explorer 2000, Senna Spy Trojan Generator
+tcp:2001:Der Späher / Der Spaeher, Trojan Cow
+tcp:2023:Ripper Pro
+tcp:2080:WinHole
+tcp:2115:Bugs
+udp:2130:Mini Backlash
+tcp:2140:The Invasor
+udp:2140:Deep Throat, Foreplay
+tcp:2155:Illusion Mailer
+tcp:2255:Nirvana
+tcp:2283:Hvl RAT
+tcp:2300:Xplorer
+tcp:2311:Studio 54
+tcp:2330:Contact
+tcp:2331:Contact
+tcp:2332:Contact
+tcp:2333:Contact
+tcp:2334:Contact
+tcp:2335:Contact
+tcp:2336:Contact
+tcp:2337:Contact
+tcp:2338:Contact
+tcp:2339:Contact, Voice Spy
+udp:2339:Voice Spy
+tcp:2345:Doly Trojan
+tcp:2565:Striker trojan
+tcp:2583:WinCrash
+tcp:2600:Digital RootBeer
+tcp:2716:The Prayer
+tcp:2773:SubSeven, SubSeven 2.1 Gold
+tcp:2774:SubSeven, SubSeven 2.1 Gold
+tcp:2801:Phineas Phucker
+udp:2989:Remote Administration Tool - RAT
+tcp:3000:Remote Shut
+tcp:3024:WinCrash
+tcp:3031:Microspy
+tcp:3128:Reverse WWW Tunnel Backdoor, RingZero
+tcp:3129:Masters Paradise
+tcp:3150:The Invasor
+udp:3150:Deep Throat, Foreplay, Mini Backlash
+tcp:3456:Terror trojan
+tcp:3459:Eclipse 2000, Sanctuary
+tcp:3700:Portal of Doom
+tcp:3777:PsychWard
+tcp:3791:Total Solar Eclypse
+tcp:3801:Total Solar Eclypse
+tcp:4000:SkyDance
+tcp:4092:WinCrash
+tcp:4242:Virtual Hacking Machine - VHM
+tcp:4321:BoBo
+tcp:4444:Prosiak, Swift Remote
+tcp:4567:File Nail
+tcp:4590:ICQ Trojan
+tcp:4950:ICQ Trogen (Lm)
+tcp:5000:Back Door Setup, Blazer5, Bubbel, ICKiller, Ra1d, Sockets des Troie
+tcp:5001:Back Door Setup, Sockets des Troie
+tcp:5002:cd00r, Shaft
+tcp:5010:Solo
+tcp:5011:One of the Last Trojans - OOTLT, One of the Last Trojans - OOTLT, modified
+tcp:5025:WM Remote KeyLogger
+tcp:5031:Net Metropolitan
+tcp:5032:Net Metropolitan
+tcp:5321:Firehotcker
+tcp:5333:Backage, NetDemon
+tcp:5343:wCrat - WC Remote Administration Tool
+tcp:5400:Back Construction, Blade Runner
+tcp:5401:Back Construction, Blade Runner
+tcp:5402:Back Construction, Blade Runner
+tcp:5512:Illusion Mailer
+tcp:5534:The Flu
+tcp:5550:Xtcp
+tcp:5555:ServeMe
+tcp:5556:BO Facil
+tcp:5557:BO Facil
+tcp:5569:Robo-Hack
+tcp:5637:PC Crasher
+tcp:5638:PC Crasher
+tcp:5742:WinCrash
+tcp:5760:Portmap Remote Root Linux Exploit
+tcp:5880:Y3K RAT
+tcp:5882:Y3K RAT
+udp:5882:Y3K RAT
+tcp:5888:Y3K RAT
+udp:5888:Y3K RAT
+tcp:5889:Y3K RAT
+tcp:6000:The Thing
+tcp:6006:Bad Blood
+tcp:6272:Secret Service
+tcp:6400:The Thing
+tcp:6661:TEMan, Weia-Meia
+tcp:6666:Dark Connection Inside, NetBus worm
+tcp:6667:Dark FTP, ScheduleAgent, SubSeven, Subseven 2.1.4 DefCon 8, Trinity, WinSatan
+tcp:6669:Host Control, Vampire
+tcp:6670:BackWeb Server, Deep Throat, Foreplay, WinNuke eXtreame
+tcp:6711:BackDoor-G, SubSeven, VP Killer
+tcp:6712:Funny trojan, SubSeven
+tcp:6713:SubSeven
+tcp:6723:Mstream
+tcp:6771:Deep Throat, Foreplay
+tcp:6776:2000 Cracks, BackDoor-G, SubSeven, VP Killer
+udp:6838:Mstream
+tcp:6883:Delta Source DarkStar (??)
+tcp:6912:Shit Heep
+tcp:6939:Indoctrination
+tcp:6969:GateCrasher, IRC 3, Net Controller, Priority
+tcp:6970:GateCrasher
+tcp:7000:Exploit Translation Server, Kazimas, Remote Grab, SubSeven, SubSeven 2.1 Gold
+tcp:7001:Freak88, Freak2k
+tcp:7215:SubSeven, SubSeven 2.1 Gold
+tcp:7300:NetMonitor
+tcp:7301:NetMonitor
+tcp:7306:NetMonitor
+tcp:7307:NetMonitor
+tcp:7308:NetMonitor
+tcp:7424:Host Control
+udp:7424:Host Control
+tcp:7597:Qaz
+tcp:7626:Glacier
+tcp:7777:God Message, Tini
+tcp:7789:Back Door Setup, ICKiller
+tcp:7891:The ReVeNgEr
+tcp:7983:Mstream
+tcp:8080:Brown Orifice, RemoConChubo, Reverse WWW Tunnel Backdoor, RingZero
+tcp:8787:Back Orifice 2000
+tcp:8988:BacHack
+tcp:8989:Rcon, Recon, Xcon
+tcp:9000:Netministrator
+udp:9325:Mstream
+tcp:9400:InCommand
+tcp:9872:Portal of Doom
+tcp:9873:Portal of Doom
+tcp:9874:Portal of Doom
+tcp:9875:Portal of Doom
+tcp:9876:Cyber Attacker, Rux
+tcp:9878:TransScout
+tcp:9989:Ini-Killer
+tcp:9999:The Prayer
+tcp:10000:OpwinTRojan
+tcp:10005:OpwinTRojan
+udp:10067:Portal of Doom
+tcp:10085:Syphillis
+tcp:10086:Syphillis
+tcp:10100:Control Total, Gift trojan
+tcp:10101:BrainSpy, Silencer
+udp:10167:Portal of Doom
+tcp:10520:Acid Shivers
+tcp:10528:Host Control
+tcp:10607:Coma
+udp:10666:Ambush
+tcp:11000:Senna Spy Trojan Generator
+tcp:11050:Host Control
+tcp:11051:Host Control
+tcp:11223:Progenic trojan, Secret Agent
+tcp:12076:Gjamer
+tcp:12223:Hack´99 KeyLogger
+tcp:12345:Ashley, cron / crontab, Fat Bitch trojan, GabanBus, icmp_client.c, icmp_pipe.c, Mypic, NetBus, NetBus Toy, NetBus worm, Pie Bill Gates, Whack Job, X-bill
+tcp:12346:Fat Bitch trojan, GabanBus, NetBus, X-bill
+tcp:12349:BioNet
+tcp:12361:Whack-a-mole
+tcp:12362:Whack-a-mole
+tcp:12363:Whack-a-mole
+udp:12623:DUN Control
+tcp:12624:ButtMan
+tcp:12631:Whack Job
+tcp:12754:Mstream
+tcp:13000:Senna Spy Trojan Generator, Senna Spy Trojan Generator
+tcp:13010:Hacker Brasil - HBR
+tcp:13013:PsychWard
+tcp:13014:PsychWard
+tcp:13223:Hack´99 KeyLogger
+tcp:13473:Chupacabra
+tcp:14500:PC Invader
+tcp:14501:PC Invader
+tcp:14502:PC Invader
+tcp:14503:PC Invader
+tcp:15000:NetDemon
+tcp:15092:Host Control
+tcp:15104:Mstream
+tcp:15382:SubZero
+tcp:15858:CDK
+tcp:16484:Mosucker
+tcp:16660:Stacheldraht
+tcp:16772:ICQ Revenge
+tcp:16959:SubSeven, Subseven 2.1.4 DefCon 8
+tcp:16969:Priority
+tcp:17166:Mosaic
+tcp:17300:Kuang2 the virus
+tcp:17449:Kid Terror
+tcp:17499:CrazzyNet
+tcp:17500:CrazzyNet
+tcp:17569:Infector
+tcp:17593:Audiodoor
+tcp:17777:Nephron
+udp:18753:Shaft
+tcp:19864:ICQ Revenge
+tcp:20000:Millenium
+tcp:20001:Millenium, Millenium (Lm)
+tcp:20002:AcidkoR
+tcp:20005:Mosucker
+tcp:20023:VP Killer
+tcp:20034:NetBus 2.0 Pro, NetBus 2.0 Pro Hidden, NetRex, Whack Job
+tcp:20203:Chupacabra
+tcp:20331:BLA trojan
+tcp:20432:Shaft
+udp:20433:Shaft
+tcp:21544:GirlFriend, Kid Terror
+tcp:21554:Exploiter, Kid Terror, Schwindler, Winsp00fer
+tcp:22222:Donald Dick, Prosiak, Ruler, RUX The TIc.K
+tcp:23005:NetTrash
+tcp:23006:NetTrash
+tcp:23023:Logged
+tcp:23032:Amanda
+tcp:23432:Asylum
+tcp:23456:Evil FTP, Ugly FTP, Whack Job
+tcp:23476:Donald Dick
+udp:23476:Donald Dick
+tcp:23477:Donald Dick
+tcp:23777:InetSpy
+tcp:24000:Infector
+tcp:25685:Moonpie
+tcp:25686:Moonpie
+tcp:25982:Moonpie
+udp:26274:Delta Source
+tcp:26681:Voice Spy
+tcp:27374:Bad Blood, Ramen, Seeker, SubSeven, SubSeven 2.1 Gold, Subseven 2.1.4 DefCon 8, SubSeven Muie, Ttfloader
+udp:27444:Trinoo
+tcp:27573:SubSeven
+tcp:27665:Trinoo
+tcp:28678:Exploiter
+tcp:29104:NetTrojan
+tcp:29369:ovasOn
+tcp:29891:The Unexplained
+tcp:30000:Infector
+tcp:30001:ErrOr32
+tcp:30003:Lamers Death
+tcp:30029:AOL trojan
+tcp:30100:NetSphere
+tcp:30101:NetSphere
+tcp:30102:NetSphere
+tcp:30103:NetSphere
+udp:30103:NetSphere
+tcp:30133:NetSphere
+tcp:30303:Sockets des Troie
+tcp:30947:Intruse
+tcp:30999:Kuang2
+tcp:31335:Trinoo
+tcp:31336:Bo Whack, Butt Funnel
+tcp:31337:Back Fire, Back Orifice 1.20 patches, Back Orifice (Lm), Back Orifice russian, Baron Night, Beeone, BO client, BO Facil, BO spy, BO2, cron / crontab, Freak88, Freak2k, icmp_pipe.c, Sockdmini
+udp:31337:Back Orifice, Deep BO
+tcp:31338:Back Orifice, Butt Funnel, NetSpy (DK)
+udp:31338:Deep BO
+tcp:31339:NetSpy (DK)
+tcp:31666:BOWhack
+tcp:31785:Hack´a´Tack
+tcp:31787:Hack´a´Tack
+tcp:31788:Hack´a´Tack
+udp:31789:Hack´a´Tack
+tcp:31790:Hack´a´Tack
+udp:31791:Hack´a´Tack
+tcp:31792:Hack´a´Tack
+tcp:32001:Donald Dick
+tcp:32100:Peanut Brittle, Project nEXT
+tcp:32418:Acid Battery
+tcp:33270:Trinity
+tcp:33333:Blakharaz, Prosiak
+tcp:33577:Son of PsychWard
+tcp:33777:Son of PsychWard
+tcp:33911:Spirit 2000, Spirit 2001
+tcp:34324:Big Gluck, TN
+tcp:34444:Donald Dick
+udp:34555:Trinoo (for Windows)
+udp:35555:Trinoo (for Windows)
+tcp:37237:Mantis
+tcp:37651:Yet Another Trojan - YAT
+tcp:40412:The Spy
+tcp:40421:Agent 40421, Masters Paradise
+tcp:40422:Masters Paradise
+tcp:40423:Masters Paradise
+tcp:40425:Masters Paradise
+tcp:40426:Masters Paradise
+tcp:41337:Storm
+tcp:41666:Remote Boot Tool - RBT, Remote Boot Tool - RBT
+tcp:44444:Prosiak
+tcp:44575:Exploiter
+udp:47262:Delta Source
+tcp:49301:OnLine KeyLogger
+tcp:50130:Enterprise
+tcp:50505:Sockets des Troie
+tcp:50766:Fore, Schwindler
+tcp:51966:Cafeini
+tcp:52317:Acid Battery 2000
+tcp:53001:Remote Windows Shutdown - RWS
+tcp:54283:SubSeven, SubSeven 2.1 Gold
+tcp:54320:Back Orifice 2000
+tcp:54321:Back Orifice 2000, School Bus
+tcp:55165:File Manager trojan, File Manager trojan, WM Trojan Generator
+tcp:55166:WM Trojan Generator
+tcp:57341:NetRaider
+tcp:58339:Butt Funnel
+tcp:60000:Deep Throat, Foreplay, Sockets des Troie
+tcp:60001:Trinity
+tcp:60068:Xzip 6000068
+tcp:60411:Connection
+tcp:61348:Bunker-Hill
+tcp:61466:TeleCommando
+tcp:61603:Bunker-Hill
+tcp:63485:Bunker-Hill
+tcp:64101:Taskman
+tcp:65000:Devil, Sockets des Troie, Stacheldraht
+tcp:65390:Eclypse
+tcp:65421:Jade
+tcp:65432:The Traitor (= th3tr41t0r)
+udp:65432:The Traitor (= th3tr41t0r)
+tcp:65534:/sbin/initd
+tcp:65535:RC1 trojan

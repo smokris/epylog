@@ -1,0 +1,72 @@
+epylog
+------
+epylog is a simple new log notifier and parser which runs periodically
+(hourly or daily, whichever you prefer), tails your logs, tries to
+process some of the entries in order to present them in a more
+comprehensive format, and then mails you the output.
+
+The epylog engine should work on most unix systems, alhough currently
+the modules are only written to work with linux (and in particularly,
+the dulug distribution of Linux). It should work with any Red Hat
+distribution concurrent with Dulug release and maybe some others.
+
+AUTHOR
+-------
+Konstantin Riabitsev <icon@phy.duke.edu>
+
+OBTAINING
+----------
+http://www.dulug.duke.edu/epylog/
+
+RUNNING
+--------
+You can run epylog from your console by simply executing "epylog". If
+you want to run it from cron, they you will probably want to run it
+with "epylog --quiet", so nothing goes onto the console.
+
+BUGREPORTS
+-----------
+Please send any bug reports to the mailing list.
+
+MAILING LIST
+-------------
+The mailing list for epylog-related questions is:
+epylog-list@lists.dulug.duke.edu. Please send all your inquires there.
+
+LICENSE
+--------
+Copyright (C) 2001-2001 by Duke University
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+ 
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  
+02111-1307, USA.
+
+This license does not include files in the "modules" directory. They
+are covered under different licenses (see further).
+
+MODULES
+--------
+Modules are the parsing engine of epylog. For more info please see "man
+epylog-modules". If you wrote a module, you are encouraged to
+contribute it to the epylog so other people can make use of it. 
+Please send your modules to icon@phy.duke.edu.
+
+MODULES LICENSE
+----------------
+Modules are considered a separate entity and are licensed to you as
+per the licensing conditions mentioned individually within the source
+of each module.
+
+-- 
+$Id$
