@@ -564,7 +564,7 @@ class Log:
                 try:
                     rep_offset = log.repeated_cache[offset]
                     logger.put(3, 'Found in cached values')
-                    line = log.get_line_at_offset(rep_offset)
+                    (line, offset) = log.get_line_at_offset(rep_offset)
                     logger.put(5, 'line=%s' % line)
                     log.repeated_cache[offset_orig] = rep_offset
                     break
