@@ -762,7 +762,8 @@ class InternalModule:
         ##
         # Handle silly fake ipv6 addresses
         #
-        try: if ip_addr[:7] == '::ffff:': ip_addr = ip_addr[7:]
+        try:
+            if ip_addr[:7] == '::ffff:': ip_addr = ip_addr[7:]
         except: pass
         try: return self._known_hosts[ip_addr]
         except KeyError: pass
