@@ -100,6 +100,24 @@ def do_chunked_gzip(infh, outfh, filename, logger):
     gzfh.close()
     logger.endbar(1, bartitle, 'gzipped down to %d bytes' % outfh.tell())
 
+def mail_smtp(smtpserv, fromaddr, toaddr, msg, logger):
+    logger.put(5, '>publishers.mail_smtp')
+    import smtplib
+    logger.puthang(3, 'Mailing it via the SMTP server %s' % smtpserv)
+    server = smtplib.SMTP(self.smtpserv)
+    server.sendmail(fromaddr, toaddr, msg)
+    server.quit()
+    logger.endhang(3)
+    logger.put(5, '<publishers.mail_smtp')
+
+def mail_sendmail(sendmail, msg, logger):
+    logger.put(5, '>publishers.mail_sendmail')
+    logger.puthang(3, 'Mailing the message via sendmail')
+    p = os.popen(smtpserv, 'w')
+    p.write(msg)
+    p.close()
+    logger.endhang(3)
+    logger.put(5, '<publishers.mail_sendmail')
     
 class MailPublisher:
     name = 'Mail Publisher'
@@ -261,34 +279,15 @@ class MailPublisher:
         logger.put(5, msg)
         logger.put(5, 'End of message')
 
-        logger.put(5, 'Figuring out if we are using sendmail or smtplib')
+        logger.put(3, 'Figuring out if we are using sendmail or smtplib')
         if re.compile('^/').search(self.smtpserv):
-            logger.put(5, 'Seems like we are using sendmail')
-            logger.puthang(3, 'Mailing it via sendmail')
-            try:
-                p = os.popen(self.smtpserv, 'w')
-            except Exception, e:
-                msg = 'Error trying to open a pipe to %s' % self.smtpserv
-                raise epylog.AccessError(msg, logger)
-            p.write(msg)
-            p.close()
-            logger.endhang(3)
+            send_sendmail(self.smtpserv, msg, logger)
         else:
-            logger.puthang(3, 'Mailing it via the SMTP server %s'
-                           % self.smtpserv)
-            import smtplib, socket
-            fromaddr = 'root@%s' % socket.gethostname() 
-            server = smtplib.SMTP(self.smtpserv)
-            try:
-                server.sendmail(fromaddr, self.mailto, msg)
-            except Exception, e:
-                msg = 'Error trying to send the report: %s' % e
-                raise epylog.AccessError(msg, logger)
-            server.quit()
-            logger.endhang(3)
+            import socket
+            fromaddr = 'root@%s' % socket.gethostname()
+            send_smtp(self.smtpserv, fromaddr, self.mailto, msg, logger)
         logger.put(1, 'Mailed the report to: %s' % tostr)
         logger.put(5, '<MailPublisher.publish')
-
 
     def _mk_both_rawlogs(self):
         self.logger.put(5, '>MailPublisher._mk_both_rawlogs')
@@ -519,6 +518,3 @@ class FilePublisher:
         outfh.close()
         logger.put(1, 'Gzipped logs saved in: %s' % self.path)
         logger.put(5, '<FilePublisher.publish')
-
-
-        
