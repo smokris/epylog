@@ -56,7 +56,8 @@ class mail_mod(InternalModule):
         qmail_map = {
             rc('qmail:\s\d+.\d+\sinfo\smsg'): self.qmail_infomsg,
             rc('qmail:\s\d+.\d+\sstarting\sdelivery'): self.qmail_startdev,
-            rc('qmail:\s\d+.\d+\sdelivery'): self.qmail_delivery
+            rc('qmail:\s\d+.\d+\sdelivery'): self.qmail_delivery,
+            rc('qmail:\s\d+.\d+\sbounce\smsg\s\d+'): self.qmail_bounce
             }
         
         do_postfix = int(opts.get('enable_postfix', '0'))
@@ -228,10 +229,15 @@ class mail_mod(InternalModule):
         restuple = self._mk_restuple(sys, delid, status=status, extra=extra)
         return {restuple: mult}
 
+    def qmail_bounce(self, linemap):
+        sys, msg, mult = self.get_smm(linemap)
+        id = self._get_qmail_id(msg)
+        restuple = self._mk_restuple(sys, id, status=self.bounce)
+        return {restuple: mult}
+
     ##
     # HElpers
     #
-
     def _mk_restuple(self, sys, id, client=None, sender=None, to=None,
                      size=0, status=None, extra=None):
         return (sys, id, client, sender, to, size, status, extra)
