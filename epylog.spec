@@ -49,7 +49,7 @@ loghost using syslog or syslog-ng.
 ##
 # Gzip up manpages
 #
-find %{buildroot}/share/man -type f --exec %{__gzip} {} \;
+find %{buildroot}/share/man -type f -exec %{__gzip} {} \;
 ##
 # Move docs to doc
 mv AUTHORS ChangeLog INSTALL LICENSE README doc/
