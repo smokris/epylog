@@ -38,6 +38,7 @@ class notices_mod(InternalModule):
     def __init__(self, opts, logger):
         InternalModule.__init__(self)
         self.logger = logger
+        self.special = {}
         self.critical = 1
         self.normal = 0
         self.regex_map = {}
@@ -62,6 +63,19 @@ class notices_mod(InternalModule):
         self.normal_title = '<font color="blue">General Notices</font>'
         
         self.report_line = '<tr><td valign="top">%s</td><td valign="top" width="90%%">%s</td></tr>\n'
+
+    ##
+    # Handle special data passed from other modules.
+    #
+    def handle_special(self, data):
+        logger = self.logger
+        ##
+        # Data is a dictionary where a regex is a key and the value
+        # is a list of (crit, report). Map them to our data.
+        #
+        for regex in data.keys():
+            self.regex_map[regex] = self.handle_notice
+            self.regex_dict[regex] = data[regex]
 
     ##
     # Line matching routines

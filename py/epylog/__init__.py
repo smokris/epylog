@@ -232,6 +232,7 @@ class Epylog:
         #
         self.modules = []
         priorities = []
+        self.specials = {}
         modcfgdir = os.path.join(self.cfgdir, 'modules.d')
         logger.put(3, 'Checking if module config dir "%s" exists' % modcfgdir)
         if not os.path.isdir(modcfgdir):
@@ -255,12 +256,18 @@ class Epylog:
                 logger.endhang(3)
                 if module.enabled:
                     logger.put(3, 'Module "%s" is enabled' % module.name)
-                    module.sanity_check()
-                    self.modules.append(module)
-                    priorities.append(module.priority)
                 else:
                     logger.put(3, 'Module "%s" is not enabled, ignoring'
                                % module.name)
+                    continue
+                module.sanity_check()
+                self.modules.append(module)
+                priorities.append(module.priority)
+                if module.special is not None:
+                    logger.put(3, 'Module "%s" is special: %s'
+                               % (module.name, module.special))
+                    self.specials[module.special] = module
+                    logger.put(5, 'specials: %s' % self.specials)
             else:
                 logger.put(3, '%s is not a regular file, ignoring' % cfgfile)
         logger.put(3, 'Total of %d modules initialized' % len(self.modules))
@@ -273,6 +280,7 @@ class Epylog:
         priorities.sort()
         for module in self.modules:
             logger.put(3, 'analyzing module: %s' % module.name)
+            self._add_special_data(module)
             for i in range(0, len(priorities)):
                 try:
                     logger.put(5, 'module.priority=%d, priorities[i]=%d'
@@ -293,6 +301,45 @@ class Epylog:
             if module.is_internal(): self.imodules.append(module)
             else: self.emodules.append(module)
         logger.put(5, '<Epylog.__init__')
+
+    def _add_special_data(self, module):
+        """
+        Any special data that is specified by modules is passed to
+        the special modules defined in config files.
+        """
+        logger = self.logger
+        logger.put(5, '>Epylog._add_special_data')
+        logger.put(3, 'Handing special data')
+        ##
+        # Make sure the module provides "special" variable. Could be
+        # an old module. Also check if it's empty.
+        #
+        try:
+            if not module.special:
+                logger.put(3, 'No special data provided in this module.')
+                logger.put(5, '<Epylog._add_special_data')
+                return
+        except NameError:
+            logger.put(1, ('Module "%s" does not provide a "special" '
+                           + 'variable and needs to be fixed') % module.name)
+            logger.put(5, '<Epylog._add_special_data')
+            return
+        for spkey in module.special.keys():
+            if spkey not in self.specials.keys():
+                logger.put(1, 'No such special module defined: %s' % spkey)
+                logger.put(5, '<Epylog._add_special_data')
+                return
+            spmod = self.specials[spkey]
+            data = module.special[spkey]
+            logger.put(3, ('Adding special data from module "%s" to special '
+                           + 'module "%s"') % (module.name, spmod.name))
+            try:
+                spmod.handle_special(data)
+                spmod.sync_logs(module.logs)
+            except Exception, e:
+                msg = 'Could not add special data from module "%s" to special module "%s": %s' % (module.name, spmod.name, e)
+                logger.put(1, msg)
+        logger.put(5, '<Epylog._add_special_data')
 
     def process_modules(self):
         """

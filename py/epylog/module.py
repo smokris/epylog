@@ -76,6 +76,10 @@ class Module:
         try: self.outhtml = config.getboolean('module', 'outhtml')
         except: self.outhtml = 0
 
+        self.special = None
+        try: self.special = config.get('module', 'special')
+        except: pass
+
         self.extraopts = {}
         if config.has_section('conf'):
             logger.put(3, 'Found extra options')
@@ -175,6 +179,31 @@ class Module:
         logger.put(3, 'Opening "%s" for writing' % self.logfilter)
         self.filtfh = open(self.logfilter, 'w+')
         logger.put(5, '<Module._init_internal_module')
+
+    def handle_special(self, special_data):
+        logger = self.logger
+        logger.put(5, '>Module.handle_special')
+        logger.put(3, 'Adding special data to module %s' % self.name)
+        if not self.internal:
+            msg = 'Module %s defined as special, but is not internal!'
+            msg = msg % self.name
+            raise epylog.ConfigError(msg, logger)
+        self.epymod.handle_special(special_data)
+        logger.put(5, '<Module.handle_special')
+
+    def sync_logs(self, logs):
+        """
+        Makes sure that all logs passed as argument are members of this
+        module. Useful for special modules handling.
+        """
+        logger = self.logger
+        logger.put(5, '>Module.sync_logs')
+        for log in logs:
+            if log not in self.logs:
+                self.logs.append(log)
+                logger.put(3, 'Appended %s to logs for %s'
+                           % (log.entry, self.name))
+        logger.put(5, '<Module.sync_logs')
 
     def message_match(self, message):
         """

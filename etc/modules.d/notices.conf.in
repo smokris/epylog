@@ -5,6 +5,7 @@ files = /var/log/messages[.#], /var/log/secure[.#], /var/log/maillog[.#]
 enabled = yes
 internal = yes
 outhtml = yes
+special = notice
 priority = 7
 
 [conf]

@@ -5,10 +5,6 @@
 # See weed_local.cf for instructions on how to add or delete rules.
 #
 
-[pam]
-\(pam_unix\).*: session closed for
-\(pam_unix\).*: check pass;
-
 [dhcpd]
 dhcpd: DHCPREQUEST for
 dhcpd: DHCPACK on
@@ -66,70 +62,6 @@ gconfd.*: .* shutting down cleanly
 gdm.*: Couldn't authenticate user
 xscreensaver.*: FAILED LOGIN
 
-[sshd]
-sshd.*: Generating new .* key.
-sshd.*: .* key generation complete
-sshd.*: Connection closed
-sshd.*: Could not reverse map address
-sshd.*: Received disconnect from
-
-[xinetd]
-xinetd.*: .* Transport endpoint is not connected
-xinetd.*: EXIT:
-
-[uw-imap]
-imapd.*: AUTHENTICATE
-imapd.*: Logout
-imapd.*: Killed
-imapd.*: imap.*service init
-imapd.*: Command stream end of file
-imapd.*: Autologout
-imapd.*: Connection reset by peer
-ipop3d.*: AUTHENTICATE
-ipop3d.*: Logout
-ipop3d.*: Killed
-ipop3d.*: Autologout
-ipop3d.*: pop3.*service init
-
-[courier-imap]
-imapd.*: Connection, ip=\[\S+\]
-imapd.*: LOGOUT, user=\S+, ip=\[\S+\]
-imapd.*: Disconnected, ip=\[\S+\]
-imapd.*: DISCONNECTED, user=\S+, ip=\[\S+\]
-imapd.*: LOGOUT, ip=\[\S+\]
-pop3d.*: Connection, ip=\[\S+\]
-pop3d.*: LOGOUT, user=\S+, ip=\[\S+\]
-pop3d.*: Disconnected, ip=\[\S+\]
-pop3d.*: DISCONNECTED, user=\S+, ip=\[\S+\]
-pop3d.*: LOGOUT, ip=\[\S+\]
-
-[postfix]
-postfix/smtp\[\d+\]: connect to
-postfix/smtp\[\d+\]: warning: no MX host
-postfix/smtp\[\d+\]: warning: numeric domain name in resource data
-postfix/smtpd.*: connect from
-postfix/smtpd.*: disconnect from
-postfix/smtpd.*: TLS connection established
-postfix/smtpd.*: lost connection
-postfix/cleanup
-postfix/pickup
-
-[sendmail]
-sendmail\[.*:.*NOQUEUE: Null connection from
-sendmail\[.*:.*timeout waiting for input
-
-[qmail]
-qmail:.* new msg
-qmail:.* end msg
-qmail:.* status:
-
-[spamd]
-spamd\[.*: info:
-spamd\[.*: processing message
-spamd\[.*: checking message
-spamd\[.*: connection from
-spamd\[.*: Creating default_prefs
-
 [printer]
 printer: ready to print
 printer: status change
@@ -151,7 +83,6 @@ ntpd.*: kernel time discipline status change
 [misc]
 modprobe: Can't locate module
 logger: punching nameserver .* through the firewall
-HORDE\[\S*\s*\[imp\] Logout
 LOGIN ON tty.
 usb-uhci.c: interrupt, status
 PCI: Found IRQ

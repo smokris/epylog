@@ -41,6 +41,7 @@ class weeder_mod(InternalModule):
     def __init__(self, opts, logger):
         InternalModule.__init__(self)
         self.logger = logger
+        self.special = {}
         rc = re.compile
 
         weed_dist   = opts.get('weed_dist', '/etc/epylog/weed_dist.cf')
@@ -100,6 +101,17 @@ class weeder_mod(InternalModule):
                 try: weed[section].append(line.strip())
                 except KeyError: weed[section] = [line.strip()]
         return weed
+
+    ##
+    # Handler for special data passed from other modules.
+    #
+    def handle_special(self, data):
+        logger = self.logger
+        ##
+        # Data would be the list of weed matches. Just add them to the
+        # regex_map.
+        for regex in data:
+            self.regex_map[regex_re] = self.do_weed
             
     ##
     # Line-matching routines

@@ -47,6 +47,23 @@ class spamd_mod(InternalModule):
             rc('spamd\[\d+\]: identified spam'): self.spamd
         }
 
+        ##
+        # Pass special data to the weeder
+        #
+        self.special = {
+            'weed': [
+                rc('spamd\[.*: info:'),
+                rc('spamd\[.*: processing message'),
+                rc('spamd\[.*: checking message'),
+                rc('spamd\[.*: connection from'),
+                rc('spamd\[.*: Creating default_prefs')
+                ],
+            'notice': {
+                rc('spamd\[.*: hit max-children limit \((\d+)\)'):
+                    (0, 'spamd: max-children limit of %s reached')
+            }
+        }
+        
         self.top = int(opts.get('report_top', '10'))
         self.thold = int(opts.get('spam_threshold', '5'))
         sort_by = opts.get('sort_by', 'most spammed')
@@ -62,7 +79,6 @@ class spamd_mod(InternalModule):
         self.score_rep = '%.1f (%d/%d)'
         self.report_line = '<tr%s><td valign="top">%s</td><td valign="top">%s</td><td valign="top">%s</td><td valign="top">%s</td></tr>\n'
         self.flip = ' bgcolor="#dddddd"'
-
 
     ##
     # Line-matching routines

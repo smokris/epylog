@@ -41,6 +41,7 @@ class packets_mod(InternalModule):
     def __init__(self, opts, logger):
         InternalModule.__init__(self)
         self.logger = logger
+        self.special = {}
         rc = re.compile
         iptables_map = {
             rc('IN=\S*\sOUT=\S*\sMAC=\S*\sSRC=\S*\sDST=\S*\s'): self.iptables
