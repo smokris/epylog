@@ -86,7 +86,11 @@ class notices_mod(InternalModule):
             rc('attempt to access beyond end of device'): self.dirty_mount,
             rc('rw=\d+, want=\d+, limit=\d+'): self.dirty_mount,
             rc('Directory sread .* failed'): self.dirty_mount,
-            rc('kernel: bread in fat_access failed'): self.dirty_mount
+            rc('kernel: bread in fat_access failed'): self.dirty_mount,
+            ##
+            # Insmod errors
+            #
+            rc('insmod: Hint: insmod errors'): self.insmod
         }
 
         self.normal   = 0
@@ -175,6 +179,12 @@ class notices_mod(InternalModule):
         urg = self.normal
         sys, msg, mult = self.get_smm(linemap)
         msg = 'dirty CDROM mount'
+        return {(urg, sys, msg): mult}
+
+    def insmod(self, linemap):
+        urg = self.normal
+        sys, msg, mult = self.get_smm(linemap)
+        msg = 'insmod errors'
         return {(urg, sys, msg): mult}
 
     ##
