@@ -10,8 +10,8 @@
 \(pam_unix\).*: check pass;
 
 [dhcpd]
-dhcpd: DHCPREQUEST for
-dhcpd: DHCPACK on
+dhcpd: DHCPREQUEST
+dhcpd: DHCPACK
 dhcpd: DHCPDISCOVER
 dhcpd: DHCPOFFER
 dhcpd: DHCPRELEASE
@@ -107,6 +107,7 @@ pop3d.*: LOGOUT, ip=\[\S+\]
 postfix/smtp\[\d+\]: connect to
 postfix/smtp\[\d+\]: warning: no MX host
 postfix/smtp\[\d+\]: warning: numeric domain name in resource data
+postfix/smtp\[\d+\]: warning: host .* with my own hostname
 postfix/smtpd.*: connect from
 postfix/smtpd.*: disconnect from
 postfix/smtpd.*: TLS connection established
@@ -157,5 +158,9 @@ usb-uhci.c: interrupt, status
 PCI: Found IRQ
 PCI: Sharing IRQ
 PCI: Setting latency timer
+dhclient: DHCPREQUEST
+dhclient: DHCPACK
+dhclient: bound to
+kernel: application .* uses obsolete OSS audio interface
 
 ## $Revision$ ##

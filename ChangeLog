@@ -1,12 +1,17 @@
+Epylog-1.0.3
+	* Preparing for the submission to Fedora Extras
+	* Ignore "su" performed by crond to cut down on noise
+	* Add a few extra ignore rules for newer OSes
+
 Epylog-1.0.2
-    * Small modification to collapse login reports
-    * Fix monthmap on python-2.4
+	* Small modification to collapse login reports
+	* Fix monthmap on python-2.4
 
 Epylog-1.0.1
 	* Tiny fixes with Cyrus handling routines in logins, which made them
 	  not work.
 	* Automatically detect python version during .spec building.
-    * Cleaned up trojans.list so it's less ugly
+	* Cleaned up trojans.list so it's less ugly
 	
 Epylog-1.0
 	* Out with 1.0 already!

@@ -1,28 +1,25 @@
-# $Id$
+%{!?_python_sitelib: %define _python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")}
+%{!?_perl_vendorlib: %define _perl_vendorlib %(eval "`perl -V:installvendorlib`"; echo $installvendorlib)}
 
-%define _pyver   %(python -c 'import sys; print sys.version[:3],')
 
-%define _python  %{_bindir}/python%{_pyver}
-%define _vardir  %{_localstatedir}/lib
-%define _pydir   %{_libdir}/python%{_pyver}/site-packages
-%define _perldir %{_libdir}/perl5/site_perl
-
-#------------------------------------------------------------------------------
-
-Summary:        New logs analyzer and parser.
 Name:           epylog
-Version:        1.0.2
-Release:        1.%{_pyver}
+Version:        1.0.3
+Release:        1
 Epoch:          0
-License:        GPL
+Summary:        New logs analyzer and parser
+
 Group:          Applications/System
-Source:         http://linux.duke.edu/projects/epylog/download/%{name}-%{version}.tar.gz
+License:        GPL
 URL:            http://linux.duke.edu/projects/epylog/
+
+Source:         http://linux.duke.edu/projects/epylog/download/epylog-1.0.3.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-%{version}-root
 BuildArch:      noarch
-BuildPrereq:    perl, %{_python}, gzip, sed
-Requires:       %{_python}, libxml2-python
-Obsoletes:      dulog
+
+BuildRequires:  python-devel, sed >= 4
+Requires:       python-abi = %(%{__python} -c "import sys ; print sys.version[:3]")
+Requires:       libxml2-python
+
 
 %description
 Epylog is a new log notifier and parser which runs periodically out of
@@ -32,13 +29,13 @@ output. It is written specifically with large network clusters in mind
 where a lot of machines (around 50 and upwards) log to the same
 loghost using syslog or syslog-ng.
 
-#------------------------------------------------------------------------------
 
 %package perl
 Summary:        Perl module for writing external Epylog modules
 Group:          Development/Libraries
-Requires:       epylog = %{version}, perl >= 5.6
-Provides:       perl(epylog)
+Requires:       epylog
+Requires:       perl(:MODULE_COMPAT_%(eval "`%{__perl} -V:version`"; echo $version))
+
 
 %description perl
 This package provides a perl module for epylog. It is useful for
@@ -46,69 +43,73 @@ writing epylog modules that use external module API. No modules shipping
 with epylog by default use that API, so install this only if you are using
 external perl modules, or intend to write some of your own.
 
-#------------------------------------------------------------------------------
 
 %prep
 %setup -q
+##
+# The --with-lynx is just a sane default. It doesn't actually require it to
+# run.
+#
 %configure \
     --with-python=%{_python} \
-    --with-lynx=/usr/bin/links
+    --with-lynx=%{_bindir}/links
 ##
 # Fix version.
 #
-%{__perl} -pi -e \
+sed -i -e \
     "s/^VERSION\s*=\s*.*/VERSION = '%{name}-%{version}-%{release}'/g" \
     py/epylog/__init__.py
 
-#------------------------------------------------------------------------------
 
 %build
-%{__make}
+make
 
-#------------------------------------------------------------------------------
 
 %install
-%{__rm} -rf %{buildroot}
-%{__make} install DESTDIR=%{buildroot}
+rm -rf %{buildroot}
+make install DESTDIR=%{buildroot}
 ##
 # Remove installed docs
 #
-%{__rm} -rf %{buildroot}%{_defaultdocdir}
+rm -rf %{buildroot}%{_defaultdocdir}
 ##
 # Move docs to doc
 #
-%{__mv} AUTHORS ChangeLog INSTALL LICENSE README doc/
+mv AUTHORS ChangeLog INSTALL LICENSE README doc/
 
-#------------------------------------------------------------------------------
 
 %clean
-%{__rm} -rf %{buildroot}
+rm -rf %{buildroot}
 
-#------------------------------------------------------------------------------
 
 %files
-%defattr(-,root,root)
+%defattr(-,root,root,-)
 %doc doc/*
-%config(noreplace) %{_sysconfdir}/%{name}
-%dir %{_vardir}/%{name}
-%dir %{_datadir}/%{name}
-%{_datadir}/%{name}/modules/*
-%{_pydir}/%{name}
-%{_sbindir}/%{name}
-%{_sysconfdir}/cron.daily/%{name}.cron
-%{_mandir}/man5/*
+%config(noreplace) %{_sysconfdir}/epylog
+%dir %{_localstatedir}/lib/epylog
+%dir %{_datadir}/epylog
+%{_datadir}/epylog/modules/*
+%{_python_sitelib}/epylog
+%{_sbindir}/epylog
+%{_sysconfdir}/cron.*/*
 %{_mandir}/man8/*
+%{_mandir}/man5/*
 
-#------------------------------------------------------------------------------
+
 
 %files perl
-%defattr(-,root,root)
-%{_perldir}/%{name}.pm
+%defattr(-,root,root,-)
+%{_perl_vendorlib}/epylog.pm
 %{_mandir}/man3/*
 
-#------------------------------------------------------------------------------
+
 
 %changelog
+* Thu Mar 31 2005 Konstantin Ryabitsev <icon@linux.duke.edu> 1.0.3-1
+- Rework the specfile to match Fedora Extras format.
+- Use _perl_vendorlib
+- Use _python_sitelib
+
 * Wed May 19 2004 Konstantin Ryabitsev <icon@linux.duke.edu> 1.0.1-1
 - Use automatic _pyver determination to make rebuilds simpler.
 - Don't gzip man, it will be done automatically.

@@ -44,7 +44,10 @@ class logins_mod(InternalModule):
         self.failure    = 2
         self.root_open    = 11
         self.root_failure = 12
-        self.pam_ignore = []
+        ##
+        # Ignore crond(pam_unix), to lessen the noise
+        #
+        self.pam_ignore = ['crond']
         self.xinetd_ignore = []
 
         ##
