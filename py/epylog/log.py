@@ -231,12 +231,12 @@ class Log:
         logger.put(5, 'ix=%d' % ix)
         logger.put(5, 'offset=%d' % offset)
         logger.put(5, 'whence=%d' % whence)
-        try:
-            while not self.__is_valid_ix(ix):
-                self.__init_next_logfile()
-        except epylog.NoSuchLogError:
-            msg = 'Invalid index "%d" for log entry "%s"' % (ix, self.entry)
-            raise epylog.OutOfRangeError(msg, logger)
+        while not self.__is_valid_ix(ix):
+            try:
+                self.__init_next_rotfile()
+            except epylog.NoSuchLogError:
+                msg = 'Invalid index "%d" for log "%s"' % (ix, self.entry)
+                raise epylog.OutOfRangeError(msg, logger)
         if whence:
             logger.put(5, 'Setting range END for entry "%s"' % self.entry)
             self.orange.setend(ix, offset)
