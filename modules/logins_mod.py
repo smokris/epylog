@@ -177,6 +177,7 @@ class logins_mod(InternalModule):
                              'publickey': 'pk',
                              'rhosts-rsa': 'rsa',
                              'rsa': 'rsa',
+                             'hostbased': 'host',
                              'none': 'none'}
 
         self.report_wrap = '<table width="100%%" rules="cols" cellpadding="2">%s</table>'
