@@ -9,7 +9,7 @@
 Summary: New logs analyzer and parser.
 Name: epylog
 Version: 0.9.0
-Release: 0.1
+Release: 0.2
 License: GPL
 Group: Applications/System
 Source: http://linux.duke.edu/projects/epylog/download/%{name}-%{version}.tar.gz
@@ -55,11 +55,11 @@ EOF
 #
 MDOCDIR="doc/modules"
 %{__mkdir_p} -m 755 $MDOCDIR
-for FILE in modules/*.pl; do
+for FILE in `ls modules/*.pl`; do
     %{__perldoc} -t $FILE > $MDOCDIR/`basename $FILE .pl`.txt
 done
 pushd modules
-for FILE in *.py; do
+for FILE in `ls *.py`; do
     %{__pydoc} ./$FILE > ../$MDOCDIR/`basename $FILE .py`.txt
 done
 popd
@@ -80,7 +80,8 @@ popd
 %{__mkdir_p} -m 755 %{buildroot}%{_sysconfdir}/%{name}/modules.d
 %{__install} -m 644 etc/modules.d/*.conf \
     %{buildroot}%{_sysconfdir}/%{name}/modules.d/
-FILES="epylog.conf report_template.html trojans.list weed_dist.cf weed_local.cf"
+FILES="epylog.conf report_template.html trojans.list"
+FILES="$FILES weed_dist.cf weed_local.cf"
 for FILE in $FILES; do
   %{__install} -m 644 etc/$FILE %{buildroot}%{_sysconfdir}/%{name}/$FILE
 done
@@ -116,7 +117,7 @@ popd
 # Install the perl module
 #
 %{__mkdir_p} -m 755 %{buildroot}%{_perldir}
-%{__install} -m 644 epylog.pm %{buildroot}%{_perldir}/%{name}.pm
+%{__install} -m 644 perl/epylog.pm %{buildroot}%{_perldir}/%{name}.pm
 
 %clean
 %{__rm} -rf %{buildroot}
