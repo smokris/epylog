@@ -17,7 +17,7 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-root
 BuildArch:      noarch
 
 BuildRequires:  python-devel, sed >= 4
-Requires:       python-abi = %(%{__python} -c "import sys ; print sys.version[:3]")
+Requires:       /usr/bin/python%(%{__python} -c "import sys ; print sys.version[:3]")
 Requires:       libxml2-python
 
 
@@ -88,12 +88,12 @@ rm -rf %{buildroot}
 %defattr(-,root,root,-)
 %doc doc/*
 %config(noreplace) %{_sysconfdir}/epylog
+%config(missingok) %{_sysconfdir}/cron.*/*
 %dir %{_localstatedir}/lib/epylog
 %dir %{_datadir}/epylog
 %{_datadir}/epylog/modules/*
 %{_python_sitelib}/epylog
 %{_sbindir}/epylog
-%{_sysconfdir}/cron.*/*
 %{_mandir}/man8/*
 %{_mandir}/man5/*
 
@@ -111,6 +111,7 @@ rm -rf %{buildroot}
 - Rework the specfile to match Fedora Extras format.
 - Use _perl_vendorlib
 - Use _python_sitelib
+- Make the cronfile config(missingok)
 
 * Wed May 19 2004 Konstantin Ryabitsev <icon@linux.duke.edu> 1.0.1-1
 - Use automatic _pyver determination to make rebuilds simpler.

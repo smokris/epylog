@@ -2,6 +2,10 @@ Epylog-1.0.3
 	* Preparing for the submission to Fedora Extras
 	* Ignore "su" performed by crond to cut down on noise
 	* Add a few extra ignore rules for newer OSes
+	* Require python-abi instead of python. NOTE: This will not
+	  work on systems with python-2.2 (el3), so change the specfile
+	  to Require /usr/bin/python%(%{__python} -c....) or just use my
+	  packages.
 
 Epylog-1.0.2
 	* Small modification to collapse login reports

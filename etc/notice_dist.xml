@@ -90,6 +90,7 @@
 
   <notice id="crond">
     <regex>CROND\S+: \((\S+)\) CMD \(([^\)]+)\)</regex>
+    <regex>crond\S+: \((\S+)\) CMD \(([^\)]+)\)</regex>
     <report>Cron: user '%s' (%s)</report>
   </notice>
 
