@@ -73,8 +73,10 @@ class weeder_mod(InternalModule):
                         for regex in regexes:
                             if regex != remove: weed[key].append(regex)
         
-        enable = opts.get('enable', '').split(',')
+        enable = opts.get('enable', 'ALL').split(',')
+        
         if 'ADD' in weed: enable.append('ADD')
+        if enable[0] == 'ALL': enable = weed.keys()
         for key in enable:
             key = key.strip()
             regexes = weed.get(key, [])
