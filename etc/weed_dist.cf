@@ -57,6 +57,7 @@ gnome-name-server.*: input condition is:
 gnome-name-server.*: name server starting
 gnome-name-server.*: starting
 gnome-name-server.*: name server was running
+gconfd.*: Resolved address
 gconfd.*: GConf server is not in use
 gconfd.*: Exiting
 gconfd.*: starting
