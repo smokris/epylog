@@ -8,7 +8,7 @@ import re
 # file.
 #
 sys.path.insert(0, '../py/')
-from epylog import Result, InternalModule
+from epylog import InternalModule
 
 class template_mod(InternalModule):
     ##
@@ -70,15 +70,36 @@ class template_mod(InternalModule):
         #
 
         ##
-        # The result of your computation must be an epylog.Result object,
-        # which takes the following as its init:
-        # * a tuple (NOT A LIST) of fields
-        # * the multiplier. Usually you just pass the multiplier back
-        #   as you received it, but you might have further edits to make
-        #   to it depending on the contents of your message.
-        # See further about resultsets.
-        return Result(('one', 'two', 'three'), linemap['multiplier'])
+        # The result of your computation must be a dictionary with the
+        # following fields:
+        # * A tuple of values used as key
+        # * An integer indicating how many times this occurs.
+        #   Usually this will be the "multiplier" carried over, but
+        #   somethimes that value will be incremented depending on the
+        #   result of your processing.
+        # E.g.: return {('linux0', '2.4.20-9', 'Linux'): 1}
+        # Multiple fields are permitted.
+        #
+        # Returning None will indicate that the line has not been processed
+        # successfully.
+        #
+        return {}
 
     def finalize(self, resultset):
-        ## TODO: Describe what the hell is a resultset ##
+        ##
+        # A resultset is a dictionary of all values returned by your
+        # handler functions -- except they are unique and show how many
+        # times each tuple occurs.
+        # See epylog.Result for some convenience methods to use when
+        # processing and analyzing the results.
+        #
         return '<b>REPORT</b>'
+
+##
+# This is useful when testing your module out.
+# Invoke without command-line parameters to learn about the proper
+# invocation.
+#
+if __name__ == '__main__':
+    from epylog.helpers import ModuleTest
+    ModuleTest(template_mod, sys.argv)
