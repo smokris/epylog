@@ -40,7 +40,7 @@ from report import Report
 from module import Module
 from log import LogTracker
 
-VERSION = 'Epylog-0.9.3'
+VERSION = 'Epylog-0.9.4-CVS'
 CHUNK_SIZE = 8192
 GREP_LINES = 10000
 QUEUE_LIMIT = 500
