@@ -156,7 +156,6 @@ class packets_mod(InternalModule):
             return None
         source = self.gethost(src)
         port = '%s/%s' % (dpt, proto.lower())
-        port = self._mk_port(port)
         return {(source, sys, port, logtype): mult}
 
     def ipchains(self, linemap):
@@ -167,7 +166,6 @@ class packets_mod(InternalModule):
             return None
         source = self.gethost(src)
         port = '%s/%s' % (dpt, self.protodict.get(proto, '??'))
-        port = self._mk_port(port)
         return {(source, sys, port, logtype): mult}
 
     def ipfilter(self, linemap):
@@ -178,7 +176,6 @@ class packets_mod(InternalModule):
             return None
         source = self.gethost(src)
         port = '%s/%s' % (dpt, proto.lower())
-        port = self._mk_port(port)
         return {(source, sys, port, 'LOGGED'): mult}
 
 
@@ -187,15 +184,15 @@ class packets_mod(InternalModule):
         except KeyError: desc = port
         return desc
 
-    def _addfin(self, fin, packets, source, system, port, logtype):
+    def _addfin(self, fin, packets, source, system, port, rawport, logtype):
         if self.sortby == 'packets':
-            fin.append((packets, source, system, port, logtype))
+            fin.append((packets, source, system, port, rawport, logtype))
         elif self.sortby == 'source':
-            fin.append((source, packets, system, port, logtype))
+            fin.append((source, packets, system, port, rawport, logtype))
         elif self.sortby == 'system':
-            fin.append((system, packets, source, port, logtype))
+            fin.append((system, packets, source, port, rawport, logtype))
         elif self.sortby == 'port':
-            fin.append((port, packets, source, system, logtype))
+            fin.append((rawport, packets, source, system, port, logtype))
     
     ##
     # Finalize!
@@ -225,12 +222,16 @@ class packets_mod(InternalModule):
                         if port not in ports: ports.append(port)
                         if logtype not in logtypes: logtypes.append(logtype)
                         packets += mult
-                if len(ports) > 1: port = self.collapsed_ports_rep % len(ports)
+                rawport = port
+                if len(ports) > 1:
+                    port = self.collapsed_ports_rep % len(ports)
+                    rawport = -1
                 else: port = ports[0]
                 if len(logtypes) > 1: logtype = '[%d]' % len(logtypes)
                 else: logtype = logtypes[0]
                 system = self.collapsed_hosts_rep % len(systems)
-                self._addfin(fin, packets, source, system, port, logtype)
+                self._addfin(fin, packets, source, system, port, rawport,
+                             logtype)
             else:
                 for system in systems:
                     logger.put(2, 'Processing system %s' % system)
@@ -256,7 +257,7 @@ class packets_mod(InternalModule):
                             logtype = '[%d]' % len(logtypes)
                         else: logtype = logtypes[0]
                         port = self.collapsed_ports_rep % len(ports)
-                        self._addfin(fin, packets, source, system, port,
+                        self._addfin(fin, packets, source, system, port, -1,
                                      logtype)
                     else:
                         for port in ports:
@@ -266,7 +267,7 @@ class packets_mod(InternalModule):
                                 except KeyError: break
                                 logtype = entry[0]
                                 self._addfin(fin, packets, source, system,
-                                             port, logtype)
+                                             port, port, logtype)
         report = ''
         flipper = ''
         fin.sort()
@@ -276,13 +277,14 @@ class packets_mod(InternalModule):
             if flipper: flipper = ''
             else: flipper = self.flip
             if self.sortby == 'packets':
-                packets, source, system, port, logtype = entry
+                packets, source, system, port, rawport, logtype = entry
             elif self.sortby == 'source':
-                source, packets, system, port, logtype = entry
+                source, packets, system, port, rawport, logtype = entry
             elif self.sortby == 'system':
-                system, packets, source, port, logtype = entry
+                system, packets, source, port, rawport, logtype = entry
             elif self.sortby == 'port':
-                port, packets, source, system, logtype = entry
+                rawport, packets, source, system, port, logtype = entry
+            port = self._mk_port(port)
             report += self.line_rep % (flipper, packets, source, system,
                                        logtype, port)
 
