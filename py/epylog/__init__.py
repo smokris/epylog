@@ -584,6 +584,18 @@ class InternalModule:
     def get_smm(self, lm):
         return (lm['system'], lm['message'], lm['multiplier'])
 
+    def mk_size_unit(self, size):
+        ksize = int(size/1024)
+        if ksize:
+            msize = int(ksize/1024)
+            if msize:
+                gsize = int(msize/1024)
+                if gsize: return (gsize, 'GB')
+                return (msize, 'MB')
+            return (ksize, 'KB')
+        return (size, 'Bytes')
+
+
 class Logger:
     indent = '  '
     hangmsg = []

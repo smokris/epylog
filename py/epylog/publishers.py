@@ -2,6 +2,9 @@ import epylog
 import os
 import re
 import socket
+import time
+import shutil
+import gzip
 
 def make_html_page(template, starttime, endtime, title, module_reports,
                    unparsed, logger):
@@ -50,6 +53,26 @@ def make_html_page(template, starttime, endtime, title, module_reports,
     logger.put(5, endpage)
     logger.put(5, '<make_html_page')
     return endpage
+
+def do_chunked_gzip(infh, outfh, filename, logger):
+    gzfh = gzip.GzipFile('rawlogs', fileobj=outfh)
+    bartotal = infh.tell()
+    bardone = 0
+    bartitle = 'Gzipping'
+    infh.seek(0)
+    logger.put(5, 'Doing chunked read from infh into gzfh')
+    while 1:
+        chunk = infh.read(epylog.CHUNK_SIZE)
+        if not chunk:
+            logger.put(5, 'Reached EOF')
+            break
+        gzfh.write(chunk)
+        bardone += len(chunk)
+        logger.progressbar(1, bartitle, bardone, bartotal)
+        logger.put(5, 'Wrote %d bytes' % len(chunk))
+    gzfh.close()
+    logger.endbar(1, bartitle, 'gzipped down to %d bytes' % outfh.tell())
+
     
 class MailPublisher:
     name = 'Mail Publisher'
@@ -149,33 +172,11 @@ class MailPublisher:
             ##
             # GzipFile doesn't work with StringIO. :/ Bleh.
             #
-            import mytempfile as tempfile, gzip
+            import mytempfile as tempfile
             tempfile.tempdir = self.tmpprefix
-            tfh = open(tempfile.mktemp('GZIP'), 'w+')
-            gzfh = gzip.GzipFile('rawlogs', fileobj=tfh)
-            bartotal = rawfh.tell()
-            bardone = 0
-            bartitle = 'Gzipping the logs'
-            rawfh.seek(0)
-            logger.put(5, 'Doing chunked read from rawfh into gzfh')
-            while 1:
-                chunk = rawfh.read(epylog.CHUNK_SIZE)
-                if not chunk:
-                    logger.put(5, 'Reached EOF')
-                    break
-                gzfh.write(chunk)
-                bardone += len(chunk)
-                logger.progressbar(1, bartitle, bardone, bartotal)
-                logger.put(5, 'Wrote %d bytes' % len(chunk))
-            gzfh.close()
-            rawfh.close()
-            rawfh = tfh
-            rawfh.seek(0, 2)
-            size = rawfh.tell()
-            ##
-            # Get rid of the progress bar
-            #
-            logger.endbar(1, bartitle, 'gzipped down to %d bytes' % size)
+            outfh = open(tempfile.mktemp('GZIP'), 'w+')
+            do_chunked_gzip(rawfh, outfh, 'rawlogs', logger)
+            size = outfh.tell()
             if size > self.rawlogs:
                 logger.put(1, '%d is over the defined max of "%d"'
                            % (size, self.rawlogs))
@@ -183,9 +184,9 @@ class MailPublisher:
                 self.rawlogs = 0
             else:
                 logger.put(5, 'Reading in the gzipped logs')
-                rawfh.seek(0)
-                self.gzlogs = rawfh.read()
-                rawfh.close()
+                outfh.seek(0)
+                self.gzlogs = outfh.read()
+            outfh.close()
             
         ##
         # Using MimeWriter, since package 'email' doesn't come with rhl-7.3
@@ -258,6 +259,7 @@ class MailPublisher:
                 raise epylog.AccessError(msg, logger)
             server.quit()
             logger.endhang(3)
+        logger.put(1, 'Mailed the report to: %s' % tostr)
         logger.put(5, '<MailPublisher.publish')
 
 
@@ -402,18 +404,94 @@ class FilePublisher:
         logger.put(5, '>FilePublisher.__init__')
         self.logger = logger
         self.tmpprefix = config.tmpprefix
-        self.section = sec
         logger.put(3, 'Looking for required elements in file method config')
-        try:
-            self.pathmask = config.get(self.section, 'pathmask')
-            self.expirytime = int(config.get(self.section, 'expirytime'))
-        except:
-            msg = ('Required attributes "pathmask" and/or "expirytime"' +
-                   'not found')
-            raise epylog.ConfigError(msg, logger)
-        logger.put(5, 'pathmask=%s' % self.pathmask)
-        logger.put(5, 'expirytime=%d' % self.expirytime)
-        logger.put(5, '<FilePublisher.__init__')
+        msg = 'Required attribute "%s" not found'
+        try: expire = int(config.get(sec, 'expire_in'))
+        except: epylog.ConfigError(msg % 'expire_in', logger)
         
-    def publish(self, *args):
-        pass
+        try: dirmask = config.get(sec, 'dirmask')
+        except: epylog.ConfigError(msg % 'dirmask', logger)
+        try: filemask = config.get(sec, 'filemask')
+        except: epylog.ConfigError(msg % 'filemask', logger)
+
+        logger.put(3, 'Verifying dirmask and filemask')
+        msg = 'Invalid mask for %s: %s'
+        try: dirname = time.strftime(dirmask, time.localtime())
+        except: epylog.ConfigError(msg % ('dirmask', dirmask), logger)
+        try: path = config.get(sec, 'path')
+        except: epylog.ConfigError(msg % 'path', logger)
+        try: self.filename = time.strftime(filemask, time.localtime())
+        except: epylog.ConfigError(msg % ('filemask', filemask), logger)
+        self._prune_old(path, dirmask, expire)
+        self.path = os.path.join(path, dirname)
+        logger.put(5, 'path=%s' % self.path)
+        logger.put(5, 'filename=%s' % self.filename)
+        logger.put(5, '<FilePublisher.__init__')
+
+    def _prune_old(self, path, dirmask, expire):
+        logger = self.logger
+        logger.put(5, '>FilePublisher._prune_old')
+        logger.put(3, 'Pruning directories older than %d days' % expire)
+        expire_limit = int(time.time()) - 86400
+        logger.put(5, 'expire_limit=%d' % expire_limit)
+        if not os.path.isdir(path):
+            logger.put(3, 'Dir %s not found -- skipping pruning' % path)
+            logger.put(5, '<FilePublisher._prune_old')
+            return
+        for entry in os.listdir(path):
+            logger.put(5, 'Found: %s' % entry)
+            if os.path.isdir(os.path.join(path, entry)):
+                logger.put(3, 'Found directory %s' % entry)
+                logger.put(4, 'Trying to strptime it into a timestamp')
+                try: stamp = time.mktime(time.strptime(entry, dirmask))
+                except ValueError, e:
+                    logger.put(3, 'Dir %s did not match dirmask %s: %s'
+                               % (entry, dirmask, e))
+                    logger.put(3, 'Skipping %s' % entry)
+                    continue
+                if stamp < expire_limit:
+                    logger.put(3, '%s is older than expire limit')
+                    shutil.rmtree(os.path.join(path, entry))
+                    logger.put(1, 'File Publisher: Pruned old directory: %s'
+                               % entry)
+                else:
+                    logger.put(3, '%s is still active' % entry)
+            else:
+                logger.put(3, '%s is not a directory. Skipping.' % entry)
+        logger.put(3, 'Finished with pruning')
+        logger.put(5, '<FilePublisher._prune_old')
+        
+    def publish(self, template, starttime, endtime, title, module_reports,
+                unparsed_strings, rawfh):
+        logger = self.logger
+        logger.put(5, '>FilePublisher.publish')
+        logger.put(3, 'Checking and creating the report directories')
+        if not os.path.isdir(self.path):
+            try: os.makedirs(self.path)
+            except OSError, e:
+                logger.put(0, 'Error creating directory "%s": %s' %
+                           (self.path, e))
+                logger.put(0, 'File publisher exiting.')
+                return
+        logger.puthang(3, 'Creating a standard html page report')
+        html_report = make_html_page(template, starttime, endtime, title,
+                                     module_reports, unparsed_strings, logger)
+        logger.endhang(3)
+        repfile = os.path.join(self.path, '%s.html' % self.filename)
+        logger.put(3, 'Dumping the report into %s' % repfile)
+        fh = open(repfile, 'w')
+        fh.write(html_report)
+        fh.close()
+        logger.put(1, 'Report saved in: %s' % self.path)
+
+        logfilen = '%s.log' % self.filename
+        logfile = os.path.join(self.path, '%s.gz' % logfilen)
+        logger.put(3, 'Gzipping logs and writing them to %s' % logfilen)
+        outfh = open(logfile, 'w+')
+        do_chunked_gzip(rawfh, outfh, logfilen, logger)
+        outfh.close()
+        logger.put(1, 'Gzipped logs saved in: %s' % self.path)
+        logger.put(5, '<FilePublisher.publish')
+
+
+        

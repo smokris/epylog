@@ -99,6 +99,16 @@ postfix/smtpd.*: lost connection
 postfix/cleanup
 postfix/pickup
 
+[sendmail]
+sendmail\[.*:.*NOQUEUE: Null connection from
+sendmail\[.*:.*timeout waiting for input
+
+[spamd]
+spamd\[.*: info:
+spamd\[.*: processing message
+spamd\[.*: connection from
+spamd\[.*: Creating default_prefs
+
 [printer]
 printer: ready to print
 printer: status change

@@ -498,9 +498,11 @@ class Log:
         logger.put(5, '>Log.get_stamps')
         logs = self._get_orange_logs()
         flog = logs.pop(0)
+        flog.range_start = self.orange.start_offset
         [start_stamp, end_stamp] = flog.get_range_stamps()
         if len(logs):
             elog = logs.pop(-1)
+            elog.range_end = self.orange.end_offset
             [junk, end_stamp] = elog.get_range_stamps()
         logger.put(5, 'start_stamp=%d' % start_stamp)
         logger.put(5, 'end_stamp=%d' % end_stamp)
@@ -780,6 +782,8 @@ class LogFile:
         self.fh.seek(end)
         self._set_at_line_start()
         self.range_end = self.fh.tell()
+        logger.put(5, 'range_start=%d' % self.range_start)
+        logger.put(5, 'range_end=%d' % self.range_end)
         logger.put(5, '<LogFile.set_offset_range')
 
     def getinode(self):
@@ -858,6 +862,7 @@ class LogFile:
     def get_range_stamps(self):
         logger = self.logger
         logger.put(5, '>LogFile.get_range_stamps')
+        logger.put(5, 'range_start=%s' % self.range_start)
         self.fh.seek(self.range_start)
         start_stamp = self._get_stamp()
         self.fh.seek(self.range_end)

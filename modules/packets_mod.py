@@ -54,6 +54,9 @@ class packets_mod(InternalModule):
 
         self.protodict = self._parse_etc_protocols()
 
+        self.collapsed_ports_rep = '<font color="red">[%d&nbsp;ports]</font>'
+        self.collapsed_hosts_rep = '<font color="red">[%d&nbsp;hosts]</font>'
+
         self.report_wrap = '<table width="100%%" rules="cols" cellpadding="2">%s</table>'
         self.subreport_wrap = '<tr><th align="left" colspan="5"><h3><font color="red">%s</font></h3></th></tr>\n%s\n'
 
@@ -182,11 +185,11 @@ class packets_mod(InternalModule):
                         if port not in ports: ports.append(port)
                         if logtype not in logtypes: logtypes.append(logtype)
                         packets += mult
-                if len(ports) > 1: port = '[%d&nbsp;ports]' % len(ports)
+                if len(ports) > 1: port = self.collapsed_ports_rep % len(ports)
                 else: port = ports[0]
                 if len(logtypes) > 1: logtype = '[%d]' % len(logtypes)
                 else: logtype = logtypes[0]
-                system = '[%d&nbsp;systems]' % len(systems)
+                system = self.collapsed_hosts_rep % len(systems)
                 fin.append((packets, source, system, port, logtype))
             else:
                 for system in systems:
@@ -212,7 +215,7 @@ class packets_mod(InternalModule):
                         if len(logtypes) > 1:
                             logtype = '[%d]' % len(logtypes)
                         else: logtype = logtypes[0]
-                        port = '[%d&nbsp;ports]' % len(ports)
+                        port = self.collapsed_ports_rep % len(ports)
                         fin.append((packets, source, system, port, logtype))
                     else:
                         for port in ports:

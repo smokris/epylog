@@ -1,0 +1,6 @@
+Apr 17 16:38:02 mail/mail spamd[25639]: clean message (-1.3/5.0) for rgb:1337 in 0.0 seconds, 2074 bytes. 
+Apr 17 16:38:02 mail/mail spamd[25636]: clean message (-1.3/5.0) for icon:1567 in 0.0 seconds, 2075 bytes. 
+Apr 17 16:38:02 mail/mail spamd[25633]: clean message (-1.3/5.0) for skvidal:875 in 0.0 seconds, 2078 bytes. 
+Apr 17 16:38:53 mail/mail spamd[25653]: clean message (0.9/5.0) for saunders:1533 in 0.0 seconds, 3219 bytes. 
+Apr 17 16:39:18 mail/mail spamd[25666]: clean message (0.2/5.0) for mprior:851 in 0.0 seconds, 2923 bytes. 
+Apr 17 16:38:53 mail/mail spamd[25653]: identified spam (10.2/5.0) for saunders:1533 in 0.0 seconds, 3219 bytes. 

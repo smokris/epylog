@@ -61,7 +61,7 @@ class ModuleTest:
                     if result is not None:
                         rs.add_result(result)
                         if filtfile is not None:
-                            filtfh.write(line)
+                            filtfh.write('%s\n' % line)
                         break
         infh.close()
         if filtfile is not None: filtfh.close()
