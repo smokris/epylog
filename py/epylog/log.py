@@ -369,6 +369,9 @@ class LogFile:
     def __set_at_line_start(self):
         logger = self.logger
         logger.put(5, 'Entering LogFile.__set_at_line_start')
+        if self.fh.tell() == 0:
+            logger.put(5, 'Already at file start')
+            return
         logger.put(5, 'starting the backstepping loop')
         while 1:
             curchar = self.fh.read(1)
