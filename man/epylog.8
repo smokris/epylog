@@ -34,12 +34,13 @@ levels. 5 is the most verbose.
 .TP
 .B \-\-last PERIOD
 Will make a report on events that occurred in the last PERIOD. PERIOD
-can be either "hour", "day", "week", or "month". When \-\-last is
-specified, epylog will ignore the saved offsets and locate the entries
-by timestamps. \fICAUTION\fR: this process is not to be trusted, since
-the timestamps are not checked for any validity when arriving to the
-loghost. One reporting machine with a skewed clock may confuse Epylog
-enough to miss a lot of valid entries.
+can be either "hour", "day", "week", "month", or more granular: "1h",
+"2h", "3d", "2w", etc. When \-\-last is specified, epylog will ignore
+the saved offsets and locate the entries by timestamps. \fICAUTION\fR:
+this process is not to be trusted, since the timestamps are not
+checked for any validity when arriving to the loghost. One reporting
+machine with a skewed clock may confuse Epylog enough to miss a lot of
+valid entries.
 .TP
 .B \-\-store\-offsets
 When specified, will store the offset of the last log entry processed
