@@ -35,12 +35,15 @@ INSTALLDIRS = $(pkgconfdir)
 CFGFILES = epylog.conf notice_dist.xml notice_local.xml report_template.html \
 	trojans.list weed_dist.cf weed_local.cf
 
-all:
+all: all-stamp
+
+all-stamp:
 	for subdir in $(SUBDIRS) ; do \
 	  $(MAKE) -C $$subdir all ; \
 	done
 	sed -e 's|%%pkgconfdir%%|$(pkgconfdir)|g; s|%%TEMP_DIR%%|$(TEMP_DIR)|g; s|%%pkgvardir%%|$(pkgvardir)|g; s|%%LYNX_BIN%%|$(LYNX_BIN)|g' \
 		epylog.conf.in > epylog.conf
+	touch all-stamp
 
 install: all installdirs
 	for CFGFILE in $(CFGFILES); do \
@@ -64,6 +67,7 @@ clean:
 	for subdir in $(SUBDIRS) ; do \
 	  $(MAKE) -C $$subdir clean ; \
 	done
+	$(RM) all-stamp
 
 distclean: clean
 	$(RM) Makefile

@@ -34,10 +34,13 @@ LYNX_BIN = @LYNX_BIN@
 INSTALLDIRS = $(CRON_DIR)
 CRONFILES = epylog.cron
 
-all:
+all: all-stamp
+
+all-stamp:
 	for CRONFILE in $(CRONFILES); do \
 	  sed 's|%%sbindir%%|$(sbindir)|g' $$CRONFILE.in > $$CRONFILE; \
 	done
+	touch all-stamp
 
 install: all installdirs
 	for CRONFILE in $(CRONFILES); do \
@@ -51,6 +54,7 @@ uninstall:
 
 clean:
 	$(RM) $(CRONFILES)
+	$(RM) all-stamp
 
 distclean: clean
 	$(RM) Makefile

@@ -33,10 +33,13 @@ LYNX_BIN = @LYNX_BIN@
 INSTALLDIRS = $(pkgconfdir)/modules.d
 MCONFS = mail packets weeder logins notices spamd
 
-all:
+all: all-stamp
+
+all-stamp:
 	for MCONF in $(MCONFS); do \
 	  sed -e 's|%%pkgconfdir%%|$(pkgconfdir)|g; s|%%MODULES_DIR%%|$(MODULES_DIR)|g' $$MCONF.conf.in > $$MCONF.conf; \
 	done
+	touch all-stamp
 
 install: all installdirs
 	for MCONF in $(MCONFS); do \
@@ -53,6 +56,7 @@ clean:
 	for MCONF in $(MCONFS); do \
 	  $(RM) $$MCONF.conf; \
 	done
+	$(RM) all-stamp
 
 distclean: clean
 	$(RM) Makefile

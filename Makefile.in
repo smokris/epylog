@@ -36,12 +36,15 @@ INSTALLDIRS = $(pkgdocdir) $(pkgvardir) $(sbindir)
 DOCFILES = AUTHORS ChangeLog INSTALL LICENSE README
 DOCDIRS = doc
 
-all:
+all: all-stamp
+
+all-stamp:
 	sed -e 's|%%PYTHON_BIN%%|$(PYTHON_BIN)|g; s|%%pkgconfdir%%|$(pkgconfdir)|g; s|%%PY_MODULE_DIR%%|$(PY_MODULE_DIR)|g; s|%%localstatedir%%|$(localstatedir)|g' epylog.in > epylog
 	chmod +x epylog
 	for subdir in $(SUBDIRS) ; do \
 	  $(MAKE) -C $$subdir all ; \
 	done
+	touch all-stamp
 
 install: all installdirs
 	for DOC in $(DOCFILES); do \
@@ -68,6 +71,7 @@ clean:
 	  $(MAKE) -C $$subdir clean ; \
 	done
 	$(RM) epylog
+	$(RM) all-stamp
 
 distclean: clean
 	for subdir in $(SUBDIRS) ; do \
