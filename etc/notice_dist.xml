@@ -93,5 +93,12 @@
     <report>Cron: user '%s' (%s)</report>
   </notice>
 
+  <notice id="promisc" critical="yes">
+    <regex>device (\S+) entered promiscuous mode</regex>
+    <regex>(\S+): Promiscuous mode enabled</regex>
+    <regex>(\S+): enabled promiscuous mode</regex>
+    <report>device %s entered promiscuous mode</report>
+  </notice>
+
 </notices>
 

@@ -72,6 +72,8 @@ sshd.*: .* key generation complete
 sshd.*: Connection closed
 sshd.*: Could not reverse map address
 sshd.*: Received disconnect from
+sshd.*: error: Could not get shadow information for NOUSER
+sshd.*: Invalid user .* from
 
 [xinetd]
 xinetd.*: .* Transport endpoint is not connected
@@ -149,19 +151,24 @@ afpd.*: .*B read,.*B written
 [ntpd]
 ntpd.*: kernel time discipline status change
 
+[kernel]
+kernel: application .* uses obsolete OSS audio interface
+kernel: SELinux: initialized
+usb-uhci.c: interrupt, status
+PCI: Found IRQ
+PCI: Sharing IRQ
+PCI: Setting latency timer
+
 [misc]
 modprobe: Can't locate module
 logger: punching nameserver .* through the firewall
 HORDE\[\S*\s*\[imp\] Logout
 LOGIN ON tty.
-usb-uhci.c: interrupt, status
-PCI: Found IRQ
-PCI: Sharing IRQ
-PCI: Setting latency timer
 dhclient: DHCPREQUEST
 dhclient: DHCPACK
 dhclient: DHCPDISCOVER
 dhclient: bound to
-kernel: application .* uses obsolete OSS audio interface
+dbus: avc: .* buckets used
+
 
 ## $Revision$ ##
