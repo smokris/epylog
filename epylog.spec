@@ -7,7 +7,7 @@
 
 Summary: New logs analyzer and parser.
 Name: epylog
-Version: 0.8.13
+Version: 0.8.14
 Release: 1
 License: GPL
 Group: Applications/System
@@ -144,6 +144,12 @@ popd
 %doc doc/*
 
 %changelog
+* Wed Mar 13 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.8.14-1
+- Fixes for html email sending
+- Option to send via sendmail vs. smtplib
+- Multiple mailto addresses now handled correctly
+- Small bugfixes.
+
 * Mon Mar 03 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.8.13-1
 - Two new features for module configs: you can now specify the priority
   and extra options for modules.

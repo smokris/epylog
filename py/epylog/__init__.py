@@ -11,7 +11,7 @@ from report import Report
 from module import Module
 from log import LogTracker
 
-VERSION = 'Epylog-0.8.13'
+VERSION = 'Epylog-0.8.14'
 CHUNK_SIZE = 8192
 GREP_LINES = 10000
 

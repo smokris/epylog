@@ -60,19 +60,24 @@ class MailPublisher:
         self.section = sec
         logger.put(2, 'Looking for required elements in mail method config')
         try:
-            self.mailto = config.get(self.section, 'mailto')
+            mailto = config.get(self.section, 'mailto')
+            addrs = mailto.split(',')
+            self.mailto = []
+            for addr in addrs:
+                addr = addr.strip()
+                logger.put(3, 'adding mailto=%s' % addr)
+                self.mailto.append(addr)
         except:
-            self.mailto = 'root'
-        logger.put(3, 'mailto=%s' % self.mailto)
+            self.mailto = ['root']
         try:
             format = config.get(self.section, 'format')
         except:
             format = 'both'
 
         if (format != 'plain') and (format != 'html') and (format != 'both'):
-            raise epylog.ConfigError(('Format for Mail Publisher must be either'
-                                    + ' html, plain, or both. Format "%s" is'
-                                    + ' unknown') % format, logger)
+            msg = ('Format for Mail Publisher must be either "html", "plain",'
+                   + ' or both. Format "%s" is unknown') % format
+            raise epylog.ConfigError(msg, logger)
         self.format = format
         logger.put(3, 'format=%s' % self.format)
 
@@ -82,8 +87,9 @@ class MailPublisher:
                 lynx = config.get(self.section, 'lynx')
             except:
                 lynx = '/usr/bin/lynx'
-            if not os.access(lynx, os.X_OK):
-                raise epylog.ConfigError('Could not find "%s"' % lynx, logger)
+                if not os.access(lynx, os.X_OK):
+                    msg = 'Could not fine "%s"' % lynx
+                    raise epylog.ConfigError(msg, logger)
             self.lynx = lynx
             logger.put(2, 'Lynx found in "%s" and is executable' % self.lynx)
 
@@ -190,7 +196,12 @@ class MailPublisher:
         logger.put(4, 'Creating a main header')
         mw = MimeWriter.MimeWriter(fh)
         mw.addheader('Subject', title)
-        mw.addheader('To', self.mailto)
+        if len(self.mailto) > 1:
+            import string
+            tostr = string.join(self.mailto, ', ')
+        else:
+            tostr = self.mailto[0]
+        mw.addheader('To', tostr)
         mw.addheader('X-Mailer', epylog.VERSION)
         self.mw = mw
         
@@ -217,14 +228,36 @@ class MailPublisher:
         fh.seek(0)
         msg = fh.read()
         fh.close()
+        logger.put(5, 'Message follows')
+        logger.put(5, msg)
+        logger.put(5, 'End of message')
 
-        logger.puthang(3, 'Mailing it via the SMTP server %s' % self.smtpserv)
-        import smtplib, socket
-        fromaddr = 'root@%s' % socket.gethostname() 
-        server = smtplib.SMTP(self.smtpserv)
-        server.sendmail(fromaddr, self.mailto, msg)
-        server.quit()
-        logger.endhang(3)
+        logger.put(5, 'Figuring out if we are using sendmail or smtplib')
+        if re.compile('^/').search(self.smtpserv):
+            logger.put(5, 'Seems like we are using sendmail')
+            logger.puthang(3, 'Mailing it via sendmail')
+            try:
+                p = os.popen(self.smtpserv, 'w')
+            except Exception, e:
+                msg = 'Error trying to open a pipe to %s' % self.smtpserv
+                raise epylog.AccessError(msg, logger)
+            p.write(msg)
+            p.close()
+            logger.endhang(3)
+        else:
+            logger.puthang(3, 'Mailing it via the SMTP server %s'
+                           % self.smtpserv)
+            import smtplib, socket
+            fromaddr = 'root@%s' % socket.gethostname() 
+            server = smtplib.SMTP(self.smtpserv)
+            try:
+                server.sendmail(fromaddr, self.mailto, msg)
+            except Exception, e:
+                msg = 'Error trying to send the report: %s' % e
+                raise epylog.AccessError(msg, logger)
+            server.quit()
+            logger.endhang(3)
+
 
     def __mk_both_rawlogs(self):
         import quopri, base64
@@ -331,11 +364,16 @@ class MailPublisher:
     def __mk_html_nologs(self):
         import quopri
         logger = self.logger
-        html_mw = self.mw
+        alt_mw = self.mw
+        alt_mw.addheader('Mime-Version', '1.0')
+        logger.put(4, 'Creating a multipart/alternative part')
+        alt_mw.startmultipartbody('alternative')
         logger.put(4, 'Creating a text/html part')
+        html_mw = alt_mw.nextpart()
         html_mw.addheader('Content-Transfer-Encoding', 'quoted-printable')
         html_fh = html_mw.startbody('text/html; charset=iso-8859-1')
         html_fh.write(quopri.a2b_qp(self.htmlrep))
+        alt_mw.lastpart()
 
     def __mk_plain_nologs(self):
         import quopri
@@ -360,8 +398,9 @@ class FilePublisher:
             self.pathmask = config.get(self.section, 'pathmask')
             self.expirytime = int(config.get(self.section, 'expirytime'))
         except:
-            raise epylog.ConfigError(('Required attributes "pathmask" and/or ' +
-                                     '"expirytime" not found'), logger)
+            msg = ('Required attributes "pathmask" and/or "expirytime"' +
+                   'not found')
+            raise epylog.ConfigError(msg, logger)
         logger.put(2, 'pathmask=%s' % self.pathmask)
         logger.put(2, 'expirytime=%d' % self.expirytime)
         logger.put(2, 'Done with FilePublisher object intialization')
