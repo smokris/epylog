@@ -703,15 +703,6 @@ class LogFile:
         current_stamp = None
         while 1:
             try:
-                if lineloc == -oldlineloc:
-                    ##
-                    # fine_locate cannot reverse direction.
-                    # If it does, that means that entries are not in order,
-                    # which may happen quite frequently on poorly ntpd'd
-                    # machines. Get out and hope this is good enough.
-                    #
-                    logger.put(5, 'Reversed direction. Breaking.')
-                    break
                 if lineloc > 0:
                     logger.put(5, 'Going forward one line')
                     before_stamp = current_stamp
@@ -739,7 +730,6 @@ class LogFile:
             except IOError:
                 logger.put(5, 'Either end or start of file reached, breaking')
                 break
-            oldlineloc = lineloc
             logger.put(5, 'before_stamp=%d' % before_stamp)
             logger.put(5, 'current_stamp=%d' % current_stamp)
             logger.put(5, 'after_stamp=%d' % after_stamp)
@@ -747,6 +737,7 @@ class LogFile:
             if before_stamp == 0 or current_stamp == 0 or after_stamp == 0:
                 logger.put(5, 'Bogus stamps found. Breaking.')
                 break
+            oldlineloc = lineloc
             if before_stamp >= stamp:
                 logger.put(5, '>>>>>')
                 lineloc = -1
@@ -758,6 +749,15 @@ class LogFile:
                 lineloc = 1
             elif before_stamp < stamp and current_stamp >= stamp:
                 logger.put(5, '=====')
+                break
+            if oldlineloc == -lineloc:
+                ##
+                # fine_locate cannot reverse direction.
+                # If it does, that means that entries are not in order,
+                # which may happen quite frequently on poorly ntpd'd
+                # machines. Get out and hope this is good enough.
+                #
+                logger.put(5, 'Reversed direction. Breaking.')
                 break
         logger.put(5, 'fine locate finished at offset %d' % self.fh.tell())
         logger.put(5, '<LogFile.__fine_locate')
