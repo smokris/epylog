@@ -16,15 +16,18 @@ class packets_mod(InternalModule):
         self.logger = logger
         rc = re.compile
         self.regex_map = {
-            rc('IN=\S*\sOUT=\S*\sMAC=\S*\sSRC=\S*\sDST=\S*\s'): self.iptables
+            rc('IN=\S*\sOUT=\S*\sMAC=\S*\sSRC=\S*\sDST=\S*\s'): self.iptables,
+            rc('kernel:\sPacket\slog:\s'): self.ipchains
         }
 
         self.comment_line_re = rc('^\s*#')
         self.empty_line_re = rc('^\s*$')
         self.iptables_logtype_re = rc('iptables:\s*(\S*)')
         self.iptables_re = rc('SRC=(\S*)\s.*PROTO=(\S*)\s.*DPT=(\S*)')
+        self.ipchains_re = rc('\slog:\s\S+\s(\S*).*\sPROTO=(\d+)\s(\S*):\d*\s\S*:(\d+)')
         self.etc_services_re = rc('^(\S*)\s+(\S*)')
         self.trojan_list_re = rc('^(\S*)\s+(\S*)')
+        self.etc_protocols_re = rc('^(\S*)\s+(\S*)')
 
         svcdict = self._parse_etc_services()
 
@@ -35,12 +38,31 @@ class packets_mod(InternalModule):
         if trojans: svcdict = self._parse_trojan_list(trojans, svcdict)
         self.svcdict = svcdict
 
+        self.protodict = self._parse_etc_protocols()
+
         self.report_wrap = '<table width="100%%" rules="cols" cellpadding="2">%s</table>'
         self.subreport_wrap = '<tr><th align="left" colspan="5"><h3><font color="red">%s</font></h3></th></tr>\n%s\n'
 
         self.line_rep = '<tr%s><td valign="top" width="5%%">%d</td><td valign="top" width="50%%">%s</td><td valign="top" width="15%%">%s</td><td valign="top" width="15%%">%s</td><td valign="top" width="15%%">%s</td></tr>\n'
         self.flip = ' bgcolor="#dddddd"'
 
+
+    def _parse_etc_protocols(self):
+        try: fh = open('/etc/protocols', 'r')
+        except:
+            self.logger.put(0, 'Could not open /etc/protocols for reading!')
+            return {}
+        protodict = {}
+        while 1:
+            line = fh.readline()
+            if not line: break
+            if (self.comment_line_re.search(line)
+                or self.empty_line_re.search(line)): continue
+            try: proto, num = self.etc_protocols_re.search(line).groups()
+            except: continue
+            protodict[num] = proto
+        return protodict
+        
         
     def _parse_etc_services(self):
         try: fh = open('/etc/services', 'r')
@@ -92,6 +114,18 @@ class packets_mod(InternalModule):
         port = '%s/%s' % (dpt, proto.lower())
         port = self._mk_port(port)
         return {(source, sys, port, logtype): mult}
+
+    def ipchains(self, linemap):
+        sys, msg, mult = self.get_smm(linemap)
+        try: logtype, proto, src, dpt = self.ipchains_re.search(msg).groups()
+        except:
+            self.logger.put(3, 'Unknown ipchains entry: %s' % msg)
+            return None
+        source = self.gethost(src)
+        port = '%s/%s' % (dpt, self.protodict.get(int(proto), '??'))
+        port = self._mk_port(port)
+        return {(source, sys, port, logtype): mult}
+
 
     def _mk_port(self, port):
         try: desc = '%s&nbsp;(%s)' % (self.svcdict[port], port)
