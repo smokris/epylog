@@ -155,8 +155,8 @@ class packets_mod(InternalModule):
             self.logger.put(3, 'Unknown iptables entry: %s' % msg)
             return None
         source = self.gethost(src)
-        port = '%s/%s' % (dpt, proto.lower())
-        return {(source, sys, port, logtype): mult}
+        proto = proto.lower()
+        return {(source, sys, dpt, proto, logtype): mult}
 
     def ipchains(self, linemap):
         sys, msg, mult = self.get_smm(linemap)
@@ -165,8 +165,8 @@ class packets_mod(InternalModule):
             self.logger.put(3, 'Unknown ipchains entry: %s' % msg)
             return None
         source = self.gethost(src)
-        port = '%s/%s' % (dpt, self.protodict.get(proto, '??'))
-        return {(source, sys, port, logtype): mult}
+        proto = self.protodict.get(proto, '??')
+        return {(source, sys, dpt, proto, logtype): mult}
 
     def ipfilter(self, linemap):
         sys, msg, mult = self.get_smm(linemap)
@@ -175,24 +175,23 @@ class packets_mod(InternalModule):
             self.logger.put(3, 'Unknown ipfilter entry: %s' % msg)
             return None
         source = self.gethost(src)
-        port = '%s/%s' % (dpt, proto.lower())
-        return {(source, sys, port, 'LOGGED'): mult}
-
+        proto = proto.lower()
+        return {(source, sys, dpt, proto, 'LOGGED'): mult}
 
     def _mk_port(self, port):
         try: desc = '%s&nbsp;(%s)' % (self.svcdict[port], port)
         except KeyError: desc = port
         return desc
 
-    def _addfin(self, fin, packets, source, system, port, rawport, logtype):
+    def _addfin(self, fin, packets, source, system, port, logtype):
         if self.sortby == 'packets':
-            fin.append((packets, source, system, port, rawport, logtype))
+            fin.append((packets, source, system, port, logtype))
         elif self.sortby == 'source':
-            fin.append((source, packets, system, port, rawport, logtype))
+            fin.append((source, packets, system, port, logtype))
         elif self.sortby == 'system':
-            fin.append((system, packets, source, port, rawport, logtype))
+            fin.append((system, packets, source, port, logtype))
         elif self.sortby == 'port':
-            fin.append((rawport, packets, source, system, port, logtype))
+            fin.append((port, packets, source, system, logtype))
     
     ##
     # Finalize!
@@ -218,25 +217,25 @@ class packets_mod(InternalModule):
                     while 1:
                         try: entry, mult = submap.popitem()
                         except KeyError: break
-                        port, logtype = entry
-                        if port not in ports: ports.append(port)
+                        dpt, proto, logtype = entry
+                        if (dpt, proto) not in ports:
+                            ports.append((dpt, proto))
                         if logtype not in logtypes: logtypes.append(logtype)
                         packets += mult
-                rawport = port
                 if len(ports) > 1:
-                    port = self.collapsed_ports_rep % len(ports)
-                    rawport = -1
-                else: port = ports[0]
+                    #port = self.collapsed_ports_rep % len(ports)
+                    port = (-1, len(ports))
+                else:
+                    port = ports[0]                    
                 if len(logtypes) > 1: logtype = '[%d]' % len(logtypes)
                 else: logtype = logtypes[0]
                 system = self.collapsed_hosts_rep % len(systems)
-                self._addfin(fin, packets, source, system, port, rawport,
-                             logtype)
+                self._addfin(fin, packets, source, system, port, logtype)
             else:
                 for system in systems:
                     logger.put(2, 'Processing system %s' % system)
-                    ports = dstrs.get_distinct((system,))
-                    if len(ports) > self.ports_collapse:
+                    dpts = dstrs.get_distinct((system,))
+                    if len(dpts) > self.ports_collapse:
                         ##
                         # Result will look like so:
                         # 655 | source | system | DROP | [ 5 ports ] | lst
@@ -256,18 +255,20 @@ class packets_mod(InternalModule):
                         if len(logtypes) > 1:
                             logtype = '[%d]' % len(logtypes)
                         else: logtype = logtypes[0]
-                        port = self.collapsed_ports_rep % len(ports)
-                        self._addfin(fin, packets, source, system, port, -1,
+                        #port = self.collapsed_ports_rep % len(ports)
+                        port = (-1, len(ports))
+                        self._addfin(fin, packets, source, system, port,
                                      logtype)
                     else:
-                        for port in ports:
-                            submap = dstrs.get_submap((system, port))
+                        for dpt in dpts:
+                            submap = dstrs.get_submap((system, dpt))
                             while 1:
                                 try: entry, packets = submap.popitem()
                                 except KeyError: break
-                                logtype = entry[0]
+                                proto, logtype = entry
+                                port = (dpt, proto)
                                 self._addfin(fin, packets, source, system,
-                                             port, port, logtype)
+                                             port, logtype)
         report = ''
         flipper = ''
         fin.sort()
@@ -284,7 +285,7 @@ class packets_mod(InternalModule):
                 system, packets, source, port, rawport, logtype = entry
             elif self.sortby == 'port':
                 rawport, packets, source, system, port, logtype = entry
-            port = self._mk_port(port)
+            port = self._mk_port("%s/%s" % port)
             report += self.line_rep % (flipper, packets, source, system,
                                        logtype, port)
 
