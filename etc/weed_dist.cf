@@ -95,9 +95,13 @@ ipop3d.*: pop3.*service init
 imapd.*: Connection, ip=\[\S+\]
 imapd.*: LOGOUT, user=\S+, ip=\[\S+\]
 imapd.*: Disconnected, ip=\[\S+\]
+imapd.*: DISCONNECTED, user=\S+, ip=\[\S+\]
+imapd.*: LOGOUT, ip=\[\S+\]
 pop3d.*: Connection, ip=\[\S+\]
 pop3d.*: LOGOUT, user=\S+, ip=\[\S+\]
 pop3d.*: Disconnected, ip=\[\S+\]
+pop3d.*: DISCONNECTED, user=\S+, ip=\[\S+\]
+pop3d.*: LOGOUT, ip=\[\S+\]
 
 [postfix]
 postfix/smtp\[\d+\]: connect to
