@@ -388,7 +388,6 @@ class Log:
     def nextline(self):
         logger = self.logger
         logger.put(5, '>Log.nextline')
-        logger.put(3, 'Testing if this log is empty')
         if self.lp is None:
             ix = self.orange.startix
             offset = self.orange.start_offset
