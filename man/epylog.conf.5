@@ -29,6 +29,17 @@ entirely for logs.
 .B vardir
 Where epylog should save its state data, namely the offsets.xml
 file. The sanest place for this is /var/lib/epylog.
+.TP
+.B multimatch
+By default, if a line is matched against a module, no other modules
+will be tried. This helps speed things up tremendously. However, you
+may have several modules that process the same lines (although this is
+not a very good setup). In that case you may set this to "yes". The
+default value is "no".
+.TP
+.B threads
+How many processing threads to start. 50 is a good default value, but
+you may set it to less or more, depending on your system.
 
 .SH "[report]"
 .TP
