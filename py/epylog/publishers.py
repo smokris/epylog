@@ -459,7 +459,7 @@ class FilePublisher:
         logger = self.logger
         logger.put(5, '>FilePublisher._prune_old')
         logger.put(3, 'Pruning directories older than %d days' % expire)
-        expire_limit = int(time.time()) - 86400
+        expire_limit = int(time.time()) - (86400 * expire)
         logger.put(5, 'expire_limit=%d' % expire_limit)
         if not os.path.isdir(path):
             logger.put(3, 'Dir %s not found -- skipping pruning' % path)
