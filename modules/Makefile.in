@@ -43,7 +43,7 @@ all:
 
 install: all installdirs
 	for EPYMOD in $(EPYMODS); do \
-	  $(INSTALL_DATA) $$EPYMOD.py $$EPYMOD.pyc $$EPYMOD.pyo \
+	  $(INSTALL_DATA) $$EPYMOD.py $$EPYMOD.pyc \
 			$(DESTDIR)$(MODULES_DIR)/; \
 	done
 	for subdir in $(SUBDIRS) ; do \
