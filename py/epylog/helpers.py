@@ -47,10 +47,10 @@ class ModuleTest:
                 if o == '-r': repfile  = a
                 if o == '-f': filtfile = a
                 if o == '-o':
-                    pairs = a.split(',')
+                    pairs = a.split(';')
                     for pair in pairs:
                         pair.strip()
-                        key, value = pair.split(':')
+                        key, value = pair.split('=')
                         key = key.strip()
                         value = value.strip()
                         opts[key] = value
@@ -83,6 +83,7 @@ class ModuleTest:
             for regex in epymod.regex_map.keys():
                 if regex.search(msg):
                     handler = epymod.regex_map[regex]
+                    linemap['regex'] = regex
                     logger.put(5, '%s -> %s' % (handler.__name__, msg))
                     result = handler(linemap)
                     if result is not None:
@@ -141,7 +142,7 @@ class ModuleTest:
             
         EXTRAOPTS:
         Extra options should be submitted in this matter:
-        -o "option: value, option2: value, option3: value"
+        -o "option=value; option2=value; option3=value"
         ''' % name
         sys.exit(1)
 

@@ -163,13 +163,15 @@ class Module:
         logger = self.logger
         logger.put(5, '>Module.message_match')
         handler = None
+        match_regex = None
         for regex in self.epymod.regex_map.keys():
             if regex.search(message):
                 logger.put(5, 'match: %s' % message)
+                match_regex = regex
                 handler = self.epymod.regex_map[regex]
                 break
         logger.put(5, '<Module.message_match')
-        return handler
+        return (handler, match_regex)
 
     def put_filtered(self, line):
         logger = self.logger

@@ -377,7 +377,9 @@ class Epylog:
                     match = 0
                     for module in logmap[entry]:
                         logger.put(5, 'Matching module "%s"' % module.name)
-                        handler = module.message_match(linemap['message'])
+                        message = linemap['message']
+                        handler, regex = module.message_match(message)
+                        linemap['regex'] = regex
                         if handler is not None:
                             match = 1
                             pq.put_linemap(linemap, handler, module)
