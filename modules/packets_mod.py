@@ -62,7 +62,7 @@ class packets_mod(InternalModule):
 
         self.comment_line_re = rc('^\s*#')
         self.empty_line_re = rc('^\s*$')
-        self.iptables_logtype_re = rc('iptables:\s*(\S*)')
+        self.iptables_logtype_re = rc(':\s.*?(\S+?):*\sIN=')
         self.iptables_re = rc('SRC=(\S*)\s.*PROTO=(\S*)\s.*DPT=(\S*)')
         self.ipchains_re = rc('\slog:\s\S+\s(\S*).*\sPROTO=(\d+)\s(\S*):\d*\s\S*:(\d+)')
         self.ipfilter_re = rc('ipmon\[\d+\]:.*\s(\S+),\d+\s->\s\S+,(\d+)\sPR\s(\S+)')
@@ -145,7 +145,7 @@ class packets_mod(InternalModule):
     def iptables(self, linemap):
         sys, msg, mult = self.get_smm(linemap)
         ##
-        # See if it's prepended with "iptables: LOGTYPE"
+        # See if it's prepended with a logtype string of sorts.
         #
         try: logtype = self.iptables_logtype_re.search(msg).group(1)
         except: logtype = 'LOGGED'

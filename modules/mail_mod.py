@@ -44,7 +44,7 @@ class mail_mod(InternalModule):
         rc = re.compile
         postfix_map = {
             rc('postfix/smtpd\[\d+\]:\s\S*:'): self.postfix_smtpd,
-            rc('postfix/nqmgr\[\d+\]:\s\S*:'): self.postfix_nqmgr,
+            rc('postfix/n*qmgr\[\d+\]:\s\S*:'): self.postfix_qmgr,
             rc('postfix/local\[\d+\]:\s\S*:'): self.postfix_local,
             rc('postfix/smtp\[\d+\]:\s\S*:\sto='): self.postfix_smtp
             }
@@ -73,7 +73,7 @@ class mail_mod(InternalModule):
 
         self.postfix_ident_re = rc('\[\d+\]:\s*([A-Z0-9]*):')
         self.postfix_smtpd_re = rc('client=\S*\[(\S*)\]')
-        self.postfix_nqmgr_re = rc('from=(\S*),.*size=(\d*)')
+        self.postfix_qmgr_re = rc('from=(\S*),.*size=(\d*)')
         self.postfix_local_re = rc('to=(\S*),.*status=(\S*)\s\((.*)\)')
         self.postfix_smtp_re  = rc('to=(\S*),.*status=(\S*)')
 
@@ -119,11 +119,11 @@ class mail_mod(InternalModule):
         restuple = self._mk_restuple(sys, id, client=client)
         return {restuple: mult}
 
-    def postfix_nqmgr(self, linemap):
+    def postfix_qmgr(self, linemap):
         sys, msg, mult = self.get_smm(linemap)
         id = self._get_postfix_id(msg)
         self.logger.put(5, 'id=%s' % id)
-        try: sender, size = self.postfix_nqmgr_re.search(msg).groups()
+        try: sender, size = self.postfix_qmgr_re.search(msg).groups()
         except: sender, size = (None, 0)
         size = int(size)
         self.logger.put(5, 'sender=%s, size=%d' % (sender, size))
