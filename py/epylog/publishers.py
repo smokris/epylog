@@ -373,7 +373,7 @@ class MailPublisher:
         html_mw = alt_mw.nextpart()
         html_mw.addheader('Content-Transfer-Encoding', 'quoted-printable')
         html_fh = html_mw.startbody('text/html; charset=iso-8859-1')
-        html_fh.write(quopri.a2b_qp(self.htmlrep))
+        html_fh.write(self.htmlrep)
         alt_mw.lastpart()
         self.logger.put(5, '<MailPublisher._mk_html_nologs')
 

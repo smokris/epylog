@@ -173,7 +173,12 @@ class Epylog:
                     continue
                 logger.put(3, 'Ends in .conf all right.')
                 logger.puthang(3, 'Calling the Module init routines')
-                module = Module(cfgfile, logtracker, logger)
+                try:
+                    module = Module(cfgfile, logtracker, tmpprefix, logger)
+                except (ConfigError, ModuleError), e:
+                    msg = 'Module Error: %s' % e
+                    logger.put(0, msg)
+                    continue
                 logger.endhang(3)
                 if module.enabled:
                     logger.put(2, 'Module "%s" is enabled' % module.name)
@@ -230,7 +235,7 @@ class Epylog:
             for module in emodules:
                 logger.puthang(1, 'Processing module "%s"' % module.name)
                 try:
-                    module.invoke_module(self.tmpprefix, self.cfgdir)
+                    module.invoke_external_module(self.cfgdir)
                 except ModuleError, e:
                     ##
                     # Module execution error!
@@ -245,6 +250,9 @@ class Epylog:
         logger = self.logger
         logger.put(5, '>Epylog.make_report')
         for module in self.modules:
+            logger.put(5, 'Analyzing reports from module "%s"' % module.name)
+            logger.put(5, 'logerport=%s' % module.logreport)
+            logger.put(5, 'logfilter=%s' % module.logfilter)
             if module.logreport is None and module.logfilter is None:
                 logger.put(2, 'No output from module "%s"' % module.name)
                 logger.put(2, 'Skipping module "%s"' % module.name)
@@ -282,10 +290,10 @@ class Epylog:
     def _process_internal_modules(self, modules):
         logger = self.logger
         logger.put(5, '>Epylog._process_internal_modules')
+        logger.puthang(1, 'Processing internal modules')
         logger.put(4, 'Collecting logfiles used by internal modules')
         logmap = {}
         for module in modules:
-            module.init_internal_module()
             for log in module.logs:
                 try: logmap[log.entry].append(module)
                 except KeyError: logmap[log.entry] = [module]
@@ -293,31 +301,35 @@ class Epylog:
         logger.put(5, logmap)
         semaphore = threading.BoundedSemaphore(value=self.athreads)
         for entry in logmap.keys():
+            logger.puthang(1, 'Processing Log: %s' % entry)
             log = self.logtracker.getlog(entry)
+            matched = 0
             while 1:
+                logger.put(5, 'Getting next line from "%s"' % entry)
+                while threading.activeCount() - 1 > self.threads:
+                    time.sleep(0.01)
                 try:
-                    stamp, sys, msg, multiplier = log.nextline()
+                    line, stamp, sys, msg, mult = log.nextline()
                 except FormatError: continue
                 except OutOfRangeError: break
                 logger.put(5, 'We have the following:')
                 logger.put(5, 'stamp=%d' % stamp)
                 logger.put(5, 'sys=%s' % sys)
                 logger.put(5, 'msg=%s' % msg)
-                logger.put(5, 'multiplier=%d' % multiplier)
+                logger.put(5, 'mult=%d' % mult)
                 for module in logmap[entry]:
-                    ## HERE
-                    ## Lines below are blind cut-paste.
-                    logger.put(5, 'Match: %s' % line)
-                    while threading.activeCount() - 1 > thread_limit:
-                        time.sleep(0.01)
-                    handler = epymod.regex_map[regex]
-                    t = ThreadedLineHandler(line, handler, semaphore,
-                                            monthmap, logger)
-                    threads.append(t)
-                    logger.put(5, 'Starting handler thread')
-                    t.start()
-                    ##
-                    # Don't try other regexes
-                    #
-                    break
-
+                    logger.put(5, 'Matching module "%s"' % module.name)
+                    match = module.invoke_internal_module(line, stamp, sys,
+                                                          msg, mult, semaphore)
+                    matched += match
+                    if match and not self.multimatch:
+                        logger.put(5, 'Match. Not matching other modules')
+                        break
+            logger.put(1, '%d lines matched' % matched)
+            logger.endhang(1)
+        logger.put(5, 'Finished all matching, now finalizing')
+        for module in modules:
+            logger.put(5, 'Finalizing "%s"' % module.name)
+            module.finalize_processing()
+        logger.endhang(1)
+        logger.put(5, '<Epylog._process_internal_modules')

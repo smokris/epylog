@@ -9,7 +9,6 @@ class annoy_mod(epylog.module.PythonModule):
     def __init__(self, opts, logger):
         epylog.module.PythonModule.__init__(self)
         self.logger = logger
-        self.athreads = 50
         rc = re.compile
         self.regex_map = {
             ##
@@ -45,29 +44,29 @@ class annoy_mod(epylog.module.PythonModule):
         try: self.report_line = opts['report_line']
         except KeyError: self.report_line = '<tr><td>%s:</td><td>%s</td></tr>'
 
-    def gconf(self, stamp, system, message):
+    def gconf(self, stamp, system, message, multiplier):
         msg = 'Gconf locking errors'
-        return Result((system, msg))
+        return Result((system, msg), multiplier)
 
-    def fatalx(self, stamp, system, message):
+    def fatalx(self, stamp, system, message, multiplier):
         msg = 'Fatal X errors'
-        return Result((system, msg))
+        return Result((system, msg), multiplier)
 
-    def sftp(self, stamp, system, message):
+    def sftp(self, stamp, system, message, multiplier):
         msg = 'SFTP activity'
-        return Result((system, msg))
+        return Result((system, msg), multiplier)
 
-    def floppy_misc(self, stamp, system, message):
+    def floppy_misc(self, stamp, system, message, multiplier):
         msg = 'misc floppy errors'
-        return Result((system, msg))
+        return Result((system, msg), multiplier)
     
-    def ypserv(self, stamp, system, message):
+    def ypserv(self, stamp, system, message, multiplier):
         mo = self.ypserv_re.search(message)
         if mo:
             fromip, proc = mo.groups()
             ypclient = self.gethost(fromip)
             msg = '%s denied from %s' % (proc, ypclient)
-            return Result((system, msg))
+            return Result((system, msg), multiplier)
         return None            
 
     def finalize(self, rs):

@@ -35,16 +35,16 @@ def mkstamp_from_syslog_datestr(datestr, monthmap):
 class LogTracker:
     def __init__(self, config, logger):
         self.logger = logger
-        logger.put(5, 'Entering LogTracker.__init__')
+        logger.put(5, '>LogTracker.__init__')
         self.tmpprefix = config.tmpprefix
         self.entries = []
         self.logs = []
         self.monthmap = mkmonthmap()
-        logger.put(5, 'Exiting LogTracker.__init__')
+        logger.put(5, '<LogTracker.__init__')
 
     def getlog(self, entry):
         logger = self.logger
-        logger.put(5, 'Entering LogTracker.getlog')
+        logger.put(5, '>LogTracker.getlog')
         logger.put(5, 'Checking if we have a log for entry "%s"' % entry)
         if entry in self.entries:
             logger.put(5, 'Yes, returning that log')
@@ -52,12 +52,12 @@ class LogTracker:
         else:
             logger.put(5, 'Logfile for "%s" not yet initialized' % entry)
             log = self._init_log_by_entry(entry)
-        logger.put(5, 'Exiting LogTracker.getlog')
+        logger.put(5, '<LogTracker.getlog')
         return log
 
     def get_offset_map(self):
         logger = self.logger
-        logger.put(5, 'Entering LogTracker.get_offset_map')
+        logger.put(5, '>LogTracker.get_offset_map')
         omap = []
         for log in self.logs:
             entry = log.entry
@@ -69,7 +69,7 @@ class LogTracker:
             omap.append([entry, inode, offset])
         logger.put(5, 'omap follows')
         logger.put(5, omap)
-        logger.put(5, 'Exiting LogTracker.get_offset_map')
+        logger.put(5, '<LogTracker.get_offset_map')
         return omap
 
     def set_start_offset_by_entry(self, entry, inode, offset):
@@ -152,24 +152,25 @@ class LogTracker:
         
     def _init_log_by_entry(self, entry):
         logger = self.logger
-        logger.put(5, 'Entering LogTracker._init_log_by_entry')
+        logger.put(5, '>LogTracker._init_log_by_entry')
         logger.puthang(5, 'Initializing log object for entry "%s"' % entry)
         log = Log(entry, self.tmpprefix, self.monthmap, self.logger)
         logger.endhang(5)
         self.entries.append(entry)
         self.logs.append(log)
-        logger.put(5, 'Exiting LogTracker._init_log_by_entry')
+        logger.put(5, '<LogTracker._init_log_by_entry')
         return log
 
     def _get_log_by_entry(self, entry):
         logger = self.logger
-        logger.put(5, 'Entering LogTracker._get_log_by_entry')
+        logger.put(5, '>LogTracker._get_log_by_entry')
         for log in self.logs:
             if log.entry == entry:
                 logger.put(5, 'Found log object "%s"' % entry)
-                logger.put(5, 'Exiting LogTracker._get_log_by_entry')
+                logger.put(5, '<LogTracker._get_log_by_entry')
                 return log
         logger.put(5, 'No such log file! Returning None. How did this happen?')
+        logger.put(5, '<LogTracker._get_log_by_entry')
         return None
 
 class OffsetRange:
@@ -219,10 +220,18 @@ class OffsetRange:
         logger = self.logger
         logger.put(5, '>OffsetRange.is_inside')
         cond = 1
-        if ix < self.startix: cond = 0
-        elif ix > self.endix: cond = 0
-        elif ix == self.startix and offset < self.start_offset: cond = 0
-        elif ix == self.endix and offset > self.end_offset: cond = 0
+        if ix > self.startix:
+            logger.put(5, 'ix > self.startix')
+            cond = 0
+        elif ix < self.endix:
+            logger.put(5, 'ix > self.endix')
+            cond = 0
+        elif ix == self.startix and offset < self.start_offset:
+            logger.put(5, 'ix = self.startix and offset < self.start_offset')
+            cond = 0
+        elif ix == self.endix and offset > self.end_offset:
+            logger.put(5, 'ix = self.endix and offset > self.end_offset')
+            cond = 0
         if cond:
             logger.put(5, 'ix=%d, offset=%d is inside' % (ix, offset))
         logger.put(5, '<OffsetRange.is_inside')
@@ -234,6 +243,8 @@ class LinePointer:
         logger.put(5, '>LinePointer.__init__')
         self.ix = ix
         self.offset = offset
+        logger.put(5, 'ix=%d' % self.ix)
+        logger.put(5, 'offset=%d' % self.offset)
         logger.put(5, '<LinePointer.__init__')
 
     def set(self, ix, offset):
@@ -247,7 +258,7 @@ class LinePointer:
 
 class Log:
     def __init__(self, entry, tmpprefix, monthmap, logger):
-        logger.put(5, 'Entering Log.__init__')
+        logger.put(5, '>Log.__init__')
         logger.puthang(3, 'Initializing Log object for entry "%s"' % entry)
         self.logger = logger
         self.tmpprefix = tmpprefix
@@ -262,11 +273,11 @@ class Log:
         self.orange = OffsetRange(0, 0, 0, logfile.end_offset, logger)
         logger.endhang(3)
         self.lp = None
-        logger.put(5, 'Exiting Log.__init__')
+        logger.put(5, '<Log.__init__')
 
     def set_range_param(self, ix, offset, whence=0):
         logger = self.logger
-        logger.put(5, 'Entering Log.set_range_param')
+        logger.put(5, '>Log.set_range_param')
         logger.put(5, 'ix=%d' % ix)
         logger.put(5, 'offset=%d' % offset)
         logger.put(5, 'whence=%d' % whence)
@@ -282,7 +293,7 @@ class Log:
         else:
             logger.put(5, 'Setting range START for entry "%s"' % self.entry)
             self.orange.setstart(ix, offset)
-        logger.put(5, 'Exiting Log.set_range_param')
+        logger.put(5, '<Log.set_range_param')
 
     def getinode(self):
         logger = self.logger
@@ -309,13 +320,12 @@ class Log:
         if not self.orange.is_inside(ix, offset):
             msg = 'Moved past the end of the range'
             raise epylog.OutOfRangeError(msg, logger)
-        ologs = self._get_orange_logs()
-        log = ologs[ix]
+        log = self.loglist[ix]
         line, offset = log.get_line_at_offset(offset)
         try:
             stamp, system, message = self._get_stamp_sys_msg(line)
         except epylog.FormatError, e:
-            logger.put(0, 'Invalid syslog format string in %s: %s'
+            logger.put(0, 'Invalid syslog format string in %s: %s' %
                        (log.filename, line))
             # Pass it on
             raise epylog.FormatError(e, logger)
@@ -328,11 +338,11 @@ class Log:
             except epylog.FormatError: pass
         if offset == log.end_offset:
             logger.put(5, 'End of log "%s" reached' % log.filename)
-            ix += 1
+            ix -= 1
             offset = 0
         self.lp.set(ix, offset)
         logger.put(5, '<Log.nextline')
-        return stamp, system, message, multiplier
+        return line, stamp, system, message, multiplier
 
     def _lookup_repeated(self, system):
         logger = self.logger
@@ -625,7 +635,7 @@ class Log:
 class LogFile:
     def __init__(self, filename, tmpprefix, monthmap, logger):
         self.logger = logger
-        logger.put(5, 'Entering LogFile.__init__')
+        logger.put(5, '>LogFile.__init__')
         self.tmpprefix = tmpprefix
         self.filename = filename
         self.monthmap = monthmap
@@ -654,11 +664,11 @@ class LogFile:
         logger.put(3, 'All checks passed')
         logger.put(5, 'Initializing the file')
         self._initfile()
-        logger.put(5, 'Exiting LogFile.__init__')
+        logger.put(5, '<LogFile.__init__')
 
     def _initfile(self):
         logger = self.logger
-        logger.put(5, 'Entering LogFile._initfile')
+        logger.put(5, '>LogFile._initfile')
         logger.put(5, 'Checking if we are gzipped (ends in .gz)')
         if re.compile('\.gz$').search(self.filename, 1):
             logger.put(5, 'Ends in .gz. Using GzipFile to open')
@@ -701,7 +711,7 @@ class LogFile:
         logger.put(5, 'Finding the end_stamp')
         self.end_stamp = self._get_stamp()
         logger.put(5, 'end_stamp=%d' % self.end_stamp)
-        logger.put(5, 'Exiting LogFile._initfile')
+        logger.put(5, '<LogFile._initfile')
 
     def set_offset_range(self, start, end):
         logger = self.logger
@@ -992,7 +1002,7 @@ class LogFile:
 
     def _rel_position(self, relative):
         logger = self.logger
-        logger.put(5, 'Enter LogFile._rel_position')
+        logger.put(5, '>LogFile._rel_position')
         offset = self.fh.tell()
         new_offset = offset + relative
         logger.put(5, 'offset=%d' % offset)
@@ -1004,7 +1014,7 @@ class LogFile:
         self.fh.seek(new_offset)
         self._set_at_line_start()
         logger.put(5, 'offset after _set_at_line_start: %d' % self.fh.tell())
-        logger.put(5, 'Exiting LogFile._rel_position')
+        logger.put(5, '<LogFile._rel_position')
     
     def _mkstamp_from_syslog_datestr(self, datestr):
         logger = self.logger
@@ -1021,7 +1031,7 @@ class LogFile:
         
     def _accesscheck(self):
         logger = self.logger
-        logger.put(5, 'Entering LogFile._accesscheck')
+        logger.put(5, '>LogFile._accesscheck')
         logfile = self.filename
         logger.put(2, 'Running sanity checks on file "%s"' % logfile)
         if os.access(logfile, os.F_OK):
@@ -1036,7 +1046,7 @@ class LogFile:
             logger.put(2, 'Logfile "%s" is not readable' % logfile)
             raise epylog.AccessError('Logfile "%s" is not readable'
                                      % logfile, logger)
-        logger.put(5, 'Exiting LogFile._accesscheck')
+        logger.put(5, '<LogFile._accesscheck')
 
     def _set_at_line_start(self):
         logger = self.logger

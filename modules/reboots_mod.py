@@ -2,11 +2,11 @@
 
 import re
 import string
+from epylog.module import Result
 
 class reboots_mod:
     def __init__(self, opts, logger):
         self.logger = logger
-        self.athreads = 50
         self.regex_map = {
             re.compile('kernel: Linux version'): self.linux_reboot
         }
@@ -16,14 +16,14 @@ class reboots_mod:
         try: self.report_line = opts['report_line']
         except KeyError: self.report_line = '<tr><td>%s:</td><td>%s</td></tr>'
 
-    def linux_reboot(self, stamp, system, message):
+    def linux_reboot(self, stamp, system, message, multiplier):
         logger = self.logger
         logger.put(5, '>reboots_mod.linux_reboot')
         mo = self.kernel_re.search(message)
         if mo: kernel = mo.group(1)
         else: kernel = 'Kernel Unknown'
         logger.put(5, '<reboots_mod.linux_reboot')
-        return Result((system, kernel))
+        return Result((system, kernel), multiplier)
 
     def finalize(self, rs):
         logger = self.logger

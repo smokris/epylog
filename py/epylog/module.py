@@ -15,11 +15,9 @@ _loader = BasicModuleLoader()
 class Module:
     """epylog Module class"""
     
-    def __init__(self, cfgfile, logtracker, logger):
+    def __init__(self, cfgfile, logtracker, tmpprefix, logger):
         self.logger = logger
         logger.put(5, '>Module.__init__')
-        self.logreport = None
-        self.logfilter = None
         logger.put(2, 'Initializing module for cfgfile %s' % cfgfile)
         config = ConfigParser.ConfigParser()
         logger.put(2, 'Reading in the cfgfile %s' % cfgfile)
@@ -56,13 +54,28 @@ class Module:
                 self.extraopts[option] = value
             logger.put(5, 'Done with extra options')
 
+        modname = os.path.basename(self.executable)
+        tempfile.tempdir = tmpprefix
+        self.tmpprefix = tmpprefix
+        self.logdump = tempfile.mktemp('%s.DUMP' % modname)
+        self.logreport = tempfile.mktemp('%s.REPORT' % modname)
+        self.logfilter = tempfile.mktemp('%s.FILTER' % modname)
+
         logger.put(5, 'name=%s' % self.name)
         logger.put(5, 'executable=%s' % self.executable)
         logger.put(5, 'enabled=%d' % self.enabled)
         logger.put(5, 'internal=%d' % self.internal)
         logger.put(5, 'priority=%d' % self.priority)
         logger.put(5, 'logentries=%s' % logentries)
-        logger.put(2, 'outhtml=%d' % self.outhtml)
+        logger.put(5, 'outhtml=%d' % self.outhtml)
+        logger.put(5, 'logdump=%s' % self.logdump)
+        logger.put(5, 'logreport=%s' % self.logreport)
+        logger.put(5, 'logfilter=%s' % self.logfilter)
+
+        ##
+        # Init internal modules
+        #
+        if self.internal: self._init_internal_module()
         
         logger.put(3, 'Figuring out the logfiles from the log list')
         entrylist = logentries.split(',')
@@ -93,92 +106,113 @@ class Module:
             self.logger.put(5, 'This module is not internal')
             return 0
 
-    def invoke_module(self, tmpprefix, cfgdir):
+    def _init_internal_module(self):
         logger = self.logger
-        logger.put(5, '>Module.invoke_module')
-        tempfile.tempdir = tmpprefix
-        logdump = tempfile.mktemp()
-        logger.put(5, 'Dumping strings into a tempfile "%s"' % logdump)
-        totallen = self._dump_log_strings(logdump)
-        if totallen == 0:
-            logger.put(2, 'Nothing in the logs for this module. Passing exec')
-            return
-        if self.is_internal():
-            self._invoke_internal_module(tmpprefix, logdump, cfgdir)
-        else:
-            self._invoke_external_module(tmpprefix, logdump, cfgdir)
-        logger.put(5, '<Module.invoke_module')
-
-    def init_internal_module(self):
-        logger = self.logger
-        logger.put(5, '>Module.init_internal_module')
+        logger.put(5, '>Module._init_internal_module')
         dirname = os.path.dirname(self.executable)
         modname = os.path.basename(self.executable)
         modname = re.sub(re.compile('\.py'), '', modname)
         logger.puthang(5, 'Importing module "%s"' % modname)
         stuff = _loader.find_module_in_dir(modname, dirname)
         if stuff:
-            module = _loader.load_module(modname, stuff)
+            try: module = _loader.load_module(modname, stuff)
+            except Exception, e:
+                msg = ('Failure trying to import module "%s" (%s): %s' %
+                       (self.name, self.executable, e))
+                raise epylog.ModuleError(msg, logger)
         else:
-            msg = 'Could not import module "%s"' % self.name
+            msg = ('Could not find module "%s" in dir "%s"' %
+                   (modname, dirname))
             raise epylog.ModuleError(msg, logger)
         logger.endhang(5)
         try:
             modclass = getattr(module, modname)
-            self.intmodule = modclass(self.extraopts, logger)
+            self.epymod = modclass(self.extraopts, logger)
         except AttributeError:
             msg = 'Could not instantiate class "%s" in module "%s"'
             msg = msg % (modname, self.executable)
             raise epylog.ModuleError(msg, logger)
-        self.logreport = tempfile.mktemp('.%s.REPORT' % modname)
-        self.logfilter = tempfile.mktemp('.%s.FILTER' % modname)
-        logger.put(2, 'logreport=%s' % logreport)
-        logger.put(2, 'logfilter=%s' % logfilter)
         self.threads = []
-        logger.put(5, '<Module.init_internal_module')
+        logger.put(5, '<Module._init_internal_module')
+
+    def invoke_internal_module(self, line, stamp, sys, msg, mult, semaphore):
+        logger = self.logger
+        logger.put(5, '>Module.invoke_internal_module')
+        match = 0
+        for regex in self.epymod.regex_map.keys():
+            if regex.search(msg):
+                logger.put(5, 'match: %s' % msg)
+                handler = self.epymod.regex_map[regex]
+                t = ThreadedLineHandler(line, stamp, sys, msg, mult, handler,
+                                        semaphore, logger)
+                self.threads.append(t)
+                logger.put(5, 'Starting handler thread')
+                t.start()
+                match = 1
+                break
+        logger.put(5, '<Module.invoke_internal_module')
+        return match
 
     def finalize_processing(self):
-        ## HERE ##
-        ## move logreport, logfilter, and logdump file creation to init
-        ## Then continue
         logger = self.logger
-        rs = ResultSet()
-        filtfh = open(logfilter, 'w+')
-        for t in threads:
-            t.join()
-            if t.result is not None:
-                rs.add(t.result)
-                filtfh.write(t.line)
-        if filtfh.tell():
-            logger.put(5, 'We have filtered strings')
-            self.logfilter = logfilter
-        filtfh.close()
-        logger.put(5, 'Done with all threads')
-        if not rs.is_empty():
-            logger.put(5, 'Finalizing the processing')
-            report = epymod.finalize(rs)
+        logger.put(5, '>Module.finalize_processing')
+        logger.put(5, 'Finalizing for module "%s"' % self.name)
+        if len(self.threads):
+            rs = ResultSet()
+            logger.put(5, 'Opening "%s" for writing' % self.logfilter)
+            filtfh = open(self.logfilter, 'w+')
+            while 1:
+                try: t = self.threads.pop(0)
+                except IndexError: break
+                t.join()
+                try:
+                    result = t.result
+                    if result is not None:
+                        logger.put(5, 'Adding result for line: %s' % t.line)
+                        rs.add(t.result)
+                        filtfh.write(t.line)
+                    del t
+                except AttributeError:
+                    ##
+                    # We should probably warn the end-user?
+                    #
+                    pass
+            if not filtfh.tell():
+                logger.put(5, 'No filtered strings')
+                self.logfilter = None
+            logger.put(5, 'Closing "%s"' % self.logfilter)
+            filtfh.close()
+            logger.put(5, 'Done with all threads')
+            if not rs.is_empty():
+                logger.put(5, 'Finalizing the processing')
+                report = self.epymod.finalize(rs)
+                if report:
+                    logger.put(5, 'Report follows:')
+                    logger.put(5, report)
+                    repfh = open(self.logreport, 'w')
+                    repfh.write(report)
+                    repfh.close()
+            else:
+                logger.put(2, 'NO results/report from this module')
+                self.logreport = None
         else:
-            logger.put(5, 'No results in the resultset, skipping finalizing')
-            report = ''
-        if report:
-            logger.put(5, 'Report follows:')
-            logger.put(5, report)
-            repfh = open(logreport, 'w')
-            repfh.write(report)
-            repfh.close()
-            self.logreport = logreport
-        else:
-            logger.put(5, 'NO report from this module')
+            self.logreport = None
+            self.logfilter = None
         logger.put(5, 'Done with this module, deleting')
-        del module
+        del self.epymod
         logger.put(5, '<Module._invoke_internal_module')
     
-    def _invoke_external_module(self, tmpprefix, logdump, cfgdir):
+    def invoke_external_module(self, cfgdir):
         logger = self.logger
         logger.put(5, '>Module._invoke_external_module')
-        logger.put(2, 'Setting LOGCAT to "%s"' % logdump)
-        os.putenv('LOGCAT', logdump)
-        modtmpprefix = os.path.join(tmpprefix, 'EPYLOG')
+        logger.put(5, 'Dumping strings into "%s"' % self.logdump)
+        totallen = self._dump_log_strings(self.logdump)
+        if totallen == 0:
+            logger.put(2, 'Nothing in the logs for this module. Passing exec')
+            return
+        logger.put(2, 'Setting LOGCAT to "%s"' % self.logdump)
+        os.putenv('LOGCAT', self.logdump)
+        modtmpprefix = os.path.join(self.tmpprefix, 'EPYLOG')
         logger.put(2, 'Setting TMPPREFIX env var to "%s"' % modtmpprefix)
         os.putenv('TMPPREFIX', modtmpprefix)
         logger.put(2, 'Setting CONFDIR env var to "%s"' % cfgdir)
@@ -188,13 +222,10 @@ class Module:
             os.putenv('QUIET', 'YES')
         logger.put(2, 'Setting DEBUG to "%s"' % logger.debuglevel())
         os.putenv('DEBUG', logger.debuglevel())
-        descriptor = os.path.basename(self.executable)
-        logreport = tempfile.mktemp('.%s.REPORT' % descriptor)
-        logfilter = tempfile.mktemp('.%s.FILTER' % descriptor)
-        logger.put(2, 'Setting LOGREPORT to "%s"' % logreport)
-        logger.put(2, 'Setting LOGFILTER to "%s"' % logfilter)
-        os.putenv('LOGREPORT', logreport)
-        os.putenv('LOGFILTER', logfilter)
+        logger.put(2, 'Setting LOGREPORT to "%s"' % self.logreport)
+        logger.put(2, 'Setting LOGFILTER to "%s"' % self.logfilter)
+        os.putenv('LOGREPORT', self.logreport)
+        os.putenv('LOGFILTER', self.logfilter)
         if len(self.extraopts):
             logger.put(3, 'Setting extra options')
             for extraopt in self.extraopts.keys():
@@ -210,14 +241,13 @@ class Module:
                    (self.executable, exitcode))
             raise epylog.ModuleError(msg, logger)
         logger.put(2, 'Checking if we have the report')
-        if os.access(logreport, os.R_OK):
-            logger.put(2, 'Report "%s" exists and is readable' % logreport)
-            self.logreport = logreport
+        if not os.access(self.logreport, os.R_OK):
+            logger.put(2, 'Report %s does not exist!' % self.logreport)
+            self.logreport = None
         logger.put(2, 'Checking if we have the filtered strings')
-        if os.access(logfilter, os.R_OK):
-            logger.put(2, 'Filtered strings file "%s" exists and is readable'
-                       % logfilter)
-            self.logfilter = logfilter
+        if not os.access(self.logfilter, os.R_OK):
+            logger.put(2, 'Filtered file %s does not exist!' % self.logfilter)
+            self.logfilter = None
         logger.put(5, '<Module._invoke_external_module')
         
     def sanity_check(self):
@@ -299,24 +329,24 @@ class Module:
         return report
 
 class ThreadedLineHandler(threading.Thread):
-    def __init__(self, line, handler, semaphore, monthmap, logger):
+    def __init__(self, line, stamp, sys, msg, mult, handler, sem, logger):
         threading.Thread.__init__(self)
         self.logger = logger
         logger.put(5, '>ThreadedLineHandler.__init__')
         logger.put(5, 'My line is: %s' % line)
-        self.monthmap = monthmap
-        self.semaphore = semaphore
-        self.handler = handler
         self.line = line
+        self.stamp = stamp
+        self.system = sys
+        self.message = msg
+        self.multiplier = mult
+        self.handler = handler
+        self.semaphore = sem
         logger.put(5, '<ThreadedLineHandler.__init__')
 
     def run(self):
         self.semaphore.acquire()
-        mo = epylog.LOG_SPLIT_RE.match(self.line)
-        time, sys, msg = mo.groups()
-        stamp = epylog.log.mkstamp_from_syslog_datestr(time, self.monthmap)
-        sys = re.sub(epylog.SYSLOG_NG_STRIP, '', sys)
-        self.result = self.handler(stamp, sys, msg)
+        self.result = self.handler(self.stamp, self.system, self.message,
+                                   self.multiplier)
         self.semaphore.release()
 
 class PythonModule:
@@ -344,7 +374,7 @@ class PythonModule:
         try: name = socket.gethostbyaddr(ip_addr)[0]
         except socket.error: name = ip_addr
 
-        self._known_hosts = name
+        self._known_hosts[ip_addr] = name
         return name
 
 
@@ -382,7 +412,7 @@ class ResultSet:
         else: return 0
         
 class Result:
-    def __init__(self, result, multiplier=1):
+    def __init__(self, result, multiplier):
         self.result = result
         self.multiplier = multiplier
 

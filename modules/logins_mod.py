@@ -10,7 +10,6 @@ class logins_mod(epylog.module.PythonModule):
         epylog.module.PythonModule.__init__(self)
         self.logger = logger
         rc = re.compile
-        self.athreads = 50
 
         self.failure = 0
         self.open    = 1
@@ -29,15 +28,16 @@ class logins_mod(epylog.module.PythonModule):
         self.pam_open_re = rc('.*for user (\S+) by\s(\S*)\s*\(uid=(\S+)\)')
         self.pam_failure_more_re = rc('(\S+)\smore\sauthentication\sfailures')
 
+
         self.root_failure_wrap = '<h4>ROOT Login FAILURES</h4><table border="0">%s</table>\n'
         self.root_success_wrap = '<h4>ROOT Logins</h4><table border="0">%s</table>\n'
         self.user_failure_wrap = '<h4>User Login FAILURES</h4><table border="0">%s</table>\n'
         self.user_success_wrap = '<h4>User Logins</h4><table border="0">%s</table>\n'
 
-        self.line1_rep = '<tr><td align="left" valign="top" rowspan="%d">%s:</td><td align="right">%s:</td><td>%s</td></tr>\n'
-        self.line2_rep = '<tr><td align="right">%s:</td><td>%s</td></tr>\n'
+        self.line1_rep = '<tr bgcolor="%s"><td align="left" valign="top" rowspan="%d">%s:</td><td align="right" valign="top">%s:</td><td>%s</td></tr>\n'
+        self.line2_rep = '<tr><td align="right" valign="top">%s:</td><td>%s</td></tr>\n'
 
-    def pam_failure(self, stamp, system, message):
+    def pam_failure(self, stamp, system, message, multiplier):
         action = self.failure
         mo = self.pam_failure_re.search(message)
         if not mo:
@@ -46,12 +46,12 @@ class logins_mod(epylog.module.PythonModule):
         byuser, rhost, user = mo.groups()
         service = self._get_pam_service(message)
         mo = self.pam_failure_more_re.search(message)
-        if mo: multiplier = int(mo.group(1))
-        else: multiplier = 1
+        if mo: multiplier += int(mo.group(1))
+        else: multiplier += 1
         restuple = (action, system, service, user, byuser, rhost)
         return Result(restuple, multiplier)
 
-    def pam_open(self, stamp, system, message):
+    def pam_open(self, stamp, system, message, multiplier):
         action = self.open
         mo = self.pam_open_re.search(message)
         if not mo:
@@ -63,15 +63,15 @@ class logins_mod(epylog.module.PythonModule):
             byuser = self.getuname(int(byuid))
         rhost = ''
         restuple = (action, system, service, user, byuser, rhost)
-        return Result(restuple, 1)
+        return Result(restuple, multiplier)
 
-    def pam_closed(self, stamp, system, message):
+    def pam_closed(self, stamp, system, message, multiplier):
         action = self.close
         ##
         # We are ignoring these at the moment
         #
         restuple = (action, None, None, None, None, None)
-        return Result(restuple, 1)
+        return Result(restuple, multiplier)
     
     def _get_pam_service(self, str):
         service = 'unknown'
@@ -128,7 +128,11 @@ class logins_mod(epylog.module.PythonModule):
             systems = rrs.get_distinct((action,))
             systems.sort()
             sysrep[action] = ''
+            color = 'whitesmoke'
+            flipper = ''
             for system in systems:
+                if flipper: flipper = ''
+                else: flipper = color
                 service_rep = []
                 for service in rrs.get_distinct((action, system)):
                     mymap = rrs.get_submap((action, system, service))
@@ -140,7 +144,7 @@ class logins_mod(epylog.module.PythonModule):
                 for svcrep in service_rep:
                     if first:
                         sysrep[action] += (self.line1_rep %
-                                           (len(service_rep), system,
+                                           (flipper, len(service_rep), system,
                                             svcrep[0], svcrep[1]))
                         first = 0
                     else:
@@ -159,7 +163,11 @@ class logins_mod(epylog.module.PythonModule):
             users = urs.get_distinct((action,))
             users.sort()
             userrep[action] = ''
+            color = 'whitesmoke'
+            flipper = ''
             for user in users:
+                if flipper: flipper = ''
+                else: flipper = color
                 service_rep = []
                 for service in urs.get_distinct((action, user)):
                     mymap = urs.get_submap((action, user, service))
@@ -170,7 +178,8 @@ class logins_mod(epylog.module.PythonModule):
                 first = 1
                 for svcrep in service_rep:
                     if first:
-                        userrep[action] += self.line1_rep % (len(service_rep),
+                        userrep[action] += self.line1_rep % (flipper,
+                                                             len(service_rep),
                                                              user, svcrep[0],
                                                              svcrep[1])
                         first = 0
