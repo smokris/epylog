@@ -104,7 +104,7 @@ def mail_smtp(smtpserv, fromaddr, toaddr, msg, logger):
     logger.put(5, '>publishers.mail_smtp')
     import smtplib
     logger.puthang(3, 'Mailing it via the SMTP server %s' % smtpserv)
-    server = smtplib.SMTP(self.smtpserv)
+    server = smtplib.SMTP(smtpserv)
     server.sendmail(fromaddr, toaddr, msg)
     server.quit()
     logger.endhang(3)
@@ -113,7 +113,7 @@ def mail_smtp(smtpserv, fromaddr, toaddr, msg, logger):
 def mail_sendmail(sendmail, msg, logger):
     logger.put(5, '>publishers.mail_sendmail')
     logger.puthang(3, 'Mailing the message via sendmail')
-    p = os.popen(smtpserv, 'w')
+    p = os.popen(sendmail, 'w')
     p.write(msg)
     p.close()
     logger.endhang(3)
@@ -281,11 +281,11 @@ class MailPublisher:
 
         logger.put(3, 'Figuring out if we are using sendmail or smtplib')
         if re.compile('^/').search(self.smtpserv):
-            send_sendmail(self.smtpserv, msg, logger)
+            mail_sendmail(self.smtpserv, msg, logger)
         else:
             import socket
             fromaddr = 'root@%s' % socket.gethostname()
-            send_smtp(self.smtpserv, fromaddr, self.mailto, msg, logger)
+            mail_smtp(self.smtpserv, fromaddr, self.mailto, msg, logger)
         logger.put(1, 'Mailed the report to: %s' % tostr)
         logger.put(5, '<MailPublisher.publish')
 
@@ -442,14 +442,34 @@ class FilePublisher:
 
         logger.put(3, 'Verifying dirmask and filemask')
         msg = 'Invalid mask for %s: %s'
-        try: dirname = time.strftime(dirmask, time.localtime())
+        try: self.dirname = time.strftime(dirmask, time.localtime())
         except: epylog.ConfigError(msg % ('dirmask', dirmask), logger)
         try: path = config.get(sec, 'path')
         except: epylog.ConfigError(msg % 'path', logger)
         try: self.filename = time.strftime(filemask, time.localtime())
         except: epylog.ConfigError(msg % ('filemask', filemask), logger)
         self._prune_old(path, dirmask, expire)
-        self.path = os.path.join(path, dirname)
+        self.path = os.path.join(path, self.dirname)
+
+        logger.put(3, 'Checking if notify is set')
+        self.notify = []
+        try:
+            notify = config.get(sec, 'notify')
+            for addy in notify.split(','):
+                addy = addy.strip()
+                logger.put(3, 'Will notify: %s' % addy)
+                self.notify.append(addy)
+        except: pass
+        try: self.smtpserv = config.get(sec, 'smtpserv')
+        except: self.smtpserv = '/usr/sbin/sendmail -t'
+        if self.notify:
+            try:
+                self.pubroot = config.get(sec, 'pubroot')
+                logger.put(5, 'pubroot=%s' % self.pubroot)
+            except:
+                msg = 'File publisher requires a pubroot when notify is set'
+                raise epylog.ConfigError(msg, logger)
+        
         logger.put(5, 'path=%s' % self.path)
         logger.put(5, 'filename=%s' % self.filename)
         logger.put(5, '<FilePublisher.__init__')
@@ -503,12 +523,39 @@ class FilePublisher:
         html_report = make_html_page(template, starttime, endtime, title,
                                      module_reports, unparsed_strings, logger)
         logger.endhang(3)
-        repfile = os.path.join(self.path, '%s.html' % self.filename)
+        filename = '%s.html' % self.filename
+        repfile = os.path.join(self.path, filename)
         logger.put(3, 'Dumping the report into %s' % repfile)
         fh = open(repfile, 'w')
         fh.write(html_report)
         fh.close()
         logger.put(1, 'Report saved in: %s' % self.path)
+        if self.notify:
+            logger.puthang(3, 'Creating an email message')
+            publoc = '%s/%s/%s' % (self.pubroot, self.dirname, filename)
+            msg = 'New Epylog report is available at:\r\n%s' % publoc
+            import StringIO, MimeWriter
+            fh = StringIO.StringIO()
+            logger.put(3, 'Creating a main header')
+            mw = MimeWriter.MimeWriter(fh)
+            mw.addheader('Subject', '%s (report notification)' % title)
+            tostr = ', '.join(self.notify)
+            mw.addheader('To', tostr)
+            mw.addheader('X-Mailer', epylog.VERSION)
+            mw.addheader('Content-Transfer-Encoding', '8bit')
+            bfh = mw.startbody('text/plain; charset=iso-8859-1')
+            bfh.write(msg)
+            fh.seek(0)
+            msg = fh.read()
+            fh.close()
+            logger.put(3, 'Figuring out if we are using sendmail or smtplib')
+            if re.compile('^/').search(self.smtpserv):
+                mail_sendmail(self.smtpserv, msg, logger)
+            else:
+                import socket
+                fromaddr = 'root@%s' % socket.gethostname()
+                mail_smtp(self.smtpserv, fromaddr, self.notify, msg, logger)
+            logger.put(1, 'Notification mailed to: %s' % tostr)
 
         logfilen = '%s.log' % self.filename
         logfile = os.path.join(self.path, '%s.gz' % logfilen)

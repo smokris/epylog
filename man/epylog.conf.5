@@ -131,6 +131,24 @@ http://www.python.org/doc/current/lib/module-time.html
 .B expire_in
 A digit specifying the number of days after which the old directories
 should be removed. Default is 7.
+.TP
+.B notify
+Optionally send notifications to these email addresses when new
+reports become available. Comment out if no notification is
+desired. This is definitely redundant if you also use the mail
+publisher.
+.TP
+.B smtpserv
+Use this smtp server when sending notifications. Can be either a
+hostname or a path to sendmail. Defaults to "/usr/sbin/sendmail -t".
+.TP
+.B pubroot
+When generating a notification message, use this as publication root
+to make a link. E.g.:
+.br
+.B pubroot = http://www.example.com/epylog
+.br
+will make a link: http://www.example.com/epylog/dirname/filename.html
 
 .SH "COMMENTS"
 Lines starting with "#" will be considered commented out.
@@ -141,5 +159,5 @@ Konstantin Riabitsev <icon@phy.duke.edu>
 
 .SH "SEE ALSO"
 .LP 
-epylog(8), Epylog(3), epylog-modules(5)
+epylog(3), epylog(8), epylog-modules(5)
 

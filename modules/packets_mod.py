@@ -67,7 +67,7 @@ class packets_mod(InternalModule):
         self.ipchains_re = rc('\slog:\s\S+\s(\S*).*\sPROTO=(\d+)\s(\S*):\d*\s\S*:(\d+)')
         self.ipfilter_re = rc('ipmon\[\d+\]:.*\s(\S+),\d+\s->\s\S+,(\d+)\sPR\s(\S+)')
         self.etc_services_re = rc('^(\S*)\s+(\S*)')
-        self.trojan_list_re = rc('^(\S*)\s+(\S*)')
+        self.trojan_list_re = rc('^(\S*)\s+(.*)')
         self.etc_protocols_re = rc('^(\S*)\s+(\S*)')
 
         svcdict = self._parse_etc_services()
@@ -75,7 +75,8 @@ class packets_mod(InternalModule):
         trojans = opts.get('trojan_list', '')
         self.systems_collapse = int(opts.get('systems_collapse', '10'))
         self.ports_collapse = int(opts.get('ports_collapse', '10'))
-        
+
+        self.trojan_warning_wrap = '<font color="red">%s</font>'
         if trojans: svcdict = self._parse_trojan_list(trojans, svcdict)
         self.svcdict = svcdict
 
@@ -134,7 +135,8 @@ class packets_mod(InternalModule):
                 or self.empty_line_re.search(line)): continue
             try: pproto, trojan = self.trojan_list_re.search(line).groups()
             except: continue
-            if pproto not in svcdict: svcdict[pproto] = trojan
+            if pproto not in svcdict:
+                svcdict[pproto] = self.trojan_warning_wrap % trojan
         return svcdict
 
     ##
