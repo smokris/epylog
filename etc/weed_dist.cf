@@ -37,6 +37,7 @@ CROND.*: \(mailman\) CMD \(/usr/bin/python
 CROND.*: \(root\) CMD \(.*/sbin/rmmod -as\)
 CROND.*: \(root\) CMD \(/usr/lib/sa/sa\d
 CROND.*: \(root\) CMD \(run-parts
+anacron.*: Updated timestamp for job
 
 [bind]
 named.*: lame server resolving
