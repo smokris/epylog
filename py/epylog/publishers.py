@@ -36,7 +36,7 @@ import gzip
 def make_html_page(template, starttime, endtime, title, module_reports,
                    unparsed, logger):
     logger.put(5, '>make_html_page')
-    logger.put(4, 'Making a standard report page')
+    logger.put(3, 'Making a standard report page')
     fmtstr = re.sub(re.compile('%'), '%%', template)
     fmtstr = re.sub(re.compile('@@STARTTIME@@'), '%(starttime)s', fmtstr)
     fmtstr = re.sub(re.compile('@@ENDTIME@@'), '%(endtime)s', fmtstr)
@@ -53,23 +53,23 @@ def make_html_page(template, starttime, endtime, title, module_reports,
     valumap['title'] = title
     valumap['hostname'] = socket.gethostname()
     
-    logger.put(4, 'Concatenating the module reports together')
+    logger.put(3, 'Concatenating the module reports together')
     allrep = ''
     for modrep in module_reports:
-        logger.puthang(4, 'Processing report for "%s"' % modrep.name)
+        logger.puthang(3, 'Processing report for "%s"' % modrep.name)
         allrep = '%s\n<h2>%s</h2>\n%s' % (allrep, modrep.name,
                                           modrep.htmlreport)
-        logger.endhang(4)
+        logger.endhang(3)
     if allrep == '':
         allrep = 'No module reports'
     valumap['allrep'] = allrep
     
     if unparsed is not None:
-        logger.put(4, 'Regexing <, > and &')
+        logger.put(3, 'Regexing <, > and &')
         unparsed = re.sub(re.compile('&'), '&amp;', unparsed)
         unparsed = re.sub(re.compile('<'), '&lt;',  unparsed)
         unparsed = re.sub(re.compile('>'), '&gt;',  unparsed)
-        logger.put(4, 'Wrapping unparsed strings into <pre>')
+        logger.put(3, 'Wrapping unparsed strings into <pre>')
         unparsed = '<pre>\n%s</pre>' % unparsed
     else:
         unparsed = 'No unparsed strings'
@@ -77,6 +77,7 @@ def make_html_page(template, starttime, endtime, title, module_reports,
     valumap['version'] = epylog.VERSION
     
     endpage = fmtstr % valumap
+    logger.put(5, 'htmlreport follows:')
     logger.put(5, endpage)
     logger.put(5, '<make_html_page')
     return endpage
@@ -87,7 +88,7 @@ def do_chunked_gzip(infh, outfh, filename, logger):
     bardone = 0
     bartitle = 'Gzipping %s' % filename
     infh.seek(0)
-    logger.put(5, 'Doing chunked read from infh into gzfh')
+    logger.put(3, 'Doing chunked read from infh into gzfh')
     while 1:
         chunk = infh.read(epylog.CHUNK_SIZE)
         if not chunk:
@@ -96,7 +97,7 @@ def do_chunked_gzip(infh, outfh, filename, logger):
         gzfh.write(chunk)
         bardone += len(chunk)
         logger.progressbar(1, bartitle, bardone, bartotal)
-        logger.put(5, 'Wrote %d bytes' % len(chunk))
+        logger.put(3, 'Wrote %d bytes' % len(chunk))
     gzfh.close()
     logger.endbar(1, bartitle, 'gzipped down to %d bytes' % outfh.tell())
 
@@ -196,21 +197,22 @@ class MailPublisher:
             tfh = open(htmlfile, 'w')
             tfh.write(html_report)
             tfh.close()
-            logger.put(4, 'HTML report is in "%s"' % htmlfile)
+            logger.put(3, 'HTML report is in "%s"' % htmlfile)
             plainfile = tempfile.mktemp('PLAIN')
-            logger.put(4, 'PLAIN report will go into "%s"' % plainfile)
-            logger.put(4, 'Making a syscall to "%s"' % self.lynx)
+            logger.put(3, 'PLAIN report will go into "%s"' % plainfile)
+            logger.put(3, 'Making a syscall to "%s"' % self.lynx)
             exitcode = os.system('%s -dump %s > %s 2>/dev/null'
                                  % (self.lynx, htmlfile, plainfile))
             if exitcode or not os.access(plainfile, os.R_OK):
                 msg = 'Error making a call to "%s"' % self.lynx
                 raise epylog.SysCallError(msg, logger)
-            logger.puthang(4, 'Reading in the plain version')
+            logger.puthang(3, 'Reading in the plain version')
             tfh = open(plainfile)
             self.plainrep = tfh.read()
             tfh.close()
+            logger.put(5, 'plainrep follows:')
             logger.put(5, self.plainrep)
-            logger.endhang(4)
+            logger.endhang(3)
             logger.endhang(3)
 
         if self.rawlogs:
@@ -240,7 +242,7 @@ class MailPublisher:
         logger.puthang(3, 'Creating an email message')
         import StringIO, MimeWriter
         fh = StringIO.StringIO()
-        logger.put(4, 'Creating a main header')
+        logger.put(5, 'Creating a main header')
         mw = MimeWriter.MimeWriter(fh)
         mw.addheader('Subject', title)
         if len(self.mailto) > 1:
@@ -253,22 +255,22 @@ class MailPublisher:
         self.mw = mw
         
         if self.rawlogs > 0 and self.format == 'both':
-            logger.put(4, 'Making a html + plain + gzip message')
+            logger.put(5, 'Making a html + plain + gzip message')
             self._mk_both_rawlogs()
         elif self.rawlogs > 0 and self.format == 'html':
-            logger.put(4, 'Making a html + gzip message')
+            logger.put(5, 'Making a html + gzip message')
             self._mk_html_rawlogs()
         elif self.rawlogs > 0 and self.format == 'plain':
-            logger.put(4, 'Making a plain + gzip message')
+            logger.put(5, 'Making a plain + gzip message')
             self._mk_plain_rawlogs()
         elif self.rawlogs == 0 and self.format == 'both':
-            logger.put(4, 'Making a html + plain message')
+            logger.put(5, 'Making a html + plain message')
             self._mk_both_nologs()
         elif self.rawlogs == 0 and self.format == 'html':
-            logger.put(4, 'Making a html message')
+            logger.put(5, 'Making a html message')
             self._mk_html_nologs()
         elif self.rawlogs == 0 and self.format == 'plain':
-            logger.put(4, 'Making a plain message')
+            logger.put(5, 'Making a plain message')
             self._mk_plain_nologs()
         logger.endhang(3)
 
@@ -294,27 +296,27 @@ class MailPublisher:
         logger = self.logger
         mixed_mw = self.mw
         mixed_mw.addheader('Mime-Version', '1.0')
-        logger.put(4, 'Creating a multipart/mixed part')
+        logger.put(5, 'Creating a multipart/mixed part')
         mixed_mw.startmultipartbody('mixed')
 
-        logger.put(4, 'Creating a multipart/alternative part')
+        logger.put(5, 'Creating a multipart/alternative part')
         alt_mw = mixed_mw.nextpart()
         alt_mw.startmultipartbody('alternative')
 
-        logger.put(4, 'Creating a text/plain part')
+        logger.put(5, 'Creating a text/plain part')
         plain_mw = alt_mw.nextpart()
         plain_mw.addheader('Content-Transfer-Encoding', '8bit')
         plain_fh = plain_mw.startbody('text/plain; charset=iso-8859-1')
         plain_fh.write(self.plainrep)
 
-        logger.put(4, 'Creating a text/html part')
+        logger.put(5, 'Creating a text/html part')
         html_mw = alt_mw.nextpart()
         html_mw.addheader('Content-Transfer-Encoding', '8bit')
         html_fh = html_mw.startbody('text/html; charset=iso-8859-1')
         html_fh.write(self.htmlrep)
 
         alt_mw.lastpart()
-        logger.put(4, 'Creating an application/gzip part')
+        logger.put(5, 'Creating an application/gzip part')
         gzip_mw = mixed_mw.nextpart()
         gzip_mw.addheader('Content-Transfer-Encoding', 'base64')
         gzip_mw.addheader('Content-Disposition',
@@ -330,16 +332,16 @@ class MailPublisher:
         logger = self.logger
         mixed_mw = self.mw
         mixed_mw.addheader('Mime-Version', '1.0')
-        logger.put(4, 'Creating a multipart/mixed part')
+        logger.put(5, 'Creating a multipart/mixed part')
         mixed_mw.startmultipartbody('mixed')
 
-        logger.put(4, 'Creating a text/html part')
+        logger.put(5, 'Creating a text/html part')
         html_mw = mixed_mw.nextpart()
         html_mw.addheader('Content-Transfer-Encoding', '8bit')
         html_fh = html_mw.startbody('text/html; charset=iso-8859-1')
         html_fh.write(self.htmlrep)
 
-        logger.put(4, 'Creating an application/gzip part')
+        logger.put(5, 'Creating an application/gzip part')
         gzip_mw = mixed_mw.nextpart()
         gzip_mw.addheader('Content-Transfer-Encoding', 'base64')
         gzip_mw.addheader('Content-Disposition',
@@ -355,16 +357,16 @@ class MailPublisher:
         logger = self.logger
         mixed_mw = self.mw
         mixed_mw.addheader('Mime-Version', '1.0')
-        logger.put(4, 'Creating a multipart/mixed part')
+        logger.put(5, 'Creating a multipart/mixed part')
         mixed_mw.startmultipartbody('mixed')
 
-        logger.put(4, 'Creating a text/plain part')
+        logger.put(5, 'Creating a text/plain part')
         plain_mw = mixed_mw.nextpart()
         plain_mw.addheader('Content-Transfer-Encoding', '8bit')
         plain_fh = plain_mw.startbody('text/plain; charset=iso-8859-1')
         plain_fh.write(self.plainrep)
 
-        logger.put(4, 'Creating an application/gzip part')
+        logger.put(5, 'Creating an application/gzip part')
         gzip_mw = mixed_mw.nextpart()
         gzip_mw.addheader('Content-Transfer-Encoding', 'base64')
         gzip_mw.addheader('Content-Disposition',
@@ -379,16 +381,16 @@ class MailPublisher:
         logger = self.logger
         alt_mw = self.mw
         alt_mw.addheader('Mime-Version', '1.0')
-        logger.put(4, 'Creating a multipart/alternative part')
+        logger.put(5, 'Creating a multipart/alternative part')
         alt_mw.startmultipartbody('alternative')
 
-        logger.put(4, 'Creating a text/plain part')
+        logger.put(5, 'Creating a text/plain part')
         plain_mw = alt_mw.nextpart()
         plain_mw.addheader('Content-Transfer-Encoding', '8bit')
         plain_fh = plain_mw.startbody('text/plain; charset=iso-8859-1')
         plain_fh.write(self.plainrep)
 
-        logger.put(4, 'Creating a text/html part')
+        logger.put(5, 'Creating a text/html part')
         html_mw = alt_mw.nextpart()
         html_mw.addheader('Content-Transfer-Encoding', '8bit')
         html_fh = html_mw.startbody('text/html; charset=iso-8859-1')
@@ -402,9 +404,9 @@ class MailPublisher:
         logger = self.logger
         alt_mw = self.mw
         alt_mw.addheader('Mime-Version', '1.0')
-        logger.put(4, 'Creating a multipart/alternative part')
+        logger.put(5, 'Creating a multipart/alternative part')
         alt_mw.startmultipartbody('alternative')
-        logger.put(4, 'Creating a text/html part')
+        logger.put(5, 'Creating a text/html part')
         html_mw = alt_mw.nextpart()
         html_mw.addheader('Content-Transfer-Encoding', '8bit')
         html_fh = html_mw.startbody('text/html; charset=iso-8859-1')
@@ -416,7 +418,7 @@ class MailPublisher:
         self.logger.put(5, '>MailPublisher._mk_plain_nologs')
         logger = self.logger
         plain_mw = self.mw
-        logger.put(4, 'Creating a text/plain part')
+        logger.put(5, 'Creating a text/plain part')
         plain_mw.addheader('Content-Transfer-Encoding', '8bit')
         plain_fh = plain_mw.startbody('text/plain; charset=iso-8859-1')
         plain_fh.write(self.plainrep)

@@ -42,8 +42,8 @@ class ModuleReport:
 
 class Report:
     def __init__(self, config, logger):
-        logger.put(5, 'Entering Report.__init__')
-        logger.put(2, 'Starting Report object intialization')
+        logger.put(5, '>Report.__init__')
+        logger.put(3, 'Starting Report object intialization')
         self.logger = logger
         ##
         # publishers:     a tuple of publisher objects
@@ -59,23 +59,17 @@ class Report:
         self.tmpprefix = config.tmpprefix
         self.runtime = time.localtime()
         sec = 'report'
-        try:
-            title = config.get(sec, 'title')
-        except:
-            title = '@@HOSTNAME@@ system events: @@LOCALTIME@@'
-        try:
-            self.template = config.get(sec, 'template').strip()
+        try: title = config.get(sec, 'title')
+        except: title = '@@HOSTNAME@@ system events: @@LOCALTIME@@'
+        try: self.template = config.get(sec, 'template').strip()
         except:
             raise epylog.ConfigError('Report template not specified', logger)
         if not os.access(self.template, os.R_OK):
             msg = 'Report template "%s" is not readable' % self.template
             raise epylog.AccessError(msg, logger)
-        try:
-            self.unparsed = config.getboolean(sec, 'include_unparsed')
-        except:
-            self.unparsed = 1
-        try:
-            publishers = config.get(sec, 'publishers')
+        try: self.unparsed = config.getboolean(sec, 'include_unparsed')
+        except: self.unparsed = 1
+        try: publishers = config.get(sec, 'publishers')
         except:
             msg = 'No publishers defined in "%s"' % sec
             raise epylog.ConfigError(msg, logger)
@@ -128,24 +122,27 @@ class Report:
                 raise epylog.ConfigError(msg, logger)
             self.publishers.append(publisher)            
         logger.put(3, 'Finished with Report object initialization')
-        logger.put(5, 'Exiting Report.__init__')
+        logger.put(5, '<Report.__init__')
 
     def append_module_report(self, module_name, module_report):
+        logger = self.logger
+        logger.put(5, '>Report.append_module_report')
         if len(module_report) > 0:
             modrep = ModuleReport(module_name, module_report)
-            self.logger.put(2, 'Appending report for "%s" to the list'
-                            % module_name)
-            self.logger.put(5, module_report)
+            logger.put(3, 'Appending report for "%s"' % module_name)
+            logger.put(5, 'report follows')
+            logger.put(5, module_report)
             self.module_reports.append(modrep)
             self.useful = 1
         else:
-            self.logger.put(2, 'Module report is empty, ignoring')
+            logger.put(3, 'Module report is empty, ignoring')
+        logger.put(5, '<Report.append_module_report')
 
     def append_filtered_strings(self, module_name, fsfh):
         logger = self.logger
         logger.put(5, '>Report.append_filtered_strings')
         if self.filt_fh is None:
-            logger.put(2, 'No open filt_fh, ignoring')
+            logger.put(3, 'No open filt_fh, ignoring')
             return
         fsfh.seek(0, 2)
         if fsfh.tell() != 0:
@@ -164,7 +161,7 @@ class Report:
                     break
             self.useful = 1
         else:
-            logger.put(2, 'Filtered Strings are empty, ignoring')
+            logger.put(3, 'Filtered Strings are empty, ignoring')
         logger.put(5, '<Report.append_filtered_strings')
 
     def set_stamps(self, stamps):
@@ -209,7 +206,7 @@ class Report:
         starttime = time.strftime('%c', time.localtime(self.start_stamp))
         endtime = time.strftime('%c', time.localtime(self.end_stamp))
         for publisher in self.publishers:
-            logger.puthang(2, 'Invoking publisher "%s"' % publisher.name)
+            logger.puthang(3, 'Invoking publisher "%s"' % publisher.name)
             publisher.publish(template,
                               starttime,
                               endtime,
@@ -217,7 +214,7 @@ class Report:
                               self.module_reports,
                               unparsed,
                               rawfh)
-            logger.endhang(2)
+            logger.endhang(3)
 
 
     def is_report_useful(self):
@@ -277,7 +274,7 @@ class Report:
         temp_weedfh = open(temp_weed)
         weedfh.write(temp_weedfh.read())
         temp_weedfh.close()
-        logger.put(5, 'Done doing memory friendly grep')
+        logger.put(3, 'Done doing memory friendly grep')
         logger.put(5, '<Report._memory_friendly_grep')
 
     def _dump_lines(self, fromfh, tofh, number):
@@ -293,7 +290,7 @@ class Report:
             chunksize = chunksize + len(line)
             tofh.write(line)
         writenum = i + 1
-        logger.put(5, 'wrote %d lines into %s' % (writenum, tofh.name))
+        logger.put(3, 'wrote %d lines into %s' % (writenum, tofh.name))
         logger.put(5, 'total size of chunk: %d' % chunksize)
         logger.put(5, '<Report._dump_lines')
         return chunksize
@@ -302,7 +299,7 @@ class Report:
         logger = self.logger
         logger.put(5, '>Report._call_fgrep')
         fgrep = '/bin/fgrep -v -f %s %s > %s' % (filt, raw, weed)
-        logger.put(5, 'Calling fgrep with command "%s"' % fgrep)
+        logger.put(3, 'Calling fgrep with command "%s"' % fgrep)
         ecode = os.system(fgrep)
         logger.put(5, 'ecode=%d' % ecode)
         if ecode and ecode != 256:

@@ -41,16 +41,16 @@ class Module:
     def __init__(self, cfgfile, logtracker, tmpprefix, logger):
         self.logger = logger
         logger.put(5, '>Module.__init__')
-        logger.put(2, 'Initializing module for cfgfile %s' % cfgfile)
+        logger.put(3, 'Initializing module for cfgfile %s' % cfgfile)
         config = ConfigParser.ConfigParser()
-        logger.put(2, 'Reading in the cfgfile %s' % cfgfile)
+        logger.put(3, 'Reading in the cfgfile %s' % cfgfile)
         config.read(cfgfile)
         try: self.name = config.get('module', 'desc')
         except: self.name = 'Unnamed Module'
         try: self.enabled = config.getboolean('module', 'enabled')
         except: self.enabled = 0
         if not self.enabled:
-            logger.put(2, 'This module is not enabled. Skipping init.')
+            logger.put(3, 'This module is not enabled. Skipping init.')
             return
         try: self.executable = config.get('module', 'exec')
         except:
@@ -70,7 +70,7 @@ class Module:
 
         self.extraopts = {}
         if config.has_section('conf'):
-            logger.put(5, 'Found extra options')
+            logger.put(3, 'Found extra options')
             for option in config.options('conf'):
                 value = config.get('conf', option)
                 logger.put(5, '%s=%s' % (option, value))
@@ -135,7 +135,7 @@ class Module:
         dirname = os.path.dirname(self.executable)
         modname = os.path.basename(self.executable)
         modname = re.sub(re.compile('\.py'), '', modname)
-        logger.puthang(5, 'Importing module "%s"' % modname)
+        logger.puthang(3, 'Importing module "%s"' % modname)
         stuff = _loader.find_module_in_dir(modname, dirname)
         if stuff:
             try: module = _loader.load_module(modname, stuff)
@@ -147,7 +147,7 @@ class Module:
             msg = ('Could not find module "%s" in dir "%s"' %
                    (modname, dirname))
             raise epylog.ModuleError(msg, logger)
-        logger.endhang(5)
+        logger.endhang(3)
         try:
             modclass = getattr(module, modname)
             self.epymod = modclass(self.extraopts, logger)
@@ -155,7 +155,7 @@ class Module:
             msg = 'Could not instantiate class "%s" in module "%s"'
             msg = msg % (modname, self.executable)
             raise epylog.ModuleError(msg, logger)
-        logger.put(5, 'Opening "%s" for writing' % self.logfilter)
+        logger.put(3, 'Opening "%s" for writing' % self.logfilter)
         self.filtfh = open(self.logfilter, 'w+')
         logger.put(5, '<Module._init_internal_module')
 
@@ -177,7 +177,7 @@ class Module:
         logger = self.logger
         logger.put(5, '>Module.put_filtered')
         self.filtfh.write(line)
-        logger.put(5, 'Wrote "%s" into filtfh' % line)
+        logger.put(3, 'Wrote "%s" into filtfh' % line)
         logger.put(5, '<Module.put_filtered')
 
     def no_report(self):
@@ -196,10 +196,10 @@ class Module:
     def finalize_processing(self, rs):
         logger = self.logger
         logger.put(5, '>Module.finalize_processing')
-        logger.put(5, 'Finalizing for module "%s"' % self.name)
+        logger.put(3, 'Finalizing for module "%s"' % self.name)
         if self.filtfh.tell():
             if not rs.is_empty():
-                logger.put(5, 'Finalizing the processing')
+                logger.put(3, 'Finalizing the processing')
                 report = self.epymod.finalize(rs)
                 if report:
                     logger.put(5, 'Report follows:')
@@ -211,66 +211,66 @@ class Module:
                 self.logreport = None
                 self.logfilter = None
         else:
-            logger.put(5, 'No filtered strings for this module')
+            logger.put(3, 'No filtered strings for this module')
             self.logreport = None
             self.logfilter = None
         self.close_filtered()
-        logger.put(5, 'Done with this module, deleting')
+        logger.put(3, 'Done with this module, deleting')
         del self.epymod
         logger.put(5, '<Module.finalize_processing')
     
     def invoke_external_module(self, cfgdir):
         logger = self.logger
         logger.put(5, '>Module._invoke_external_module')
-        logger.put(5, 'Dumping strings into "%s"' % self.logdump)
+        logger.put(3, 'Dumping strings into "%s"' % self.logdump)
         totallen = self._dump_log_strings(self.logdump)
         if totallen == 0:
-            logger.put(2, 'Nothing in the logs for this module. Passing exec')
+            logger.put(3, 'Nothing in the logs for this module. Passing exec')
             return
-        logger.put(2, 'Setting LOGCAT to "%s"' % self.logdump)
+        logger.put(5, 'Setting LOGCAT to "%s"' % self.logdump)
         os.putenv('LOGCAT', self.logdump)
         modtmpprefix = os.path.join(self.tmpprefix, 'EPYLOG')
-        logger.put(2, 'Setting TMPPREFIX env var to "%s"' % modtmpprefix)
+        logger.put(5, 'Setting TMPPREFIX env var to "%s"' % modtmpprefix)
         os.putenv('TMPPREFIX', modtmpprefix)
-        logger.put(2, 'Setting CONFDIR env var to "%s"' % cfgdir)
+        logger.put(5, 'Setting CONFDIR env var to "%s"' % cfgdir)
         os.putenv('CONFDIR', cfgdir)
         if logger.is_quiet():
             logger.put(2, 'This line will never be seen. :)')
             os.putenv('QUIET', 'YES')
-        logger.put(2, 'Setting DEBUG to "%s"' % logger.debuglevel())
+        logger.put(5, 'Setting DEBUG to "%s"' % logger.debuglevel())
         os.putenv('DEBUG', logger.debuglevel())
-        logger.put(2, 'Setting LOGREPORT to "%s"' % self.logreport)
-        logger.put(2, 'Setting LOGFILTER to "%s"' % self.logfilter)
+        logger.put(5, 'Setting LOGREPORT to "%s"' % self.logreport)
+        logger.put(5, 'Setting LOGFILTER to "%s"' % self.logfilter)
         os.putenv('LOGREPORT', self.logreport)
         os.putenv('LOGFILTER', self.logfilter)
         if len(self.extraopts):
-            logger.put(3, 'Setting extra options')
+            logger.put(5, 'Setting extra options')
             for extraopt in self.extraopts.keys():
                 optname = string.upper(extraopt)
                 optval = self.extraopts[extraopt]
-                logger.put(2, 'Setting %s to "%s"' % (optname, optval))
+                logger.put(5, 'Setting %s to "%s"' % (optname, optval))
                 os.putenv(optname, optval)
-        logger.put(2, 'Invoking "%s"' % self.executable)
+        logger.put(3, 'Invoking "%s"' % self.executable)
         exitcode = os.system(self.executable)
-        logger.put(2, 'External module finished with code "%d"' % exitcode)
+        logger.put(3, 'External module finished with code "%d"' % exitcode)
         if exitcode and exitcode != 256:
             msg = ('External module "%s" exited abnormally (exit code %d)' %
                    (self.executable, exitcode))
             raise epylog.ModuleError(msg, logger)
-        logger.put(2, 'Checking if we have the report')
+        logger.put(3, 'Checking if we have the report')
         if not os.access(self.logreport, os.R_OK):
-            logger.put(2, 'Report %s does not exist!' % self.logreport)
+            logger.put(3, 'Report %s does not exist!' % self.logreport)
             self.logreport = None
-        logger.put(2, 'Checking if we have the filtered strings')
+        logger.put(3, 'Checking if we have the filtered strings')
         if not os.access(self.logfilter, os.R_OK):
-            logger.put(2, 'Filtered file %s does not exist!' % self.logfilter)
+            logger.put(3, 'Filtered file %s does not exist!' % self.logfilter)
             self.logfilter = None
         logger.put(5, '<Module._invoke_external_module')
         
     def sanity_check(self):
         logger = self.logger
         logger.put(5, '>Module.sanity_check')
-        logger.put(2, 'Checking if executable "%s" is sane' % self.executable)
+        logger.put(3, 'Checking if executable "%s" is sane' % self.executable)
         if not os.access(self.executable, os.F_OK):
             msg = ('Executable "%s" for module "%s" does not exist'
                    % (self.executable, self.name))
@@ -310,7 +310,7 @@ class Module:
         logger = self.logger
         logger.put(5, '>Module.get_filtered_strings_fh')
         if self.logfilter is None:
-            logger.put(2, 'No filtered strings from this module')
+            logger.put(3, 'No filtered strings from this module')
             return None
         logger.put(3, 'Opening filtstrings file "%s"' % self.logfilter)
         if not os.access(self.logfilter, os.R_OK):
@@ -324,7 +324,7 @@ class Module:
         logger = self.logger
         logger.put(5, '>Module._dump_log_strings')
         logger.put(5, 'filename=%s' % filename)
-        logger.put(4, 'Opening the "%s" for writing' % filename)
+        logger.put(3, 'Opening the "%s" for writing' % filename)
         fh = open(filename, 'w')
         len = 0
         for log in self.logs:
@@ -336,7 +336,7 @@ class Module:
     def _make_into_html(self, report):
         logger = self.logger
         logger.put(5, '>Module._make_into_html')
-        logger.put(5, 'Regexing entities')
+        logger.put(3, 'Regexing entities')
         report = re.sub(re.compile('&'), '&amp;', report)
         report = re.sub(re.compile('<'), '&lt;', report)
         report = re.sub(re.compile('>'), '&gt;', report)

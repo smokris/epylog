@@ -52,49 +52,49 @@ MESSAGE_REPEATED_RE = re.compile(r'last message repeated (\S+) times')
 class FormatError(exceptions.Exception):
     def __init__(self, message, logger):
         exceptions.Exception.__init__(self)
-        logger.put(2, 'Raising FormatError with message: %s' % message)
+        logger.put(5, '!FormatError: %s' % message)
         self.args = message
 
 class ConfigError(exceptions.Exception):
     def __init__(self, message, logger):
         exceptions.Exception.__init__(self)
-        logger.put(2, 'Raising ConfigError with message: %s' % message)
+        logger.put(5, '!ConfigError: %s' % message)
         self.args = message
 
 class AccessError(exceptions.Exception):
     def __init__(self, message, logger):
         exceptions.Exception.__init__(self)
-        logger.put(2, 'Raising AccessError with message: %s' % message)
+        logger.put(5, '!AccessError: %s' % message)
         self.args = message
 
 class OutOfRangeError(exceptions.Exception):
     def __init__(self, message, logger):
         exceptions.Exception.__init__(self)
-        logger.put(2, 'Raising OutOfRangeError with message: %s' % message)
+        logger.put(5, '!OutOfRangeError: %s' % message)
         self.args = message
 
 class ModuleError(exceptions.Exception):
     def __init__(self, message, logger):
         exceptions.Exception.__init__(self)
-        logger.put(2, 'Raising ModuleError with message: %s' % message)
+        logger.put(5, '!ModuleError: %s' % message)
         self.args = message
 
 class SysCallError(exceptions.Exception):
     def __init__(self, message, logger):
         exceptions.Exception.__init__(self)
-        logger.put(2, 'Raising SysCallError with message: %s' % message)
+        logger.put(5, '!SysCallError: %s' % message)
         self.args = message
 
 class NoSuchLogError(exceptions.Exception):
     def __init__(self, message, logger):
         exceptions.Exception.__init__(self)
-        logger.put(2, 'Raising NoSuchLogError with message: %s' % message)
+        logger.put(5, '!NoSuchLogError: %s' % message)
         self.args = message
 
 class GenericError(exceptions.Exception):
     def __init__(self, message, logger):
         exceptions.Exception.__init__(self)
-        logger.put(2, 'Raising GenericError with message: %s' % message)
+        logger.put(5, '!GenericError: %s' % message)
         self.args = message
 
 class Epylog:
@@ -119,8 +119,8 @@ class Epylog:
         except:
             msg = 'Could not parse the main config file "%s"' % cfgfile
             raise ConfigError(msg, logger)
-        logger.put(4, 'cfgdir=%s' % self.cfgdir)
-        logger.put(4, 'vardir=%s' % self.vardir)
+        logger.put(5, 'cfgdir=%s' % self.cfgdir)
+        logger.put(5, 'vardir=%s' % self.vardir)
         logger.endhang(3)
         
         logger.put(3, 'Checking if we can write to vardir')
@@ -150,7 +150,7 @@ class Epylog:
         # Create a file for unparsed strings.
         #
         self.unparsed = tempfile.mktemp('UNPARSED')
-        logger.put(5, 'Unparsed strings will go into %s' % self.unparsed)
+        logger.put(3, 'Unparsed strings will go into %s' % self.unparsed)
         ##
         # Get multimatch pref
         #
@@ -197,11 +197,9 @@ class Epylog:
             cfgfile = os.path.join(modcfgdir, file)
             if os.path.isfile(cfgfile):
                 logger.put(3, 'Found file: %s' % cfgfile)
-                logger.put(3, 'Checking if it ends in ".conf"')
                 if not re.compile('\.conf$').search(cfgfile, 1):
-                    logger.put(3, 'No match. Skipping this file')
+                    logger.put(3, 'Not a module config file, skipping.')
                     continue
-                logger.put(3, 'Ends in .conf all right.')
                 logger.puthang(3, 'Calling the Module init routines')
                 try:
                     module = Module(cfgfile, logtracker, tmpprefix, logger)
@@ -211,14 +209,12 @@ class Epylog:
                     continue
                 logger.endhang(3)
                 if module.enabled:
-                    logger.put(2, 'Module "%s" is enabled' % module.name)
-                    logger.put(3, 'Checking "%s" for sanity' % module.name)
+                    logger.put(3, 'Module "%s" is enabled' % module.name)
                     module.sanity_check()
-                    logger.put(3, 'Sanity checks passed. Remembering module')
                     self.modules.append(module)
                     priorities.append(module.priority)
                 else:
-                    logger.put(2, 'Module "%s" is not enabled, ignoring'
+                    logger.put(3, 'Module "%s" is not enabled, ignoring'
                                % module.name)
             else:
                 logger.put(3, '%s is not a regular file, ignoring' % cfgfile)
@@ -228,10 +224,10 @@ class Epylog:
         ##
         # Sort modules by priority
         #
-        logger.put(5, 'sorting modules by priority')
+        logger.put(3, 'sorting modules by priority')
         priorities.sort()
         for module in self.modules:
-            logger.put(5, 'analyzing module: %s' % module.name)
+            logger.put(3, 'analyzing module: %s' % module.name)
             for i in range(0, len(priorities)):
                 try:
                     logger.put(5, 'module.priority=%d, priorities[i]=%d'
@@ -279,14 +275,14 @@ class Epylog:
         logger = self.logger
         logger.put(5, '>Epylog.make_report')
         for module in self.modules:
-            logger.put(5, 'Analyzing reports from module "%s"' % module.name)
+            logger.put(3, 'Analyzing reports from module "%s"' % module.name)
             logger.put(5, 'logerport=%s' % module.logreport)
             logger.put(5, 'logfilter=%s' % module.logfilter)
             if module.logreport is None and module.logfilter is None:
-                logger.put(2, 'No output from module "%s"' % module.name)
-                logger.put(2, 'Skipping module "%s"' % module.name)
+                logger.put(3, 'No output from module "%s"' % module.name)
+                logger.put(3, 'Skipping module "%s"' % module.name)
                 continue
-            logger.put(2, 'Preparing a report for module "%s"' % module.name)
+            logger.put(3, 'Preparing a report for module "%s"' % module.name)
             module_report = module.get_html_report()
             if module_report is not None:
                 self.report.append_module_report(module.name, module_report)
@@ -304,7 +300,7 @@ class Epylog:
     def publish_report(self):
         logger = self.logger
         logger.put(5, '>Epylog.publish_report')
-        logger.put(2, 'Dumping all log strings into a temp file')
+        logger.put(3, 'Dumping all log strings into a temp file')
         tempfile.tempdir = self.tmpprefix
         rawfh = open(tempfile.mktemp('RAW'), 'w+')
         logger.put(3, 'RAW strings file created in "%s"' % rawfh.name)
@@ -321,8 +317,8 @@ class Epylog:
         
     def cleanup(self):
         logger = self.logger
-        logger.put(2, 'Cleanup routine called')
-        logger.put(2, 'Removing the temp dir "%s"' % self.tmpprefix)
+        logger.put(3, 'Cleanup routine called')
+        logger.put(3, 'Removing the temp dir "%s"' % self.tmpprefix)
         shutil.rmtree(self.tmpprefix)
 
     def _get_unparsed(self):
@@ -335,9 +331,9 @@ class Epylog:
         logger = self.logger
         logger.put(5, '>Epylog._process_internal_modules')
         logger.puthang(1, 'Processing internal modules')
-        logger.put(4, 'Collecting logfiles used by internal modules')
+        logger.put(3, 'Collecting logfiles used by internal modules')
         upfh = open(self.unparsed, 'w')
-        logger.put(5, 'Opened unparsed strings file in "%s"' % self.unparsed)
+        logger.put(3, 'Opened unparsed strings file in "%s"' % self.unparsed)
         logmap = {}
         for module in self.imodules:
             for log in module.logs:
@@ -346,7 +342,7 @@ class Epylog:
         logger.put(5, 'logmap follows')
         logger.put(5, logmap)
         pq = ProcessingQueue(QUEUE_LIMIT, logger)
-        logger.put(5, 'Starting the processing threads')
+        logger.put(3, 'Starting the processing threads')
         threads = []
         try:
             while 1:
@@ -360,7 +356,7 @@ class Epylog:
                 matched = 0
                 lines = 0
                 while 1:
-                    logger.put(5, 'Getting next line from "%s"' % entry)
+                    logger.put(3, 'Getting next line from "%s"' % entry)
                     try:
                         linemap = log.nextline()
                     except FormatError, e:
@@ -396,7 +392,7 @@ class Epylog:
                 message = '%d of %d lines parsed' % (matched, lines)
                 logger.endbar(1, bartitle, message)
         finally:
-            logger.put(5, 'Notifying the threads that they may die now')
+            logger.put(3, 'Notifying the threads that they may die now')
             pq.tell_threads_to_quit(threads)
             bartitle = 'Waiting for threads to finish'
             bartotal = len(threads)
@@ -429,6 +425,8 @@ class Epylog:
 class ProcessingQueue:
     def __init__(self, limit, logger):
         self.logger = logger
+        logger.put(5, '>ProcessingQueue.__init__')
+        logger.put(3, 'Initializing ProcessingQueue')
         self.mon = threading.RLock()
         self.iw = threading.Condition(self.mon)
         self.ow = threading.Condition(self.mon)
@@ -436,66 +434,94 @@ class ProcessingQueue:
         self.resultsets = {}
         self.limit = limit
         self.working = 1
+        logger.put(5, '<ProcessingQueue.__init__')
 
     def put_linemap(self, linemap, handler, module):
         self.mon.acquire()
+        logger = self.logger
+        logger.put(5, '>ProcessingQueue.put_linemap')
         while len(self.lineq) >= self.limit:
-            self.logger.put(5, 'Line queue is full, waiting...')
+            logger.put(5, 'Line queue is full, waiting...')
             self.ow.wait()
         self.lineq.append([linemap, handler, module])
+        logger.put(3, 'Added a new line in lineq')
+        logger.put(5, 'items in lineq: %d' % len(self.lineq))
         self.iw.notify()
+        logger.put(5, '<ProcessingQueue.put_linemap')
         self.mon.release()
 
     def get_linemap(self):
-        logger = self.logger
         self.mon.acquire()
+        logger = self.logger
+        logger.put(5, '>ProcessingQueue.get_linemap')
         while not self.lineq and self.working:
             logger.put(5, 'Line queue is empty, waiting...')
             self.iw.wait()
         if self.working:
             item = self.lineq.pop(0)
+            logger.put(3, 'Got new linemap for the thread.')
+            logger.put(5, 'items in lineq: %d' % len(self.lineq))
             self.ow.notify()
         else: item = None
+        logger.put(5, '<ProcessingQueue.get_linemap')
         self.mon.release()
         return item
 
     def put_result(self, line, result, module):
         self.mon.acquire()
+        logger = self.logger
+        logger.put(5, '>ProcessingQueue.put_result')
         if result is not None:
             try: self.resultsets[module].add_result(result)
             except KeyError:
                 self.resultsets[module] = Result()
                 self.resultsets[module].add_result(result)
             module.put_filtered(line)
+            logger.put(3, 'Added result from module "%s"' % module.name)
+        else:
+            logger.put(3, '"%s" returned result None. Skipping.' % module.name)
+        logger.put(5, '<ProcessingQueue.put_result')
         self.mon.release()
 
     def get_resultset(self, module):
-        return self.resultsets[module]
+        self.logger.put(5, '>ProcessingQueue.get_resultset')
+        rs = self.resultsets[module]
+        self.logger.put(5, '<ProcessingQueue.get_resultset')
+        return rs
     
     def tell_threads_to_quit(self, threads):
         self.mon.acquire()
-        self.logger.put(1, 'Telling all threads to quit')
-        self.logger.put(5, 'Waiting till queue is empty')
-        while self.lineq: self.ow.wait()
-        self.logger.put(5, 'Set working to 0')
+        logger = self.logger
+        logger.put(5, '>ProcessingQueue.tell_threads_to_quit')
+        logger.put(1, 'Telling all threads to quit')
+        logger.put(5, 'Waiting till queue is empty')
+        while self.lineq:
+            logger.put(5, 'items in lineq: %d' % len(self.lineq))
+            self.ow.wait()
+        self.logger.put(5, 'working=0')
         self.working = 0
+        logger.put(3, 'Sending %d semaphore notifications' % len(threads))
         for t in threads: self.iw.notify()
+        logger.put(5, '<ProcessingQueue.tell_threads_to_quit')
         self.mon.release()
 
 class ConsumerThread(threading.Thread):
     def __init__(self, queue, logger):
         threading.Thread.__init__(self)
+        logger.put(5, '>ConsumerThread.__init__')
         self.logger = logger
         self.queue = queue
+        logger.put(5, '<ConsumerThread.__init__')
 
     def run(self):
         logger = self.logger
+        logger.put(5, '>ConsumerThread.run')
         while self.queue.working:
-            logger.put(5, '%s: getting a new linemap' % self.getName())
+            logger.put(3, '%s: getting a new linemap' % self.getName())
             item = self.queue.get_linemap()
             if item is not None:
                 linemap, handler, module = item
-                logger.put(5, '%s: calling the handler' % self.getName())
+                logger.put(3, '%s: calling the handler' % self.getName())
                 try:
                     result = handler(linemap)
                     if result is not None:
@@ -515,7 +541,8 @@ class ConsumerThread(threading.Thread):
                     logger.put(0, erep)
             else:
                 logger.put(5, '%s: Item is none.' % self.getName())
-        logger.put(5, '%s: I am now dying' % self.getName())
+        logger.put(3, '%s: I am now dying' % self.getName())
+        logger.put(5, '<ConsumerThread.run')
 
 class Result(dict):
     def add_result(self, result):
