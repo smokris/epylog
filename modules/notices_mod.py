@@ -85,7 +85,8 @@ class notices_mod(InternalModule):
             #
             rc('attempt to access beyond end of device'): self.dirty_mount,
             rc('rw=\d+, want=\d+, limit=\d+'): self.dirty_mount,
-            rc('Directory sread .* failed'): self.dirty_mount
+            rc('Directory sread .* failed'): self.dirty_mount,
+            rc('kernel: bread in fat_access failed'): self.dirty_mount
         }
 
         self.normal   = 0
