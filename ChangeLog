@@ -1,5 +1,7 @@
 Epylog-0.9.4
 	* Fix for bug #38 (incorrect offsets were causing backtrace)
+	* Normalized logger calls (bug #9)
+	* Enhancements to mail and packets modules
 
 Epylog-0.9.3
 	* Autoconf now used to configure and build epylog.
