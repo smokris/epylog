@@ -358,11 +358,16 @@ class Log:
             except epylog.NoSuchLogError:
                 msg = 'Invalid index "%d" for log "%s"' % (ix, self.entry)
                 raise epylog.OutOfRangeError(msg, logger)
+            
+        logger.put(3, 'Checking if offset makes sense')
+        if self.loglist[ix].end_offset < offset:
+            msg = 'Offset is past the end of the log!'
+            raise epylog.OutOfRangeError(msg, logger)
         if whence:
-            logger.put(5, 'Setting range END for entry "%s"' % self.entry)
+            logger.put(3, 'Setting range END for entry "%s"' % self.entry)
             self.orange.setend(ix, offset, self.loglist)
         else:
-            logger.put(5, 'Setting range START for entry "%s"' % self.entry)
+            logger.put(3, 'Setting range START for entry "%s"' % self.entry)
             self.orange.setstart(ix, offset, self.loglist)
         logger.put(5, '<Log.set_range_param')
 
