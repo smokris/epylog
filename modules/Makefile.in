@@ -31,29 +31,19 @@ PERL_MODULE_DIR = @PERL_MODULE_DIR@
 MODULES_DIR = $(pkgdatadir)/modules
 LYNX_BIN = @LYNX_BIN@
 
-SUBDIRS = 
 INSTALLDIRS = $(MODULES_DIR)
 EPYMODS = mail_mod notices_mod spamd_mod logins_mod packets_mod weeder_mod
 
 all:
 	$(COMPILEDIR_SCRIPT) .
-	for subdir in $(SUBDIRS) ; do \
-	  $(MAKE) -C $$subdir all ; \
-	done
 
 install: all installdirs
 	for EPYMOD in $(EPYMODS); do \
 	  $(INSTALL_DATA) $$EPYMOD.py $$EPYMOD.pyc \
 			$(DESTDIR)$(MODULES_DIR)/; \
 	done
-	for subdir in $(SUBDIRS) ; do \
-	  $(MAKE) -C $$subdir install ; \
-	done
 
 uninstall:
-	for subdir in $(SUBDIRS) ; do \
-	  $(MAKE) -C $$subdir uninstall ; \
-	done
 	for EPYMOD in $(EPYMODS); do \
 	  $(RM) $(MODULES_DIR)/$$EPYMOD.py*; \
 	done
@@ -61,14 +51,8 @@ uninstall:
 
 clean:
 	$(RM) *.pyc *.pyo
-	for subdir in $(SUBDIRS) ; do \
-	  $(MAKE) -C $$subdir clean ; \
-	done
 
 distclean: clean
-	for subdir in $(SUBDIRS) ; do \
-	  $(MAKE) -C $$subdir distclean ; \
-	done
 	$(RM) Makefile
 
 installdirs:

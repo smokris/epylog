@@ -61,7 +61,7 @@ AC_MSG_RESULT($PyVERSION)
 # make sure Python is version 2
 if test "$PyMAJVERSION" -lt "2" || \
    (test "$PyMAJVERSION" -eq "2" && test "$PyMINVERSION" -lt "2"); then
-  AC_MSG_ERROR([This version of kibot requires at least Python version 2.2.  
+  AC_MSG_ERROR([This version of epylog requires at least Python version 2.2.  
 The one you have seems to be $PyVERSION.  You can specify an alternate python 
 by using (for example) --with-python=/usr/bin/python2.2])
 fi

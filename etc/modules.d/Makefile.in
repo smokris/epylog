@@ -30,15 +30,10 @@ PERL_MODULE_DIR = @PERL_MODULE_DIR@
 MODULES_DIR = $(pkgdatadir)/modules
 LYNX_BIN = @LYNX_BIN@
 
-PYDIRS = 
-SUBDIRS = 
 INSTALLDIRS = $(pkgconfdir)/modules.d
 MCONFS = mail packets weeder logins notices spamd
 
 all:
-	for subdir in $(SUBDIRS) ; do \
-	  $(MAKE) -C $$subdir all ; \
-	done
 	for MCONF in $(MCONFS); do \
 	  sed -e 's|%%pkgconfdir%%|$(pkgconfdir)|g; s|%%MODULES_DIR%%|$(MODULES_DIR)|g' $$MCONF.conf.in > $$MCONF.conf; \
 	done
@@ -47,14 +42,8 @@ install: all installdirs
 	for MCONF in $(MCONFS); do \
 	  $(INSTALL_DATA) $$MCONF.conf $(DESTDIR)$(pkgconfdir)/modules.d/; \
 	done
-	for subdir in $(SUBDIRS) ; do \
-	  $(MAKE) -C $$subdir install ; \
-	done
 
 uninstall:
-	for subdir in $(SUBDIRS) ; do \
-	  $(MAKE) -C $$subdir uninstall ; \
-	done
 	for MCONF in $(MCONFS); do \
 	  $(RM) $(pkgconfdir)/modules.d/$$MCONF.conf; \
 	done
@@ -64,15 +53,9 @@ clean:
 	for MCONF in $(MCONFS); do \
 	  $(RM) $$MCONF.conf; \
 	done
-	for subdir in $(SUBDIRS) ; do \
-	  $(MAKE) -C $$subdir clean ; \
-	done
 
 distclean: clean
 	$(RM) Makefile
-	for subdir in $(SUBDIRS) ; do \
-	  $(MAKE) -C $$subdir distclean ; \
-	done
 
 installdirs:
 	for dir in $(INSTALLDIRS); do \

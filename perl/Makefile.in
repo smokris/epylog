@@ -30,41 +30,24 @@ PERL_MODULE_DIR = @PERL_MODULE_DIR@
 MODULES_DIR = $(pkgdatadir)/modules
 LYNX_BIN = @LYNX_BIN@
 
-PYDIRS =
-SUBDIRS =
 INSTALLDIRS = $(PERL_MODULE_DIR) $(mandir)/man3
 
 all:
 	perldoc epylog.pm > epylog.3
-	for subdir in $(SUBDIRS) ; do \
-	  $(MAKE) -C $$subdir all ; \
-	done
 
 install: all installdirs
 	$(INSTALL_DATA) epylog.pm $(DESTDIR)$(PERL_MODULE_DIR)/epylog.pm
 	$(INSTALL_DATA) epylog.3  $(DESTDIR)$(mandir)/man3/epylog.3
-	for subdir in $(SUBDIRS) ; do \
-	  $(MAKE) -C $$subdir install ; \
-	done
 
 uninstall:
-	for subdir in $(SUBDIRS) ; do \
-	  $(MAKE) -C $$subdir uninstall ; \
-	done
 	$(RM) $(PERL_MODULE_DIR)/epylog.pm
 	$(RM) $(mandir)/man3/epylog.3
 
 clean:
 	$(RM) epylog.3
-	for subdir in $(SUBDIRS) ; do \
-	  $(MAKE) -C $$subdir clean ; \
-	done
 
 distclean: clean
 	$(RM) Makefile
-	for subdir in $(SUBDIRS) ; do \
-	  $(MAKE) -C $$subdir distclean ; \
-	done
 
 installdirs:
 	for dir in $(INSTALLDIRS); do \

@@ -30,7 +30,6 @@ PERL_MODULE_DIR = @PERL_MODULE_DIR@
 MODULES_DIR = $(pkgdatadir)/modules
 LYNX_BIN = @LYNX_BIN@
 
-PYDIRS = 
 SUBDIRS = modules.d
 INSTALLDIRS = $(pkgconfdir)
 CFGFILES = epylog.conf notice_dist.xml notice_local.xml report_template.html \

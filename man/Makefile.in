@@ -30,43 +30,26 @@ PERL_MODULE_DIR = @PERL_MODULE_DIR@
 MODULES_DIR = $(pkgdatadir)/modules
 LYNX_BIN = @LYNX_BIN@
 
-PYDIRS =
-SUBDIRS = 
 INSTALLDIRS = $(mandir)/man8 $(mandir)/man5
 MANFILES = epylog.8 epylog.conf.5 epylog-modules.5
 
 all:
-	for subdir in $(SUBDIRS) ; do \
-	  $(MAKE) -C $$subdir all ; \
-	done
 
 install: all installdirs
 	for MANFILE in $(MANFILES); do \
 	  MANDIR=$(mandir)/man`echo $$MANFILE | sed -e 's/.*\.//g'`; \
 	  $(INSTALL_DATA) $$MANFILE $(DESTDIR)$$MANDIR/$$MANFILE; \
 	done
-	for subdir in $(SUBDIRS) ; do \
-	  $(MAKE) -C $$subdir install ; \
-	done
 
 uninstall:
-	for subdir in $(SUBDIRS) ; do \
-	  $(MAKE) -C $$subdir uninstall ; \
-	done
 	for MANFILE in $(MANFILES); do \
 	  MANDIR=$(mandir)/man`echo $$MANFILE | sed -e 's/.*\.//g'`; \
 	  $(RM) $$MANDIR/$$MANFILE; \
 	done
 
 clean:
-	for subdir in $(SUBDIRS) ; do \
-	  $(MAKE) -C $$subdir clean ; \
-	done
 
 distclean: clean
-	for subdir in $(SUBDIRS) ; do \
-	  $(MAKE) -C $$subdir distclean ; \
-	done
 	$(RM) Makefile
 
 installdirs:

@@ -32,40 +32,23 @@ MODULES_DIR = $(pkgdatadir)/modules
 LYNX_BIN = @LYNX_BIN@
 
 PYDIR = epylog
-
-SUBDIRS = 
 INSTALLDIRS = $(PY_MODULE_DIR)/$(PYDIR)
 
 all:
 	$(COMPILEDIR_SCRIPT) $(PYDIR)
-	for subdir in $(SUBDIRS) ; do \
-	  $(MAKE) -C $$subdir all ; \
-	done
 
 install: all installdirs
 	for PYFILE in $(PYDIR)/*.py $(PYDIR)/*.pyc; do \
 	  $(INSTALL_DATA) $$PYFILE $(DESTDIR)$(PY_MODULE_DIR)/$(PYDIR); \
 	done
-	for subdir in $(SUBDIRS) ; do \
-	  $(MAKE) -C $$subdir install ; \
-	done
 
 uninstall:
-	for subdir in $(SUBDIRS) ; do \
-	  $(MAKE) -C $$subdir uninstall ; \
-	done
 	$(RM) -rf $(INSTALLDIRS)
 
 clean:
-	for subdir in $(SUBDIRS) ; do \
-	  $(MAKE) -C $$subdir clean ; \
-	done
 	$(RM) $(PYDIR)/*.pyc $(PYDIR)/*.pyo
 
 distclean: clean
-	for subdir in $(SUBDIRS) ; do \
-	  $(MAKE) -C $$subdir distclean ; \
-	done
 	$(RM) Makefile
 
 installdirs:

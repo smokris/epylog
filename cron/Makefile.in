@@ -31,7 +31,6 @@ PERL_MODULE_DIR = @PERL_MODULE_DIR@
 MODULES_DIR = $(pkgdatadir)/modules
 LYNX_BIN = @LYNX_BIN@
 
-SUBDIRS = 
 INSTALLDIRS = $(CRON_DIR)
 CRONFILES = epylog.cron
 
@@ -39,36 +38,21 @@ all:
 	for CRONFILE in $(CRONFILES); do \
 	  sed 's|%%sbindir%%|$(sbindir)|g' $$CRONFILE.in > $$CRONFILE; \
 	done
-	for subdir in $(SUBDIRS) ; do \
-	  $(MAKE) -C $$subdir all ; \
-	done
 
 install: all installdirs
 	for CRONFILE in $(CRONFILES); do \
 	  $(INSTALL_SCRIPT) $$CRONFILE $(DESTDIR)$(CRON_DIR)/$$CRONFILE; \
 	done
-	for subdir in $(SUBDIRS) ; do \
-	  $(MAKE) -C $$subdir install ; \
-	done
 
 uninstall:
-	for subdir in $(SUBDIRS) ; do \
-	  $(MAKE) -C $$subdir uninstall ; \
-	done
 	for CRONFILE in $(CRONFILES); do \
 	  $(RM) $(CRON_DIR)/$$CRONFILE; \
 	done
 
 clean:
-	for subdir in $(SUBDIRS) ; do \
-	  $(MAKE) -C $$subdir clean ; \
-	done
 	$(RM) $(CRONFILES)
 
 distclean: clean
-	for subdir in $(SUBDIRS) ; do \
-	  $(MAKE) -C $$subdir distclean ; \
-	done
 	$(RM) Makefile
 
 installdirs:
