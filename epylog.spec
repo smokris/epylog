@@ -52,7 +52,8 @@ external perl modules, or intend to write some of your own.
 #
 %configure \
     --with-python=%{__python} \
-    --with-lynx=%{_bindir}/links
+    --with-lynx=%{_bindir}/links \
+    --with-site-perl=%{_perl_vendorlib}
 ##
 # Fix version.
 #
