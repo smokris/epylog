@@ -28,6 +28,6 @@ enable_iptables = 1
 enable_ipchains = 1
 enable_ipfilter = 0
 ##
-# Sort by any of the following: packets, source, dest, port
+# Sort by any of the following: packets, source, system, port
 #
 sortby=packets
