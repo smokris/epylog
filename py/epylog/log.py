@@ -26,7 +26,16 @@ def mkstamp_from_syslog_datestr(datestr, monthmap):
         (m, d, t) = datestr.split()[:3]
         y = str(monthmap[m])
         datestr = string.join([y, m, d, t], ' ')
-        timestamp = time.mktime(time.strptime(datestr, '%Y %b %d %H:%M:%S'))
+        tuptime = time.strptime(datestr, '%Y %b %d %H:%M:%S')
+        ##
+        # Python 2.2.2 (at least) breaks with DST.
+        # Work around.
+        #
+        localtime = time.localtime(time.mktime(tuptime))
+        ltime = list(tuptime)
+        ltime[8] = localtime[8]
+        tuptime = tuple(ltime)
+        timestamp = int(time.mktime(tuptime))
     except:
         timestamp = -1
     return timestamp

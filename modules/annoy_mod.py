@@ -3,11 +3,11 @@
 import re
 import string
 import epylog
-from epylog import Result
+from epylog import Result, InternalModule
 
-class annoy_mod(epylog.module.PythonModule):
+class annoy_mod(InternalModule):
     def __init__(self, opts, logger):
-        epylog.module.PythonModule.__init__(self)
+        InternalModule.__init__(self)
         self.logger = logger
         rc = re.compile
         self.regex_map = {

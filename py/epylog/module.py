@@ -4,10 +4,6 @@ import os
 import mytempfile as tempfile
 import string
 import re
-import time
-import threading
-import pwd
-import socket
 
 from ihooks import BasicModuleLoader
 _loader = BasicModuleLoader()
@@ -132,7 +128,7 @@ class Module:
             msg = 'Could not instantiate class "%s" in module "%s"'
             msg = msg % (modname, self.executable)
             raise epylog.ModuleError(msg, logger)
-        logger.put(5, 'Opening "%s" for writing')
+        logger.put(5, 'Opening "%s" for writing' % self.logfilter)
         self.filtfh = open(self.logfilter, 'w+')
         logger.put(5, '<Module._init_internal_module')
 
@@ -192,7 +188,7 @@ class Module:
         self.close_filtered()
         logger.put(5, 'Done with this module, deleting')
         del self.epymod
-        logger.put(5, '<Module._invoke_internal_module')
+        logger.put(5, '<Module.finalize_processing')
     
     def invoke_external_module(self, cfgdir):
         logger = self.logger
@@ -319,34 +315,3 @@ class Module:
         report = '<pre>\n%s\n</pre>' % report
         logger.put(5, '<Module._make_into_html')
         return report
-
-class PythonModule:
-    def __init__(self):
-        self._known_hosts = {}
-        self._known_uids = {}
-        
-    def getuname(self, uid):
-        """get username for a given uid"""
-        uid = int(uid)
-        try: return self._known_uids[uid]
-        except KeyError: pass
-
-        try: name = pwd.getpwuid(uid)[0]
-        except KeyError: name = "uid=%d" % uid
-
-        self._known_uids[uid] = name
-        return name
-
-    def gethost(self, ip_addr):
-        """do reverse lookup on an ip address"""
-        try: return self._known_hosts[ip_addr]
-        except KeyError: pass
-
-        try: name = socket.gethostbyaddr(ip_addr)[0]
-        except socket.error: name = ip_addr
-
-        self._known_hosts[ip_addr] = name
-        return name
-        
-    def get_smm(self, lm):
-        return (lm['system'], lm['message'], lm['multiplier'])

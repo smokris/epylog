@@ -1,12 +1,12 @@
 import ConfigParser
 import exceptions
 import os
-import pickle
 import shutil
 import mytempfile as tempfile
 import re
-import time
 import threading
+import pwd
+import socket
 
 from report import Report
 from module import Module
@@ -374,11 +374,12 @@ class ProcessingQueue:
 
     def put_result(self, line, result, module):
         self.mon.acquire()
-        try: self.resultsets[module].add(result)
-        except KeyError:
-            self.resultsets[module] = ResultSet()
-            self.resultsets[module].add(result)
-        module.put_filtered(line)
+        if result is not None:
+            try: self.resultsets[module].add(result)
+            except KeyError:
+                self.resultsets[module] = ResultSet()
+                self.resultsets[module].add(result)
+            module.put_filtered(line)
         self.mon.release()
 
     def get_resultset(self, module):
@@ -458,3 +459,78 @@ class Result:
     def __init__(self, result, multiplier):
         self.result = result
         self.multiplier = multiplier
+
+class InternalModule:
+    def __init__(self):
+        self._known_hosts = {}
+        self._known_uids = {}
+        
+    def getuname(self, uid):
+        """get username for a given uid"""
+        uid = int(uid)
+        try: return self._known_uids[uid]
+        except KeyError: pass
+
+        try: name = pwd.getpwuid(uid)[0]
+        except KeyError: name = "uid=%d" % uid
+
+        self._known_uids[uid] = name
+        return name
+
+    def gethost(self, ip_addr):
+        """do reverse lookup on an ip address"""
+        try: return self._known_hosts[ip_addr]
+        except KeyError: pass
+
+        try: name = socket.gethostbyaddr(ip_addr)[0]
+        except socket.error: name = ip_addr
+
+        self._known_hosts[ip_addr] = name
+        return name
+        
+    def get_smm(self, lm):
+        return (lm['system'], lm['message'], lm['multiplier'])
+
+class Logger:
+    indent = '  '
+    hangmsg = []
+    hanging = 0
+    
+    def __init__(self, loglevel):
+        self.loglevel = loglevel
+
+    def is_quiet(self):
+        if self.loglevel == 0:
+            return 1
+        else:
+            return 0
+
+    def debuglevel(self):
+        return str(self.loglevel)
+
+    def put(self, level, message):
+        if (level <= self.loglevel):
+            if self.hanging:
+                self.hanging = 0
+            print '%s%s' % (self.__getindent(), message)
+
+    def puthang(self, level, message):
+        if (level <= self.loglevel):
+            print '%sInvoking: "%s"...' % (self.__getindent(), message)
+            self.hanging = 1
+            self.hangmsg.append(message)
+
+
+    def endhang(self, level, message='done'):
+        if (level <= self.loglevel):
+            hangmsg = self.hangmsg.pop()
+            if self.hanging:
+                self.hanging = 0
+                print '%s%s...%s' % (self.__getindent(), hangmsg, message)
+            else:
+                print '%s(Hanging from "%s")....%s' % (self.__getindent(),
+                                                       hangmsg, message)
+
+    def __getindent(self):
+        indent = self.indent * len(self.hangmsg)
+        return indent
