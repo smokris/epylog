@@ -155,6 +155,7 @@ class packets_mod(InternalModule):
             self.logger.put(3, 'Unknown iptables entry: %s' % msg)
             return None
         source = self.gethost(src)
+        dpt = int(dpt)
         proto = proto.lower()
         return {(source, sys, dpt, proto, logtype): mult}
 
@@ -165,6 +166,7 @@ class packets_mod(InternalModule):
             self.logger.put(3, 'Unknown ipchains entry: %s' % msg)
             return None
         source = self.gethost(src)
+        dpt = int(dpt)
         proto = self.protodict.get(proto, '??')
         return {(source, sys, dpt, proto, logtype): mult}
 
@@ -175,6 +177,7 @@ class packets_mod(InternalModule):
             self.logger.put(3, 'Unknown ipfilter entry: %s' % msg)
             return None
         source = self.gethost(src)
+        dpt = int(dpt)
         proto = proto.lower()
         return {(source, sys, dpt, proto, 'LOGGED'): mult}
 
@@ -222,11 +225,8 @@ class packets_mod(InternalModule):
                             ports.append((dpt, proto))
                         if logtype not in logtypes: logtypes.append(logtype)
                         packets += mult
-                if len(ports) > 1:
-                    #port = self.collapsed_ports_rep % len(ports)
-                    port = (-1, len(ports))
-                else:
-                    port = ports[0]                    
+                if len(ports) > 1: port = (-1, len(ports))
+                else: port = ports[0]                    
                 if len(logtypes) > 1: logtype = '[%d]' % len(logtypes)
                 else: logtype = logtypes[0]
                 system = self.collapsed_hosts_rep % len(systems)
@@ -247,16 +247,15 @@ class packets_mod(InternalModule):
                         while 1:
                             try: entry, mult = portmap.popitem()
                             except KeyError: break
-                            port, logtype = entry
-                            logger.put(2, 'Processing port %s' % port)
+                            dpt, proto, logtype = entry
+                            logger.put(2, 'Processing port %s' % dpt)
                             if logtype not in logtypes:
                                 logtypes.append(logtype)
                             packets += mult
                         if len(logtypes) > 1:
                             logtype = '[%d]' % len(logtypes)
                         else: logtype = logtypes[0]
-                        #port = self.collapsed_ports_rep % len(ports)
-                        port = (-1, len(ports))
+                        port = (-1, len(dpts))
                         self._addfin(fin, packets, source, system, port,
                                      logtype)
                     else:
