@@ -52,7 +52,9 @@ class logins_mod(InternalModule):
             rc('\(pam_unix\)\S*:.*authentication\s*failure'): self.pam_failure,
             rc('\(pam_unix\)\S*:\ssession\sopened\sfor'): self.pam_open,
             rc('\(pam_unix\)\S*:\sbad\susername'): self.pam_baduser,
-            rc('\(pam_unix\)\S*:\sauth\scould\snot'): self.pam_chelper_failure
+            rc('\(pam_unix\)\S*:\sauth\scould\snot'): self.pam_chelper_failure,
+            rc('pam_krb5:\s\S+\ssucceeds\sfor'): self.pam_krb5_open,
+            rc('pam_krb5:\s\S+\sfails\sfor'): self.pam_krb5_failure
             }
         ##
         # XINETD reports
@@ -116,6 +118,7 @@ class logins_mod(InternalModule):
         self.pam_failure_more_re = rc('(\S+)\smore\sauthentication\sfailures')
         self.pam_baduser_re = rc('\sbad\susername\s\[(.*)\]')
         self.pam_chelper_re = rc('password\sfor\s\[(.*)\]')
+        self.pam_krb5_re = rc("^(\S+)\[*\d*\]*:\spam_krb5:\sauth.*\sfor\s`(\S+)'")
         self.xinetd_start_re = rc('START:\s*(\S*)\s')
         self.sshd_open_ruser_re = rc('Accepted\s(\S*)\sfor\s(\S*)\sfrom\s(\S*)\sport\s\d*\sruser\s(\S*)\s*(\S*)')
         self.sshd_open_re = rc('Accepted\s(\S*)\sfor\s(\S*)\sfrom\s(\S*)\sport\s\d+\s*(\S*)')
@@ -227,6 +230,30 @@ class logins_mod(InternalModule):
         restuple = self._mk_restuple(action, system, service, user, '', '')
         return {restuple: mult}
 
+    def pam_krb5_open(self, linemap):
+        action = self.open
+        system, message, mult = self.get_smm(linemap)
+        mo = self.pam_krb5_re.search(message)
+        if not mo:
+            self.logger.put(3, 'Odd pam_krb5 succeeds line: %s' % message)
+            return None
+        service = mo.group(1)
+        user = mo.group(2)
+        restuple = self._mk_restuple(action, system, service, user, '', '')
+        return {restuple: mult}
+
+    def pam_krb5_failure(self, linemap):
+        action = self.failure
+        system, message, mult = self.get_smm(linemap)
+        mo = self.pam_krb5_re.search(message)
+        if not mo:
+            self.logger.put(3, 'Odd pam_krb5 failure line: %s' % message)
+            return None
+        service = mo.group(1)
+        user = mo.group(2)
+        restuple = self._mk_restuple(action, system, service, user, '', '')
+        return {restuple: mult}
+        
     def xinetd_start(self, linemap):
         action = self.open
         system, message, mult = self.get_smm(linemap)
