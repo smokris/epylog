@@ -267,7 +267,7 @@ def main(args):
             logger.endhang(1, 'done')
         
     else:
-        logger.put(1, 'Report is emtpy. Exiting.')
+        logger.put(1, 'Report is empty. Exiting.')
 
     logger.puthang(1, 'Cleaning up')
     epylog.cleanup()
