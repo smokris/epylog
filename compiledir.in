@@ -1,0 +1,12 @@
+#!@PYTHON_BIN@ -tt
+import sys, os.path
+from compileall import compile_dir
+
+if __name__ == '__main__':
+    if len(sys.argv) < 2: sys.exit(0)
+    dirs = sys.argv[1:]
+    for d in dirs:
+        if not os.path.isdir(d):
+            print '%s is not a dir. Throwing away.' % d
+            continue
+        compile_dir(d)

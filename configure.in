@@ -1,0 +1,132 @@
+dnl Process this file with autoconf to produce a configure script
+
+AC_INIT(epylog.spec)
+PACKAGE_TARNAME=epylog
+PACKAGE_VERSION=0.9.2
+
+dnl Package information.
+PACKAGE=$PACKAGE_TARNAME
+VERSION=$PACKAGE_VERSION
+AC_SUBST(VERSION)
+AC_SUBST(PACKAGE)
+
+dnl Default prefix.
+AC_PREFIX_DEFAULT(/usr)
+
+dnl top_builddir.
+top_builddir=`pwd`
+AC_SUBST(top_builddir)
+
+AC_SUBST(docdir)
+AC_SUBST(mandir)
+AC_SUBST(sysconfdir)
+
+dnl Checks for programs.
+AC_PROG_INSTALL
+
+AC_MSG_CHECKING(for --with-python)
+AC_ARG_WITH(python, [  --with-python=BIN       Path to specific Python binary],
+[
+  AC_SUBST(PYTHON_BIN)
+  PYTHON_BIN="$withval"
+  AC_MSG_RESULT($PYTHON_BIN)
+],
+AC_MSG_RESULT(no))
+
+# check for Python executable
+if test -z "$PYTHON_BIN"; then
+  AC_PATH_PROG(PYTHON_BIN, python)
+  if test -z "$PYTHON_BIN"; then
+    AC_MSG_ERROR(python binary not found in path)
+  fi
+fi
+
+CRON_DIR=/etc/cron.daily
+AC_MSG_CHECKING(for --with-crondir)
+AC_ARG_WITH(crondir, [  --with-crondir=DIR      Where to install the cron script],
+[
+  AC_SUBST(CRON_DIR)
+  CRON_DIR="$withval"
+  AC_MSG_RESULT($CRON_DIR)
+],
+AC_MSG_RESULT(will use $CRON_DIR))
+
+# check for cron dir
+AC_MSG_CHECKING(if $CRON_DIR is a directory)
+if ! test -d $CRON_DIR; then
+  AC_MSG_RESULT(no)
+  AC_MSG_ERROR(Cron directory $CRON_DIR doesn't exist)
+fi
+AC_MSG_RESULT(yes)
+
+# find out python version
+AC_MSG_CHECKING(Python version)
+PyVERSION=`$PYTHON_BIN -c ['import sys; print sys.version[:3]'`]
+PyMAJVERSION=`$PYTHON_BIN -c ['import sys; print sys.version[:1]'`]
+PyMINVERSION=`$PYTHON_BIN -c ['import sys; print sys.version[2:3]'`]
+AC_MSG_RESULT($PyVERSION)
+
+# make sure Python is version 2
+if test "$PyMAJVERSION" -lt "2" || \
+   (test "$PyMAJVERSION" -eq "2" && test "$PyMINVERSION" -lt "2"); then
+  AC_MSG_ERROR([This version of kibot requires at least Python version 2.2.  
+The one you have seems to be $PyVERSION.  You can specify an alternate python 
+by using (for example) --with-python=/usr/bin/python2.2])
+fi
+
+# find out compiled in install prefix
+AC_MSG_CHECKING(Python install prefix)
+PyEXEC_INSTALLDIR=`$PYTHON_BIN -c "import sys; print sys.exec_prefix"`
+AC_MSG_RESULT($PyEXEC_INSTALLDIR)
+
+
+# this is where the Python libraries will get installed if 
+# --with-python-dirs is set
+AC_SUBST(PY_STD_LIB)
+PY_STD_LIB=${PyEXEC_INSTALLDIR}/lib/python${PyVERSION}
+
+# otherwise, use this (relative to $libdir)
+AC_SUBST(PY_PREFIX_LIB)
+PY_PREFIX_LIB=$libdir/python${PyVERSION}
+
+# now figure out which of these to use.  On most systems with normal defaults,
+# these will be the same anyway.
+AC_SUBST(PY_MODULE_DIR)
+AC_MSG_CHECKING(for --with-python-dirs)
+AC_ARG_WITH(python-dirs, [  --with-python-dirs      Put modules in python's site-packages dir],
+[
+  PY_MODULE_DIR=$PY_STD_LIB
+  AC_MSG_RESULT(yes)
+],
+[
+  PY_MODULE_DIR=$PY_PREFIX_LIB/site-packages
+  AC_MSG_RESULT(will use $PY_MODULE_DIR)
+])
+
+AC_SUBST(PERL_MODULE_DIR)
+AC_MSG_CHECKING(for --with-site-perl)
+AC_ARG_WITH(site-perl, [  --with-site-perl        Put perl module in site-perl dir],
+[
+  PERL_MODULE_DIR=$withval
+  AC_MSG_RESULT(yes)
+],
+[
+  eval `perl '-V:installsitelib'`
+  PERL_MODULE_DIR=$installsitelib
+  AC_MSG_RESULT(will use $PERL_MODULE_DIR)
+])
+
+AC_SUBST(TEMP_DIR)
+AC_MSG_CHECKING(for --with-temp-dir)
+AC_ARG_WITH(temp-dir, [  --with-temp-dir         Use this for temp dir (/var/tmp)],
+[
+  TEMP_DIR=$withval
+  AC_MSG_RESULT(yes)
+],
+[
+  PERL_MODULE_DIR=/var/tmp
+  AC_MSG_RESULT(will use $PERL_MODULE_DIR)
+])
+
+AC_OUTPUT(Makefile epylog)
+AC_OUTPUT(compiledir, chmod +x compiledir)

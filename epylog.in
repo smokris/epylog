@@ -1,4 +1,4 @@
-#!/usr/bin/python2 -tt
+#!@PYTHON_BIN@ -tt
 
 import os
 import sys
