@@ -170,7 +170,36 @@ def store_offsets(epylog):
     logger.put(5, '<epylog.store_offsets')
 
 def usage():
-    print 'YOU know what to do, dumbass'
+    print """
+    Usage: epylog [--quiet] [--store-offsets] [--last] [-c] [-d]
+
+        -c config-file
+            read a custom config file instead of /etc/epylog/epylog.conf
+
+        -d debug-level
+            a number from 0 to 5. 0 means only critical output, while 5
+            means lots and lots of debugging info.
+
+        --store-offsets
+            this will store an offset.xml file in /var/lib/epylog. This
+            is useful when running epylog from cron, since then it relies
+            on actual offsets as opposed to timestamps, which do not have to
+            be accurate.
+
+        --quiet
+            completely identical to -d 0
+
+        --last [hour|day|week|month]
+            will analyze strings from the past [time period] specified.
+
+        If no command-line options are provided, then the logs will be
+        processed in their entirety (WARNING: this can mean a LOT of logs).
+        A useful way to init a system would be to run:
+        epylog --last [hour|day] --store-offsets
+
+    Example:
+        epylog --last day
+    """
     sys.exit(1)
 
 def main(args):
@@ -180,8 +209,9 @@ def main(args):
     config_file = '/etc/epylog/epylog.conf'
     cmdargs = args[1:]
     try:
-        gopts, cmds = getopt.getopt(cmdargs, 'd:c:',
-                                    ['quiet', 'store-offsets', 'last='])
+        gopts, cmds = getopt.getopt(cmdargs, 'd:c:h',
+                                    ['quiet', 'store-offsets', 'last=',
+                                     'help'])
         for o,a in gopts:
             if o == '-d':
                 debuglvl = int(a)
@@ -202,9 +232,12 @@ def main(args):
                     usage()
             elif o == '-c':
                 config_file = a
+            elif o == '-h' or o == '--help':
+                usage()
                 
     except getopt.error, e:
         print 'Error: %s' % e
+        usage()
     logger = Logger(debuglvl)
     logger.puthang(1, 'Initializing epylog')
     try:
