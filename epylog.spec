@@ -17,7 +17,7 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-root
 BuildArch:      noarch
 
 BuildRequires:  python-devel, sed >= 4
-Requires:       /usr/bin/python%(%{__python} -c "import sys ; print sys.version[:3]")
+Requires:       python-abi = %(%{__python} -c "import sys ; print sys.version[:3]")
 Requires:       libxml2-python
 
 
