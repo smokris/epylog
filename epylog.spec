@@ -9,7 +9,7 @@
 Summary:        New logs analyzer and parser.
 Name:           epylog
 Version:        0.9.6
-Release:        0.4
+Release:        0.5
 Epoch:          0
 License:        GPL
 Group:          Applications/System
