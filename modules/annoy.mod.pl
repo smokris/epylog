@@ -102,7 +102,7 @@ $du->mlog(1, "beginning to read input");
 ##
 # Iterate through all lines in the logs and analyze the ones that
 # match. Analyzed and processed lines get pushed into LOGFILTER
-# so they can be later weeded by epylog.
+# so they can be later weeded by dulog.
 #
 while ($du->islogeof() == 0) {
     my $line = $du->nextline();
@@ -113,33 +113,33 @@ while ($du->islogeof() == 0) {
     # it nicely using the $flops "struct" to hold the values.
     #
     if ($line =~ /kernel: attempt to access beyond end of device/){
-	push(@{$flops->{$system}}, $line);
+        push(@{$flops->{$system}}, $line);
     }
     elsif ($line =~ /kernel: .*rw=.*want=.*limit=/){
-	push(@{$flops->{$system}}, $line);
+        push(@{$flops->{$system}}, $line);
     }
     elsif ($line =~ /kernel: Directory sread .* failed/){
-	push(@{$flops->{$system}}, $line);
-	if (defined($flops->{$system}) && $#{$flops->{$system}} == 2){
-	    ##
-	    # Yes, looks like a dirty floppy mount.
-	    #
-	    my $msg = 'dirty floppy mount';
-	    addtostruct($system, $msg);
-	    ##
-	    # Push the lines we caught into the filtered array.
-	    #
-	    $du->pushfilt(@{$flops->{$system}});
-	}
-	undef $flops->{$system};
+        push(@{$flops->{$system}}, $line);
+        if (defined($flops->{$system}) && $#{$flops->{$system}} == 2){
+            ##
+            # Yes, looks like a dirty floppy mount.
+            #
+            my $msg = 'dirty floppy mount';
+            addtostruct($system, $msg);
+            ##
+            # Push the lines we caught into the filtered array.
+            #
+            $du->pushfilt(@{$flops->{$system}});
+        }
+        undef $flops->{$system};
     }
     ##
     # Look for depmod messages.
     #
     elsif ($line =~ /modules.conf is more recent/){
-	my $msg = 'modules.conf mismatch';
-	addtostruct($system, $msg);
-	$du->pushfilt($line);
+        my $msg = 'modules.conf mismatch';
+        addtostruct($system, $msg);
+        $du->pushfilt($line);
     }
     ##
     # Look for Gconfd locking issues. This usually occurs when
@@ -147,12 +147,12 @@ while ($du->islogeof() == 0) {
     # at the same time. Leaves a lot of NASTY strings in the logs.
     #
     elsif ($line =~ /gconfd.*: Failed to get lock.*Failed to create or open/
-	   || $line =~ /gconfd.*: Error releasing lockfile/
-	   || $line =~ /gconfd.*: .* Could not lock temporary file/
-	   || $line =~ /gconfd.*: .* another process has the lock/){
-	my $msg = 'gconfd locking errors';
-	addtostruct($system, $msg);
-	$du->pushfilt($line);
+           || $line =~ /gconfd.*: Error releasing lockfile/
+           || $line =~ /gconfd.*: .* Could not lock temporary file/
+           || $line =~ /gconfd.*: .* another process has the lock/){
+        my $msg = 'gconfd locking errors';
+        addtostruct($system, $msg);
+        $du->pushfilt($line);
     }
     ##
     # Look for fatal X errors. These usually occur when someone logs out,
@@ -160,39 +160,53 @@ while ($du->islogeof() == 0) {
     # at.
     #
     elsif ($line =~ /Fatal X error/){
-	my $msg = 'fatal X errors';
-	addtostruct($system, $msg);
-	$du->pushfilt($line);
+        my $msg = 'fatal X errors';
+        addtostruct($system, $msg);
+        $du->pushfilt($line);
     }
     ##
     # Look for sftp activity.
     #
     elsif ($line =~ /sftp-server.*:/
-	   || $line =~ /subsystem request for sftp/){
-	my $msg = 'sftp activity';
-	addtostruct($system, $msg);
-	$du->pushfilt($line);
+           || $line =~ /subsystem request for sftp/){
+        my $msg = 'sftp activity';
+        addtostruct($system, $msg);
+        $du->pushfilt($line);
     }
     ##
     # Look for sshd misc things.
     #
     elsif ($line =~ /sshd.*: .*terminating/){
-	my $msg = 'sshd terminated';
-	addtostruct($system, $msg);
-	$du->pushfilt($line);
+        my $msg = 'sshd terminated';
+        addtostruct($system, $msg);
+        $du->pushfilt($line);
     }
     elsif ($line =~ /sshd.*: Server listening on/){
-	my $msg = 'sshd started';
-	addtostruct($system, $msg);
-	$du->pushfilt($line);
+        my $msg = 'sshd started';
+        addtostruct($system, $msg);
+        $du->pushfilt($line);
     }
     ##
     # Look for misc floppy errors (vmware likes to leave those).
     #
     elsif ($line =~ /floppy0:/ || $line =~ /\(floppy\)/){
-	my $msg = 'misc floppy errors';
-	addtostruct($system, $msg);
-	$du->pushfilt($line);
+        my $msg = 'misc floppy errors';
+        addtostruct($system, $msg);
+        $du->pushfilt($line);
+    }
+    ##
+    # Look for ypserv errors
+    #
+    elsif ($line =~ /ypserv.*: refused connect/){
+        # from 152.3.182.51:32796 to procedure ypproc_match 
+        (my $fromip) = $line =~ m/from\s(.*):\d+\sto\sprocedure/;
+        (my $proc) = $line =~ m/procedure\s(\S+)/;
+        if (defined($fromip) && defined($proc)){
+            my $ypclient = $du->gethost($fromip);
+            my $msg = "$proc denied from $ypclient";
+            addtostruct($system, $msg);
+            $du->pushfilt($line)
+        }
     }
 }
 
@@ -254,6 +268,6 @@ $Revision$
 
 =head1 SEE ALSO
 
-epylog(8), epylog-modules(5), epylog(3)
+dulog(8), dulog-modules(5), epylog(3)
 
 =cut

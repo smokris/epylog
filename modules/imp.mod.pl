@@ -95,8 +95,9 @@ my $indent_pattern = '%12s';
 #                Shut up. :)
 #
 my $struct;
-my $ACTION_FAILED = ' FAILURES';
+my $ACTION_FAILED  = ' FAILURES';
 my $ACTION_LOGIN   = 's';
+my $ACTION_LOGOUT  = '';
 
 ##
 # Main module code.
@@ -110,28 +111,68 @@ $du->mlog(1, "beginning to read input");
 #
 while ($du->islogeof() == 0) {
     my $line = $du->nextline();
+    ##
+    # IMP 2.x
+    #
     if ($line =~ /IMP\[\d*\]/){
-	my $host;
-	my $action;
-	my $user;
-	my $rhost;
-	($host) = $line =~ m/.* to (\S*) as.*/;
-	($user) = $line =~ m/.* as (\S*).*/;
-	($rhost) = $line =~ m/.* (\d\S*) to .*/;
-	$rhost = $du->gethost($rhost);
-	if ($line =~ /: Login/){
-	    $action = $ACTION_LOGIN;
-	}
-	elsif ($line =~ /: FAILED/){
-	    $action = $ACTION_FAILED;
-	}
-	if (defined($struct->{$host}{$action}{$user}{$rhost})){
-	    $struct->{$host}{$action}{$user}{$rhost}++;
-	} else {
-	    $struct->{$host}{$action}{$user}{$rhost}=1;
-	}
-	$du->pushfilt($line);
+        my $host;
+        my $action;
+        my $user;
+        my $rhost;
+        ($host) = $line =~ m/.* to (\S*) as.*/;
+        ($user) = $line =~ m/.* as (\S*).*/;
+        ($rhost) = $line =~ m/.* (\d\S*) to .*/;
+        $rhost = $du->gethost($rhost);
+        if ($line =~ /: Login/){
+            $action = $ACTION_LOGIN;
+        }
+        elsif ($line =~ /: FAILED/){
+            $action = $ACTION_FAILED;
+        }
+        if (defined($struct->{$host}{$action}{$user}{$rhost})){
+            $struct->{$host}{$action}{$user}{$rhost}++;
+        } else {
+            $struct->{$host}{$action}{$user}{$rhost}=1;
+        }
+        $du->pushfilt($line);
     }
+    ##
+    # IMP 3.x
+    #
+    elsif ($line =~ /HORDE\[\d*\]: \[imp\]/){
+        my $host;
+        my $action;
+        my $user;
+        my $rhost;
+        if ($line =~ /Logout /){
+            $action = $ACTION_LOGOUT;
+        }
+        elsif ($line =~ /Login /){
+            $action = $ACTION_LOGIN;
+            ($host) = $line =~ m/.* to \{(\S*)\} \[on/;
+            ($user) = $line =~ m/.* for (\S*) \[/;
+            ($rhost) = $line =~ m/.* \[(\d+.\d+.\d+.\d+)\] to .*/;
+            ($rhost) = $du->gethost($rhost);
+        }
+        elsif ($line =~ /FAILED /){
+            $action = $ACTION_FAILED;
+            ($host) = $line =~ m/.* to (\S*)\[imap.*/;
+            ($user) = $line =~ m/.* as (\S*) \[/;
+            ($rhost) = $line =~ m/FAILED LOGIN (\d+.\d+.\d+.\d+) to .*/;
+            ($rhost) = $du->gethost($rhost);
+        }
+        if (defined($action)){
+            if ($action eq $ACTION_LOGIN || $action eq $ACTION_FAILED){
+                if (defined($struct->{$host}{$action}{$user}{$rhost})){
+                    $struct->{$host}{$action}{$user}{$rhost}++;
+                } else {
+                    $struct->{$host}{$action}{$user}{$rhost}=1;
+                }
+            }
+            $du->pushfilt($line);
+        }
+    }
+
 }
 $du->mlog(1, "finished reading input");
 
@@ -141,27 +182,27 @@ $du->mlog(1, "finished reading input");
 if ($du->filtsize() > 0){
     $du->mlog(1, "generating report");
     foreach my $host_key (sort(keys(%{$struct}))){
-	foreach my $action_key(sort(keys(%{$struct->{$host_key}}))){
-	    $du->pushrep($du->mkrephdr("$host_key IMP login" . $action_key));
-	    foreach my $user_key (sort(keys(%{$struct->{$host_key}
-						  ->{$action_key}}))){
-		my $counter = 0;
-		foreach my $rhost_key (keys(%{$struct->{$host_key}{$action_key}
-						  ->{$user_key}})){
-		    $counter++;
-		    my $outline;
-		    if ($counter == 1){
-			$outline = sprintf($uname_pattern, $user_key);
-		    } else {
-			$outline = sprintf($indent_pattern, " ");
-		    }
-		    $outline .= sprintf($rhost_pattern, $rhost_key,
-					$struct->{$host_key}{$action_key}
-					->{$user_key}{$rhost_key});
-		    $du->pushrep($outline);
-		}
-	    }
-	}
+        foreach my $action_key(sort(keys(%{$struct->{$host_key}}))){
+            $du->pushrep($du->mkrephdr("$host_key IMP login" . $action_key));
+            foreach my $user_key (sort(keys(%{$struct->{$host_key}
+                                              ->{$action_key}}))){
+                my $counter = 0;
+                foreach my $rhost_key (keys(%{$struct->{$host_key}{$action_key}
+                                              ->{$user_key}})){
+                    $counter++;
+                    my $outline;
+                    if ($counter == 1){
+                        $outline = sprintf($uname_pattern, $user_key);
+                    } else {
+                        $outline = sprintf($indent_pattern, " ");
+                    }
+                    $outline .= sprintf($rhost_pattern, $rhost_key,
+                                        $struct->{$host_key}{$action_key}
+                                        ->{$user_key}{$rhost_key});
+                    $du->pushrep($outline);
+                }
+            }
+        }
     }
 }
 $du->mlog(1, "Finalizing");
@@ -181,6 +222,6 @@ $Revision$
 
 =head1 SEE ALSO
 
-epylog(8), epylog-modules(5), epylog(3)
+dulog(8), dulog-modules(5), epylog(3)
 
 =cut
