@@ -85,6 +85,7 @@ FILES="$FILES weed_dist.cf weed_local.cf notice_dist.xml"
 for FILE in $FILES; do
   %{__install} -m 644 etc/$FILE %{buildroot}%{_sysconfdir}/%{name}/$FILE
 done
+touch %{buildroot}%{_sysconfdir}/%{name}/notice_local.xml
 ##
 # Install the modules
 #
@@ -133,7 +134,7 @@ popd
 %{_perldir}/%{name}.pm
 %{_mandir}/man*/*
 %config(noreplace) %{_sysconfdir}/%{name}
-%ghost %{_sysconfdir}/%{name}/notice_local.xml
+%ghost %config %{_sysconfdir}/%{name}/notice_local.xml
 %doc doc/*
 
 %changelog
