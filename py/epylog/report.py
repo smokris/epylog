@@ -157,7 +157,7 @@ class Report:
             self.filt_fh.seek(0, 2)
             if self.filt_fh.tell():
                 logger.puthang(1, 'Doing memory-friendly grep')
-                self.__memory_friendly_grep(rawfh, weedfh)
+                self._memory_friendly_grep(rawfh, weedfh)
                 logger.endhang(3)
                 logger.puthang(3, 'Reading in weeded logs')
                 weedfh.seek(0)
@@ -186,9 +186,9 @@ class Report:
     def is_report_useful(self):
         return self.useful
 
-    def __memory_friendly_grep(self, rawfh, weedfh):
+    def _memory_friendly_grep(self, rawfh, weedfh):
         logger = self.logger
-        logger.put(5, '>Report.__memory_friendly_grep')
+        logger.put(5, '>Report._memory_friendly_grep')
         tempfile.tmpdir = self.tmpprefix
         temp_raw = tempfile.mktemp('TEMPRAW')
         temp_filt = tempfile.mktemp('TEMPFILT')
@@ -227,11 +227,11 @@ class Report:
             except:
                 pass
             temp_filtfh = open(temp_filt, 'w')
-            s = self.__dump_lines(self.filt_fh, temp_filtfh, epylog.GREP_LINES)
+            s = self._dump_lines(self.filt_fh, temp_filtfh, epylog.GREP_LINES)
             temp_filtfh.close()
             donesize = donesize + s
             done = (donesize*100)/filtfh_size
-            self.__call_fgrep(temp_raw, temp_filt, temp_weed)
+            self._call_fgrep(temp_raw, temp_filt, temp_weed)
             logger.put(1, '%d%% done' % done)
             if not os.stat(temp_weed).st_size:
                 logger.put(5, 'Nothing left after weeding')
@@ -241,11 +241,11 @@ class Report:
         weedfh.write(temp_weedfh.read())
         temp_weedfh.close()
         logger.put(5, 'Done doing memory friendly grep')
-        logger.put(5, '<Report.__memory_friendly_grep')
+        logger.put(5, '<Report._memory_friendly_grep')
 
-    def __dump_lines(self, fromfh, tofh, number):
+    def _dump_lines(self, fromfh, tofh, number):
         logger = self.logger
-        logger.put(5, '>Report.__dump_lines')
+        logger.put(5, '>Report._dump_lines')
         logger.put(5, 'reading %d lines from "%s"' % (number, fromfh.name))
         chunksize = 0
         for i in range(number):
@@ -258,12 +258,12 @@ class Report:
         writenum = i + 1
         logger.put(5, 'wrote %d lines into %s' % (writenum, tofh.name))
         logger.put(5, 'total size of chunk: %d' % chunksize)
-        logger.put(5, '<Report.__dump_lines')
+        logger.put(5, '<Report._dump_lines')
         return chunksize
 
-    def __call_fgrep(self, raw, filt, weed):
+    def _call_fgrep(self, raw, filt, weed):
         logger = self.logger
-        logger.put(5, '>Report.__call_fgrep')
+        logger.put(5, '>Report._call_fgrep')
         fgrep = '/bin/fgrep -v -f %s %s > %s' % (filt, raw, weed)
         logger.put(5, 'Calling fgrep with command "%s"' % fgrep)
         ecode = os.system(fgrep)
@@ -271,5 +271,5 @@ class Report:
         if ecode and ecode != 256:
             msg = 'Call to fgrep for weed failed with exit code %d' % ecode
             raise epylog.SysCallError(msg, logger)
-        logger.put(5, '<Report.__call_fgrep')
+        logger.put(5, '<Report._call_fgrep')
         

@@ -5,6 +5,7 @@ import socket
 
 def make_html_page(template, starttime, endtime, title, module_reports,
                    unparsed, logger):
+    logger.put(5, '>make_html_page')
     logger.put(4, 'Making a standard report page')
     fmtstr = re.sub(re.compile('%'), '%%', template)
     fmtstr = re.sub(re.compile('@@STARTTIME@@'), '%(starttime)s', fmtstr)
@@ -47,79 +48,71 @@ def make_html_page(template, starttime, endtime, title, module_reports,
     
     endpage = fmtstr % valumap
     logger.put(5, endpage)
+    logger.put(5, '<make_html_page')
     return endpage
     
 class MailPublisher:
     name = 'Mail Publisher'
     
     def __init__(self, sec, config, logger):
-        logger.put(2, 'Initializing the MailPublisher object')
-        logger.put(3, 'Sticking logger into the object')
+        logger.put(5, '>MailPublisher.__init__')
         self.logger = logger
         self.tmpprefix = config.tmpprefix
         self.section = sec
-        logger.put(2, 'Looking for required elements in mail method config')
+        logger.put(3, 'Looking for required elements in mail method config')
         try:
             mailto = config.get(self.section, 'mailto')
             addrs = mailto.split(',')
             self.mailto = []
             for addr in addrs:
                 addr = addr.strip()
-                logger.put(3, 'adding mailto=%s' % addr)
+                logger.put(5, 'adding mailto=%s' % addr)
                 self.mailto.append(addr)
-        except:
-            self.mailto = ['root']
-        try:
-            format = config.get(self.section, 'format')
-        except:
-            format = 'both'
+        except: self.mailto = ['root']
+
+        try: format = config.get(self.section, 'format')
+        except: format = 'both'
 
         if (format != 'plain') and (format != 'html') and (format != 'both'):
             msg = ('Format for Mail Publisher must be either "html", "plain",'
-                   + ' or both. Format "%s" is unknown') % format
+                   + ' or "both." Format "%s" is unknown') % format
             raise epylog.ConfigError(msg, logger)
         self.format = format
-        logger.put(3, 'format=%s' % self.format)
 
         if format != 'html':
-            logger.put(2, 'Plaintext version requested. Checking for lynx')
-            try:
-                lynx = config.get(self.section, 'lynx')
+            logger.put(3, 'Plaintext version requested. Checking for lynx')
+            try: lynx = config.get(self.section, 'lynx')
             except:
                 lynx = '/usr/bin/lynx'
                 if not os.access(lynx, os.X_OK):
-                    msg = 'Could not fine "%s"' % lynx
+                    msg = 'Could not find "%s"' % lynx
                     raise epylog.ConfigError(msg, logger)
             self.lynx = lynx
-            logger.put(2, 'Lynx found in "%s" and is executable' % self.lynx)
+            logger.put(3, 'Lynx found in "%s" and is executable' % self.lynx)
 
         try:
-            include_rawlogs = config.getboolean(self.section,
-                                                'include_rawlogs')
-        except:
-            include_rawlogs = 1
+            include_rawlogs = config.getboolean(self.section,'include_rawlogs')
+        except: include_rawlogs = 1
 
         if include_rawlogs:
-            try:
-                rawlogs = int(config.get(self.section, 'rawlogs_limit'))
-            except:
-                rawlogs = 200
+            try: rawlogs = int(config.get(self.section, 'rawlogs_limit'))
+            except: rawlogs = 200
             self.rawlogs = rawlogs * 1024
-        else:
-            self.rawlogs = 0
-        logger.put(3, 'rawlogs=%d' % self.rawlogs)
+        else: self.rawlogs = 0
         
-        try:
-            self.smtpserv = config.get(self.section, 'smtpserv')
-        except:
-            self.smtpserv = 'localhost'
-        logger.put(3, 'smtpserv=%s' % self.smtpserv)
+        try: self.smtpserv = config.get(self.section, 'smtpserv')
+        except: self.smtpserv = 'localhost'
+
+        logger.put(5, 'format=%s' % self.format)
+        logger.put(5, 'rawlogs=%d' % self.rawlogs)
+        logger.put(5, 'smtpserv=%s' % self.smtpserv)
         
-        logger.put(2, 'Done with MailPublisher object initialization')
+        logger.put(5, '<MailPublisher.__init__')
         
     def publish(self, template, starttime, endtime, title, module_reports,
                 unparsed_strings, rawfh):
         logger = self.logger
+        logger.put(5, '>MailPublisher.publish')
         logger.puthang(3, 'Creating a standard html page report')
         html_report = make_html_page(template, starttime, endtime, title,
                                      module_reports, unparsed_strings, logger)
@@ -142,8 +135,8 @@ class MailPublisher:
             exitcode = os.system('%s -dump %s > %s 2>/dev/null'
                                  % (self.lynx, htmlfile, plainfile))
             if exitcode or not os.access(plainfile, os.R_OK):
-                raise epylog.SysCallError('Error making a call to "%s"'
-                                         % self.lynx, logger)
+                msg = 'Error making a call to "%s"' % self.lynx
+                raise epylog.SysCallError(msg, logger)
             logger.puthang(4, 'Reading in the plain version')
             tfh = open(plainfile)
             self.plainrep = tfh.read()
@@ -207,22 +200,22 @@ class MailPublisher:
         
         if self.rawlogs > 0 and self.format == 'both':
             logger.put(4, 'Making a html + plain + gzip message')
-            self.__mk_both_rawlogs()
+            self._mk_both_rawlogs()
         elif self.rawlogs > 0 and self.format == 'html':
             logger.put(4, 'Making a html + gzip message')
-            self.__mk_html_rawlogs()
+            self._mk_html_rawlogs()
         elif self.rawlogs > 0 and self.format == 'plain':
             logger.put(4, 'Making a plain + gzip message')
-            self.__mk_plain_rawlogs()
+            self._mk_plain_rawlogs()
         elif self.rawlogs == 0 and self.format == 'both':
             logger.put(4, 'Making a html + plain message')
-            self.__mk_both_nologs()
+            self._mk_both_nologs()
         elif self.rawlogs == 0 and self.format == 'html':
             logger.put(4, 'Making a html message')
-            self.__mk_html_nologs()
+            self._mk_html_nologs()
         elif self.rawlogs == 0 and self.format == 'plain':
             logger.put(4, 'Making a plain message')
-            self.__mk_plain_nologs()
+            self._mk_plain_nologs()
         logger.endhang(3)
 
         fh.seek(0)
@@ -257,10 +250,12 @@ class MailPublisher:
                 raise epylog.AccessError(msg, logger)
             server.quit()
             logger.endhang(3)
+        logger.put(5, '<MailPublisher.publish')
 
 
-    def __mk_both_rawlogs(self):
-        import quopri, base64
+    def _mk_both_rawlogs(self):
+        self.logger.put(5, '>MailPublisher._mk_both_rawlogs')
+        import base64
         logger = self.logger
         mixed_mw = self.mw
         mixed_mw.addheader('Mime-Version', '1.0')
@@ -273,15 +268,15 @@ class MailPublisher:
 
         logger.put(4, 'Creating a text/plain part')
         plain_mw = alt_mw.nextpart()
-        plain_mw.addheader('Content-Transfer-Encoding', 'quoted-printable')
+        plain_mw.addheader('Content-Transfer-Encoding', '8bit')
         plain_fh = plain_mw.startbody('text/plain; charset=iso-8859-1')
-        plain_fh.write(quopri.a2b_qp(self.plainrep))
+        plain_fh.write(self.plainrep)
 
         logger.put(4, 'Creating a text/html part')
         html_mw = alt_mw.nextpart()
-        html_mw.addheader('Content-Transfer-Encoding', 'quoted-printable')
+        html_mw.addheader('Content-Transfer-Encoding', '8bit')
         html_fh = html_mw.startbody('text/html; charset=iso-8859-1')
-        html_fh.write(quopri.a2b_qp(self.htmlrep))
+        html_fh.write(self.htmlrep)
 
         alt_mw.lastpart()
         logger.put(4, 'Creating an application/gzip part')
@@ -292,9 +287,11 @@ class MailPublisher:
         gzip_fh = gzip_mw.startbody('application/gzip; NAME=rawlogs.gz')
         gzip_fh.write(base64.encodestring(self.gzlogs))
         mixed_mw.lastpart()
+        self.logger.put(5, '<MailPublisher._mk_both_rawlogs')
 
-    def __mk_html_rawlogs(self):
-        import quopri, base64
+    def _mk_html_rawlogs(self):
+        self.logger.put(5, '>MailPublisher._mk_html_rawlogs')
+        import base64
         logger = self.logger
         mixed_mw = self.mw
         mixed_mw.addheader('Mime-Version', '1.0')
@@ -303,9 +300,9 @@ class MailPublisher:
 
         logger.put(4, 'Creating a text/html part')
         html_mw = mixed_mw.nextpart()
-        html_mw.addheader('Content-Transfer-Encoding', 'quoted-printable')
+        html_mw.addheader('Content-Transfer-Encoding', '8bit')
         html_fh = html_mw.startbody('text/html; charset=iso-8859-1')
-        html_fh.write(quopri.a2b_qp(self.htmlrep))
+        html_fh.write(self.htmlrep)
 
         logger.put(4, 'Creating an application/gzip part')
         gzip_mw = mixed_mw.nextpart()
@@ -315,9 +312,11 @@ class MailPublisher:
         gzip_fh = gzip_mw.startbody('application/gzip; NAME=rawlogs.gz')
         gzip_fh.write(base64.encodestring(self.gzlogs))
         mixed_mw.lastpart()
+        self.logger.put(5, '<MailPublisher._mk_html_rawlogs')
 
-    def __mk_plain_rawlogs(self):
-        import quopri, base64
+    def _mk_plain_rawlogs(self):
+        self.logger.put(5, '>MailPublisher._mk_plain_rawlogs')
+        import base64
         logger = self.logger
         mixed_mw = self.mw
         mixed_mw.addheader('Mime-Version', '1.0')
@@ -326,9 +325,9 @@ class MailPublisher:
 
         logger.put(4, 'Creating a text/plain part')
         plain_mw = mixed_mw.nextpart()
-        plain_mw.addheader('Content-Transfer-Encoding', 'quoted-printable')
+        plain_mw.addheader('Content-Transfer-Encoding', '8bit')
         plain_fh = plain_mw.startbody('text/plain; charset=iso-8859-1')
-        plain_fh.write(quopri.a2b_qp(self.plainrep))
+        plain_fh.write(self.plainrep)
 
         logger.put(4, 'Creating an application/gzip part')
         gzip_mw = mixed_mw.nextpart()
@@ -338,9 +337,10 @@ class MailPublisher:
         gzip_fh = gzip_mw.startbody('application/gzip; NAME=rawlogs.gz')
         gzip_fh.write(base64.encodestring(self.gzlogs))
         mixed_mw.lastpart()
+        self.logger.put(5, '<MailPublisher._mk_plain_rawlogs')
 
-    def __mk_both_nologs(self):
-        import quopri
+    def _mk_both_nologs(self):
+        self.logger.put(5, '>MailPublisher._mk_both_nologs')
         logger = self.logger
         alt_mw = self.mw
         alt_mw.addheader('Mime-Version', '1.0')
@@ -349,20 +349,21 @@ class MailPublisher:
 
         logger.put(4, 'Creating a text/plain part')
         plain_mw = alt_mw.nextpart()
-        plain_mw.addheader('Content-Transfer-Encoding', 'quoted-printable')
+        plain_mw.addheader('Content-Transfer-Encoding', '8bit')
         plain_fh = plain_mw.startbody('text/plain; charset=iso-8859-1')
-        plain_fh.write(quopri.a2b_qp(self.plainrep))
+        plain_fh.write(self.plainrep)
 
         logger.put(4, 'Creating a text/html part')
         html_mw = alt_mw.nextpart()
-        html_mw.addheader('Content-Transfer-Encoding', 'quoted-printable')
+        html_mw.addheader('Content-Transfer-Encoding', '8bit')
         html_fh = html_mw.startbody('text/html; charset=iso-8859-1')
-        html_fh.write(quopri.a2b_qp(self.htmlrep))
+        html_fh.write(self.htmlrep)
 
         alt_mw.lastpart()
+        self.logger.put(5, '<MailPublisher._mk_both_nologs')
 
-    def __mk_html_nologs(self):
-        import quopri
+    def _mk_html_nologs(self):
+        self.logger.put(5, '>MailPublisher._mk_html_nologs')
         logger = self.logger
         alt_mw = self.mw
         alt_mw.addheader('Mime-Version', '1.0')
@@ -374,26 +375,27 @@ class MailPublisher:
         html_fh = html_mw.startbody('text/html; charset=iso-8859-1')
         html_fh.write(quopri.a2b_qp(self.htmlrep))
         alt_mw.lastpart()
+        self.logger.put(5, '<MailPublisher._mk_html_nologs')
 
-    def __mk_plain_nologs(self):
-        import quopri
+    def _mk_plain_nologs(self):
+        self.logger.put(5, '>MailPublisher._mk_plain_nologs')
         logger = self.logger
         plain_mw = self.mw
         logger.put(4, 'Creating a text/plain part')
-        plain_mw.addheader('Content-Transfer-Encoding', 'quoted-printable')
+        plain_mw.addheader('Content-Transfer-Encoding', '8bit')
         plain_fh = plain_mw.startbody('text/plain; charset=iso-8859-1')
-        plain_fh.write(quopri.a2b_qp(self.plainrep))
+        plain_fh.write(self.plainrep)
+        self.logger.put(5, '<MailPublisher._mk_plain_nologs')
 
 
 class FilePublisher:
     name = 'File Publisher'
     def __init__(self, sec, config, logger):
-        logger.put(2, 'Initializing the FilePublisher object')
-        logger.put(3, 'Sticking logger into the object')
+        logger.put(5, '>FilePublisher.__init__')
         self.logger = logger
         self.tmpprefix = config.tmpprefix
         self.section = sec
-        logger.put(2, 'Looking for required elements in file method config')
+        logger.put(3, 'Looking for required elements in file method config')
         try:
             self.pathmask = config.get(self.section, 'pathmask')
             self.expirytime = int(config.get(self.section, 'expirytime'))
@@ -401,9 +403,9 @@ class FilePublisher:
             msg = ('Required attributes "pathmask" and/or "expirytime"' +
                    'not found')
             raise epylog.ConfigError(msg, logger)
-        logger.put(2, 'pathmask=%s' % self.pathmask)
-        logger.put(2, 'expirytime=%d' % self.expirytime)
-        logger.put(2, 'Done with FilePublisher object intialization')
-
+        logger.put(5, 'pathmask=%s' % self.pathmask)
+        logger.put(5, 'expirytime=%d' % self.expirytime)
+        logger.put(5, '<FilePublisher.__init__')
+        
     def publish(self, *args):
         pass

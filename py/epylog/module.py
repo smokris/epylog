@@ -35,16 +35,16 @@ class Module:
         except:
             msg = 'Did not find executable name in "%s"' % cfgfile
             raise epylog.ConfigError(msg, logger)
-        try: self.python = config.getboolean('module', 'python')
-        except: self.python = 0
+        try: self.internal = config.getboolean('module', 'internal')
+        except: self.internal = 0
         try: self.priority = config.getint('module', 'priority')
         except: self.priority = 10
         
-        try: logentries = config.get('logs', 'files')
+        try: logentries = config.get('module', 'files')
         except:
             msg = 'Cannot find log definitions in module config "%s"' % cfgfile
             raise epylog.ConfigError(msg, logger)
-        try: self.outhtml = config.getboolean('output', 'html')
+        try: self.outhtml = config.getboolean('module', 'outhtml')
         except: self.outhtml = 0
 
         self.extraopts = {}
@@ -59,7 +59,7 @@ class Module:
         logger.put(5, 'name=%s' % self.name)
         logger.put(5, 'executable=%s' % self.executable)
         logger.put(5, 'enabled=%d' % self.enabled)
-        logger.put(5, 'python=%d' % self.python)
+        logger.put(5, 'internal=%d' % self.internal)
         logger.put(5, 'priority=%d' % self.priority)
         logger.put(5, 'logentries=%s' % logentries)
         logger.put(2, 'outhtml=%d' % self.outhtml)
@@ -85,12 +85,12 @@ class Module:
             self.logs.append(log)
         logger.put(5, '<Module.__init__')
 
-    def is_python(self):
-        if self.python:
-            self.logger.put(5, 'This module is python')
+    def is_internal(self):
+        if self.internal:
+            self.logger.put(5, 'This module is internal')
             return 1
         else:
-            self.logger.put(5, 'This module is not python')
+            self.logger.put(5, 'This module is not internal')
             return 0
 
     def invoke_module(self, tmpprefix, cfgdir):
@@ -99,19 +99,19 @@ class Module:
         tempfile.tempdir = tmpprefix
         logdump = tempfile.mktemp()
         logger.put(5, 'Dumping strings into a tempfile "%s"' % logdump)
-        totallen = self.__dump_log_strings(logdump)
+        totallen = self._dump_log_strings(logdump)
         if totallen == 0:
             logger.put(2, 'Nothing in the logs for this module. Passing exec')
             return
-        if self.is_python():
-            self.__invoke_python_module(tmpprefix, logdump, cfgdir)
+        if self.is_internal():
+            self._invoke_internal_module(tmpprefix, logdump, cfgdir)
         else:
-            self.__invoke_external_module(tmpprefix, logdump, cfgdir)
+            self._invoke_external_module(tmpprefix, logdump, cfgdir)
         logger.put(5, '<Module.invoke_module')
 
-    def __invoke_python_module(self, tmpprefix, logdump, cfgdir):
+    def _invoke_internal_module(self, tmpprefix, logdump, cfgdir):
         logger = self.logger
-        logger.put(5, '>Module.__invoke_python_module')
+        logger.put(5, '>Module._invoke_internal_module')
         dirname = os.path.dirname(self.executable)
         modname = os.path.basename(self.executable)
         modname = re.sub(re.compile('\.py'), '', modname)
@@ -125,7 +125,7 @@ class Module:
         logger.endhang(5)
         try:
             modclass = getattr(module, modname)
-            epymod = modclass(logger)
+            epymod = modclass(self.extraopts, logger)
         except AttributeError:
             msg = 'Could not instantiate class "%s" in module "%s"'
             msg = msg % (modname, self.executable)
@@ -166,20 +166,24 @@ class Module:
         dfh.close()
         logger.put(5, 'Done processing the lines')
         logger.put(5, 'Waiting for threads to finish and collecting results')
-        resultset = []
+        rs = ResultSet()
         filtfh = open(logfilter, 'w+')
         for t in threads:
             t.join()
-            if t.result:
-                resultset.append(t.result)
+            if t.result is not None:
+                rs.add(t.result)
                 filtfh.write(t.line)
         if filtfh.tell():
             logger.put(5, 'We have filtered strings')
             self.logfilter = logfilter
         filtfh.close()
         logger.put(5, 'Done with all threads')
-        logger.put(5, 'Finalizing the processing')
-        report = epymod.finalize(resultset)
+        if not rs.is_empty():
+            logger.put(5, 'Finalizing the processing')
+            report = epymod.finalize(rs)
+        else:
+            logger.put(5, 'No results in the resultset, skipping finalizing')
+            report = ''
         if report:
             logger.put(5, 'Report follows:')
             logger.put(5, report)
@@ -191,11 +195,11 @@ class Module:
             logger.put(5, 'NO report from this module')
         logger.put(5, 'Done with this module, deleting')
         del module
-        logger.put(5, '<Module.__invoke_python_module')
+        logger.put(5, '<Module._invoke_internal_module')
     
-    def __invoke_external_module(self, tmpprefix, logdump, cfgdir):
+    def _invoke_external_module(self, tmpprefix, logdump, cfgdir):
         logger = self.logger
-        logger.put(5, '>Module.invoke_external_module')
+        logger.put(5, '>Module._invoke_external_module')
         logger.put(2, 'Setting LOGCAT to "%s"' % logdump)
         os.putenv('LOGCAT', logdump)
         modtmpprefix = os.path.join(tmpprefix, 'EPYLOG')
@@ -238,44 +242,46 @@ class Module:
             logger.put(2, 'Filtered strings file "%s" exists and is readable'
                        % logfilter)
             self.logfilter = logfilter
+        logger.put(5, '<Module._invoke_external_module')
         
     def sanity_check(self):
         logger = self.logger
+        logger.put(5, '>Module.sanity_check')
         logger.put(2, 'Checking if executable "%s" is sane' % self.executable)
         if not os.access(self.executable, os.F_OK):
             msg = ('Executable "%s" for module "%s" does not exist'
                    % (self.executable, self.name))
             raise epylog.ModuleSanityError(msg, logger)
-        if not self.is_python():
+        if not self.is_internal():
             if not os.access(self.executable, os.X_OK):
                 msg = ('Executable "%s" for module "%s" is not set to execute'
                        % (self.executable, self.name))
                 raise epylog.ModuleSanityError(msg, logger)
+        logger.put(5, '<Module.sanity_check')
         
     def get_html_report(self):
         logger = self.logger
-        logger.put(2, 'Invoking the get_html_report routine')
+        logger.put(5, '>Module.get_html_report')
         if self.logreport is None:
-            logger.put(2, 'No report from this module')
+            logger.put(3, 'No report from this module')
             return None
-        logger.put(2, 'Getting the report from "%s"' % self.logreport)
+        logger.put(3, 'Getting the report from "%s"' % self.logreport)
         if not os.access(self.logreport, os.R_OK):
-            raise epylog.ModuleSanityError(('Log report from module "%s" '
-                                            + 'is missing')
-                                           % self.name, logger)
-        logger.puthang(2, 'Reading the report from file "%s"'
-                       % self.logreport)
+            msg = 'Log report from module "%s" is missing' % self.name
+            raise epylog.ModuleSanityError(msg, logger)
+        logger.puthang(3, 'Reading the report from file "%s"' % self.logreport)
         fh = open(self.logreport)
         report = fh.read()
         fh.close()
-        logger.endhang(2, 'done')
+        logger.endhang(3, 'done')
         if len(report):
             if not self.outhtml:
-                logger.put(2, 'Report is not html')
-                report = self.__make_into_html(report)
-            return report
+                logger.put(3, 'Report is not html')
+                report = self._make_into_html(report)
         else:
-            return None
+            report = None
+        logger.put(5, '<Module.get_html_report')
+        return report
 
     def get_filtered_strings_fh(self):
         logger = self.logger
@@ -291,9 +297,9 @@ class Module:
         logger.put(5, '<Module.get_filtered_strings_fh')
         return fh
            
-    def __dump_log_strings(self, filename):
+    def _dump_log_strings(self, filename):
         logger = self.logger
-        logger.put(5, '>Module.__dump_log_strings()')
+        logger.put(5, '>Module._dump_log_strings')
         logger.put(5, 'filename=%s' % filename)
         logger.put(4, 'Opening the "%s" for writing' % filename)
         fh = open(filename, 'w')
@@ -301,18 +307,19 @@ class Module:
         for log in self.logs:
             len = len + log.dump_strings(fh)
         logger.put(3, 'Total length of the log is "%d"' % len)
+        logger.put(5, '<Module._dump_log_strings')
         return len
 
-    def __make_into_html(self, report):
+    def _make_into_html(self, report):
         logger = self.logger
-        logger.put(5, '>Module.__make_into_html')
+        logger.put(5, '>Module._make_into_html')
         import re
         logger.put(5, 'Regexing entities')
         report = re.sub(re.compile('&'), '&amp;', report)
         report = re.sub(re.compile('<'), '&lt;', report)
         report = re.sub(re.compile('>'), '&gt;', report)
         report = '<pre>\n%s\n</pre>' % report
-        logger.put(5, '<Module.__make_into_html')
+        logger.put(5, '<Module._make_into_html')
         return report
 
 class ThreadedLineHandler(threading.Thread):
@@ -338,10 +345,8 @@ class ThreadedLineHandler(threading.Thread):
 
 class PythonModule:
     def __init__(self):
-        self.athreads = 50
-        self.known_hosts = {}
-        self.known_uids = {}
-        self.regex_map = {}
+        self._known_hosts = {}
+        self._known_uids = {}
         
     def getuname(self, uid):
         """get username for a given uid"""
@@ -365,3 +370,44 @@ class PythonModule:
 
         self._known_hosts = name
         return name
+
+
+class ResultSet:
+    def __init__(self):
+        self.resultset = {}
+
+    def add(self, resobj):
+        result = resobj.result
+        multiplier = resobj.multiplier
+        try: self.resultset[result] += multiplier
+        except KeyError: self.resultset[result] = multiplier
+
+    def get_distinct(self, matchtup):
+        lim = len(matchtup)
+        matches = []
+        for key in self.resultset.keys():
+            if matchtup == key[0:lim]:
+                if key[lim] not in matches:
+                    matches.append(key[lim])
+        return matches
+
+    def get_submap(self, matchtup):
+        lim = len(matchtup)
+        matchmap = {}
+        for key in self.resultset.keys():
+            if matchtup == key[0:lim]:
+                subtup = key[lim:]
+                try: matchmap[subtup] += self.resultset[key]
+                except KeyError: matchmap[subtup] = self.resultset[key]
+        return matchmap
+
+    def is_empty(self):
+        if self.resultset == {}: return 1
+        else: return 0
+        
+class Result:
+    def __init__(self, result, multiplier=1):
+        self.result = result
+        self.multiplier = multiplier
+
+        

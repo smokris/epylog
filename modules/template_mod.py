@@ -4,7 +4,16 @@ import re
 import epylog
 
 class template_mod(epylog.module.PythonModule):
-    def __init__(self, logger):
+    ##
+    # opts: is a map with extra options set in
+    #       [conf] section of the module config.
+    # logger: A logging object. API:
+    #         logger.put(loglvl, 'Message')
+    #         Only critical stuff needs to go onto lvl 0.
+    #         Common output goes to lvl 1.
+    #         Others are debug levels.
+    #
+    def __init__(self, opts, logger):
         epylog.module.PythonModule.__init__(self)
         self.logger = logger
         rc = re.compile

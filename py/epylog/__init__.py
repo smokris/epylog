@@ -14,9 +14,10 @@ from log import LogTracker
 VERSION = 'Epylog-0.9.0'
 CHUNK_SIZE = 8192
 GREP_LINES = 10000
-TOTAL_THREAD_LIMIT = 100
 LOG_SPLIT_RE = re.compile(r'(.{15,15}) (\S+) (.*)$')
 SYSLOG_NG_STRIP = re.compile(r'.*[@/]')
+MESSAGE_REPEATED_RE = re.compile(r'last message repeated (\S+) times')
+
 
 class FormatError(exceptions.Exception):
     def __init__(self, message, logger):
@@ -56,6 +57,11 @@ class SysCallError(exceptions.Exception):
 class NoSuchLogError(exceptions.Exception):
     def __init__(self, message, logger):
         logger.put(2, 'Raising NoSuchLogError with message: %s' % message)
+        self.args = message
+
+class GenericError(exceptions.Exception):
+    def __init__(self, message, logger):
+        logger.put(2, 'Raising GenericError with message: %s' % message)
         self.args = message
 
 class Epylog:
@@ -106,6 +112,14 @@ class Epylog:
         logger.put(3, 'Temporary directory created in "%s"' % tmpprefix)
         logger.put(3, 'Sticking tmpprefix into config to pass to other objs')
         config.tmpprefix = self.tmpprefix
+        ##
+        # Get multimatch pref
+        #
+        try:
+            self.multimatch = config.getboolean('main', 'multimatch')
+        except:
+            self.multimatch = 0
+        logger.put(5, 'multimatch=%d' % self.multimatch)
 
         ##
         # Initialize the Report object
@@ -187,18 +201,28 @@ class Epylog:
     def process_modules(self):
         logger = self.logger
         logger.put(5, '>Epylog.process_modules')
-        logger.put(2, 'Iterating through the modules')
+        logger.put(3, 'Finding internal modules')
+        imodules = []
+        emodules = []
         for module in self.modules:
-            logger.puthang(1, 'Processing module "%s"' % module.name)
-            try:
-                module.invoke_module(self.tmpprefix, self.cfgdir)
-            except ModuleExecError, e:
-                ##
-                # Module execution error!
-                # Do not die, but provide a visible warning.
-                #
-                logger.put(0, str(e))
-            logger.endhang(1, 'done')
+            if module.is_internal(): imodules.append(module)
+            else: emodules.append(module)
+        if len(imodules):
+            self._process_internal_modules(imodules)
+        if len(emodules):
+            logger.puthang(3, 'Processing external modules')
+            for module in emodules:
+                logger.puthang(1, 'Processing module "%s"' % module.name)
+                try:
+                    module.invoke_module(self.tmpprefix, self.cfgdir)
+                except ModuleExecError, e:
+                    ##
+                    # Module execution error!
+                    # Do not die, but provide a visible warning.
+                    #
+                    logger.put(0, str(e))
+                logger.endhang(1, 'done')
+            logger.endhang(3)
         logger.put(5, '<Epylog.process_modules')
 
     def make_report(self):
@@ -238,3 +262,28 @@ class Epylog:
         logger.put(2, 'Cleanup routine called')
         logger.put(2, 'Removing the temp dir "%s"' % self.tmpprefix)
         shutil.rmtree(self.tmpprefix)
+
+    def _process_internal_modules(self, modules):
+        logger = self.logger
+        logger.put(5, '>Epylog._process_internal_modules')
+        logger.put(4, 'Collecting logfiles used by internal modules')
+        logmap = {}
+        for module in modules:
+            for log in module.logs:
+                try: logmap[log.entry].append(module)
+                except KeyError: logmap[log.entry] = [module]
+        logger.put(5, 'logmap follows')
+        logger.put(5, logmap)
+        for entry in logmap.keys():
+            log = self.logtracker.getlog(entry)
+            while 1:
+                try:
+                    stamp, sys, msg, multiplier = log.nextline()
+                except FormatError: continue
+                except OutOfRangeError: break
+                logger.put(5, 'We have the following:')
+                logger.put(5, 'stamp=%d' % stamp)
+                logger.put(5, 'sys=%s' % sys)
+                logger.put(5, 'msg=%s' % msg)
+                logger.put(5, 'multiplier=%d' % multiplier)
+        ## HERE ##

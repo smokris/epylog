@@ -3,9 +3,10 @@
 import re
 import string
 import epylog
+from epylog.module import Result
 
 class annoy_mod(epylog.module.PythonModule):
-    def __init__(self, logger):
+    def __init__(self, opts, logger):
         epylog.module.PythonModule.__init__(self)
         self.logger = logger
         self.athreads = 50
@@ -39,22 +40,26 @@ class annoy_mod(epylog.module.PythonModule):
             rc('ypserv.*: refused connect'): self.ypserv
         }
         self.ypserv_re = rc('from\s(.*):\d+\sto\sprocedure\s(\S+)')
+        try: self.report_wrap = opts['report_wrap']
+        except KeyError: self.report_wrap = '<table border="0">%s</table>'
+        try: self.report_line = opts['report_line']
+        except KeyError: self.report_line = '<tr><td>%s:</td><td>%s</td></tr>'
 
     def gconf(self, stamp, system, message):
         msg = 'Gconf locking errors'
-        return [system, msg]
+        return Result((system, msg))
 
     def fatalx(self, stamp, system, message):
         msg = 'Fatal X errors'
-        return [system, msg]
+        return Result((system, msg))
 
     def sftp(self, stamp, system, message):
         msg = 'SFTP activity'
-        return [system, msg]
+        return Result((system, msg))
 
     def floppy_misc(self, stamp, system, message):
         msg = 'misc floppy errors'
-        return [system, msg]
+        return Result((system, msg))
     
     def ypserv(self, stamp, system, message):
         mo = self.ypserv_re.search(message)
@@ -62,32 +67,18 @@ class annoy_mod(epylog.module.PythonModule):
             fromip, proc = mo.groups()
             ypclient = self.gethost(fromip)
             msg = '%s denied from %s' % (proc, ypclient)
-            return [system, msg]
+            return Result((system, msg))
         return None            
 
-    def finalize(self, resultset):
+    def finalize(self, rs):
         logger = self.logger
         logger.put(5, '>annoy_mod.finalize')
-        if len(resultset):
-            report = self.__get_report(resultset)
-        else:
-            report = ''
-        logger.put(5, '<annoy_mod.finalize')
-        return report
-
-    def __get_report(self, resultset):
-        hosts = {}
-        for system, message in resultset:
-            try:
-                hosts[system][message] += 1
-            except KeyError:
-                hosts[system] = {message: 1}
-        report =  '<table border="0">'
-        repline = '<tr><td>%s:</td><td>%s</td></tr>'
-        for system in hosts.keys():
+        report = ''
+        for system in rs.get_distinct(()):
+            mymap = rs.get_submap((system,))
             messages = []
-            for message in hosts[system].keys():
-                messages.append('%s(%d)' % (message, hosts[system][message]))
-            report += repline % (system, string.join(messages, ', '))
-        report += '</table>'
+            for message in mymap.keys():
+                messages.append('%s(%d)' % (message[0], mymap[message]))
+            report += self.report_line % (system, string.join(messages, ', '))
+        report = self.report_wrap % report
         return report
