@@ -95,9 +95,9 @@ def xmlify_offsets(omap, ofile, logger):
         return
     logger.puthang(3, 'Making XML out of offset map')
     doc = libxml2.newDoc('1.0')
-    doc.newChild(None, 'epylog-offsets', None)
+    root = doc.newChild(None, 'epylog-offsets', None)
     for entry in omap:
-        enode = doc.newChild(None, 'entry', None)
+        enode = root.newChild(None, 'entry', None)
         enode.newChild(None, 'log', entry[0])
         enode.newChild(None, 'inode', str(entry[1]))
         enode.newChild(None, 'offset', str(entry[2]))
