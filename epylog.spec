@@ -134,7 +134,7 @@ popd
 %{_perldir}/%{name}.pm
 %{_mandir}/man*/*
 %config(noreplace) %{_sysconfdir}/%{name}
-%ghost %config %{_sysconfdir}/%{name}/notice_local.xml
+%ghost %config(noreplace) %{_sysconfdir}/%{name}/notice_local.xml
 %doc doc/*
 
 %changelog
