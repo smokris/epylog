@@ -144,7 +144,10 @@ popd
 %doc doc/*
 
 %changelog
-* Tue Jan 28 2003 Konstantin Riabitsev <icon@phy.dukee.du> 0.8.6-1
+* Fri Feb 07 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.8.7-1
+- More fixes for the memory-friendly grep.
+
+* Tue Jan 28 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.8.6-1
 - Lots and lots of memory optimizations (chunked reads throughout)
 - Entities replaced in get_html_report
 - memory-friendly fgrep calls
