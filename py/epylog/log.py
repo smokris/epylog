@@ -179,8 +179,8 @@ class LogTracker:
             end_stamp = 0
         logger.put(5, 'start_stamp=%d' % start_stamp)
         logger.put(5, 'end_stamp=%d' % end_stamp)
-        return [start_stamp, end_stamp]
         logger.put(5, '<LogTracker.get_stamps')
+        return [start_stamp, end_stamp]
 
     def set_range_by_timestamps(self, start_stamp, end_stamp):
         logger = self.logger
@@ -391,7 +391,6 @@ class Log:
             self.lp = LinePointer(ix, offset, logger)
         ix = self.lp.ix
         offset = self.lp.offset
-        offset_orig = offset
         logger.put(5, 'Checking if we are past the orange end')
         if not self.orange.is_inside(ix, offset):
             msg = 'Moved past the end of the range'
@@ -402,7 +401,7 @@ class Log:
         total = self.orange.total_size
         title = log.filename
         logger.progressbar(1, title, done, total)
-        if offset == log.end_offset:
+        if offset >= log.end_offset:
             logger.put(5, 'End of log "%s" reached' % log.filename)
             ix -= 1
             offset = 0
@@ -422,7 +421,7 @@ class Log:
                        'system': system,
                        'message': message,
                        'multiplier': multiplier}
-        except ValueError, e:
+        except ValueError:
             logger.put(0, 'Invalid syslog format string in %s: %s' %
                        (log.filename, line))
             # Pass it on
@@ -472,7 +471,7 @@ class Log:
             raise epylog.GenericError(msg, logger)
         try:
             stamp, system, message = get_stamp_sys_msg(line, self.monthmap)
-        except epylog.FormatError, e:
+        except epylog.FormatError:
             logger.put(0, 'Invalid syslog format string in %s: %s'
                        (log.filename, line))
         logger.put(5, '<Log._lookup_repeated')
@@ -631,7 +630,6 @@ class Log:
             logger.put(5, 'Yes, range is empty')
         else:
             startlog = self.loglist[self.orange.startix]
-            endlog = self.loglist[self.orange.endix]
             if (startlog.end_offset == self.orange.end_offset and
                 self.orange.endix == self.orange.startix + 1 and
                 self.orange.end_offset == 0):
@@ -910,10 +908,10 @@ class LogFile:
         self.fh.seek(offset)
         line = self.fh.readline()
         offset = self.fh.tell()
-        return [line, offset]
         logger.put(5, '<LogFile.get_line_at_offset')
+        return [line, offset]
 
-    def find_previous_entry_by_re(self, offset, re, limit=1000):
+    def find_previous_entry_by_re(self, offset, regex, limit=1000):
         logger = self.logger
         logger.put(5, '>LogFile.find_previous_entry_by_re')
         self.fh.seek(offset)
@@ -922,7 +920,7 @@ class LogFile:
             line = self._lineback()
             #line = self.fh.readline()
             #self._lineback()
-            if re.search(line):
+            if regex.search(line):
                 logger.put(5, 'Found line: %s' % line)
                 break
             count += 1
@@ -956,7 +954,7 @@ class LogFile:
             if old_ostamp == ostamp:
                 logger.put(5, 'ostamp and old_ostamp the same. Breaking')
                 break
-            increment = increment/2
+            increment = int(increment/2)
             logger.put(5, 'increment=%d' % increment)
             if ostamp < stamp:
                 logger.put(5, '<<<<<<<')

@@ -111,7 +111,7 @@ class ModuleTest:
     def _mk_linemap(self, line, monthmap):
         try:
             stamp, sys, msg = epylog.log.get_stamp_sys_msg(line, monthmap)
-        except ValueError, e:
+        except ValueError:
             msg = 'Invalid syslog line: %s' % line
             self._die(msg)
         linemap = {'line': line,

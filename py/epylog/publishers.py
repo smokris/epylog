@@ -85,7 +85,7 @@ def do_chunked_gzip(infh, outfh, filename, logger):
     gzfh = gzip.GzipFile('rawlogs', fileobj=outfh)
     bartotal = infh.tell()
     bardone = 0
-    bartitle = 'Gzipping'
+    bartitle = 'Gzipping %s' % filename
     infh.seek(0)
     logger.put(5, 'Doing chunked read from infh into gzfh')
     while 1:
@@ -283,7 +283,6 @@ class MailPublisher:
         if re.compile('^/').search(self.smtpserv):
             mail_sendmail(self.smtpserv, msg, logger)
         else:
-            import socket
             fromaddr = 'root@%s' % socket.gethostname()
             mail_smtp(self.smtpserv, fromaddr, self.mailto, msg, logger)
         logger.put(1, 'Mailed the report to: %s' % tostr)
@@ -552,7 +551,6 @@ class FilePublisher:
             if re.compile('^/').search(self.smtpserv):
                 mail_sendmail(self.smtpserv, msg, logger)
             else:
-                import socket
                 fromaddr = 'root@%s' % socket.gethostname()
                 mail_smtp(self.smtpserv, fromaddr, self.notify, msg, logger)
             logger.put(1, 'Notification mailed to: %s' % tostr)

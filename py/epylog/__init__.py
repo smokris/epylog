@@ -51,41 +51,49 @@ MESSAGE_REPEATED_RE = re.compile(r'last message repeated (\S+) times')
 
 class FormatError(exceptions.Exception):
     def __init__(self, message, logger):
+        exceptions.Exception.__init__(self)
         logger.put(2, 'Raising FormatError with message: %s' % message)
         self.args = message
 
 class ConfigError(exceptions.Exception):
     def __init__(self, message, logger):
+        exceptions.Exception.__init__(self)
         logger.put(2, 'Raising ConfigError with message: %s' % message)
         self.args = message
 
 class AccessError(exceptions.Exception):
     def __init__(self, message, logger):
+        exceptions.Exception.__init__(self)
         logger.put(2, 'Raising AccessError with message: %s' % message)
         self.args = message
 
 class OutOfRangeError(exceptions.Exception):
     def __init__(self, message, logger):
+        exceptions.Exception.__init__(self)
         logger.put(2, 'Raising OutOfRangeError with message: %s' % message)
         self.args = message
 
 class ModuleError(exceptions.Exception):
     def __init__(self, message, logger):
+        exceptions.Exception.__init__(self)
         logger.put(2, 'Raising ModuleError with message: %s' % message)
         self.args = message
 
 class SysCallError(exceptions.Exception):
     def __init__(self, message, logger):
+        exceptions.Exception.__init__(self)
         logger.put(2, 'Raising SysCallError with message: %s' % message)
         self.args = message
 
 class NoSuchLogError(exceptions.Exception):
     def __init__(self, message, logger):
+        exceptions.Exception.__init__(self)
         logger.put(2, 'Raising NoSuchLogError with message: %s' % message)
         self.args = message
 
 class GenericError(exceptions.Exception):
     def __init__(self, message, logger):
+        exceptions.Exception.__init__(self)
         logger.put(2, 'Raising GenericError with message: %s' % message)
         self.args = message
 
@@ -320,7 +328,7 @@ class Epylog:
     def _get_unparsed(self):
         fh = open(self.unparsed, 'r')
         unparsed = fh.read()
-        fh.close
+        fh.close()
         return unparsed
 
     def _process_internal_modules(self):
@@ -341,10 +349,11 @@ class Epylog:
         logger.put(5, 'Starting the processing threads')
         threads = []
         try:
-            for i in range(0, self.threads):
+            while 1:
                 t = ConsumerThread(pq, logger)
                 t.start()
                 threads.append(t)
+                if len(threads) > self.threads: break
             for entry in logmap.keys():
                 log = self.logtracker.getlog(entry)
                 matched = 0

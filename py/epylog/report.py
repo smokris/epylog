@@ -139,7 +139,7 @@ class Report:
             self.module_reports.append(modrep)
             self.useful = 1
         else:
-            logger.put(2, 'Module report is empty, ignoring')
+            self.logger.put(2, 'Module report is empty, ignoring')
 
     def append_filtered_strings(self, module_name, fsfh):
         logger = self.logger

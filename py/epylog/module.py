@@ -109,7 +109,7 @@ class Module:
             logger.put(3, 'Getting a log object from entry "%s"' % entry)
             try:
                 log = logtracker.getlog(entry)
-            except epylog.AccessError, e:
+            except epylog.AccessError:
                 ##
                 # Do not die, but disable this module and complain loudly
                 #
@@ -334,7 +334,6 @@ class Module:
     def _make_into_html(self, report):
         logger = self.logger
         logger.put(5, '>Module._make_into_html')
-        import re
         logger.put(5, 'Regexing entities')
         report = re.sub(re.compile('&'), '&amp;', report)
         report = re.sub(re.compile('<'), '&lt;', report)
