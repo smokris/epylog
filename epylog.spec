@@ -9,7 +9,7 @@
 Summary:        New logs analyzer and parser.
 Name:           epylog
 Version:        0.9.5
-Release:        0.1
+Release:        1
 Epoch:          0
 License:        GPL
 Group:          Applications/System
@@ -19,7 +19,7 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-root
 BuildArch:      noarch
 BuildPrereq:    perl, python, gzip, sed
 Requires:       /usr/bin/python2, elinks
-#Obsoletes: dulog
+#Obsoletes:      dulog
 
 %description
 Epylog is a new log notifier and parser which runs periodically out of
