@@ -549,7 +549,7 @@ class logins_mod(InternalModule):
 
     def cyrus_failure(self,linemap):
         action = self.failure
-        system, message , mult = self.get_smm(linemap)
+        system, message, mult = self.get_smm(linemap)
         service = self._get_cyrus_service(message)
         mo = self.cyrus_fail_re.search(message)
         if not mo:
@@ -557,12 +557,12 @@ class logins_mod(InternalModule):
             return None
         rhost, user = mo.groups()
         rhost = self.gethost(rhost)
-        restuple = self._mk_restuple(action,sytem,service,user,'',rhost)
+        restuple = self._mk_restuple(action, system, service, user, '', rhost)
         return {restuple: mult}
 
     def cyrus_open(self,linemap):
         action = self.open
-        system, message , mult = self.get_smm(linemap)
+        system, message, mult = self.get_smm(linemap)
         service = self._get_cyrus_service(message)
         mo = self.cyrus_open_re.search(message)
         if not mo:
@@ -570,7 +570,7 @@ class logins_mod(InternalModule):
             return None
         rhost, user = mo.groups()
         rhost = self.gethost(rhost)
-        restuple = self._mk_restuple(action,sytem,service,user,'',rhost)
+        restuple = self._mk_restuple(action, system, service, user, '', rhost)
         return {restuple: mult}
 
     def qpopper_failure(self, linemap):
