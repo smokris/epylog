@@ -70,13 +70,11 @@ class Epylog:
         try:
             self.cfgdir = config.get('main', 'cfgdir')
             self.vardir = config.get('main', 'vardir')
-            self.moddir = config.get('main', 'moddir')
         except:
             raise ConfigError(('Could not parse the main config file "%s"'
                               % cfgfile), logger)
         logger.put(4, 'cfgdir=%s' % self.cfgdir)
         logger.put(4, 'vardir=%s' % self.vardir)
-        logger.put(4, 'moddir=%s' % self.moddir)
         logger.endhang(3)
         
         logger.put(3, 'Checking if we can write to vardir')
