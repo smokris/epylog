@@ -197,28 +197,31 @@ class OffsetRange:
         self.endix = endix
         self.start_offset = start_offset
         self.end_offset = end_offset
+        self.total_size = 0
         logger.put(5, 'startix=%d' % self.startix)
         logger.put(5, 'start_offset=%d' % self.start_offset)
         logger.put(5, 'endix=%d' % self.endix)
         logger.put(5, 'end_offset=%d' % self.end_offset)
         logger.put(5, '<OffsetRange.__init__')
 
-    def setstart(self, ix, offset):
+    def setstart(self, ix, offset, loglist):
         logger = self.logger
         logger.put(5, '>OffsetRange.setstart')
         self.startix = ix
         self.start_offset = offset
         logger.put(5, 'new startix=%d' % self.startix)
         logger.put(5, 'new start_offset=%d' % self.start_offset)
+        self._recalc_total_size(loglist)
         logger.put(5, '<OffsetRange.setstart')
 
-    def setend(self, ix, offset):
+    def setend(self, ix, offset, loglist):
         logger = self.logger
         logger.put(5, '<OffsetRange.setend')
         self.endix = ix
         self.end_offset = offset
         logger.put(5, 'new endix=%d' % self.endix)
         logger.put(5, 'new end_offset=%d' % self.end_offset)
+        self._recalc_total_size(loglist)
         logger.put(5, '>OffsetRange.setend')
 
     def start_is_end(self):
@@ -232,6 +235,18 @@ class OffsetRange:
         logger.put(5, '<OffsetRange.start_is_end')
         return empty
 
+    def done_size(self, curix, offset, loglist):
+        if curix == self.startix:
+            done = offset - self.start_offset
+        else:
+            done = 0
+            for ix in range(self.startix, curix, -1):
+                if ix == self.startix:
+                    done = loglist[ix].end_offset - self.start_offset
+                else: done += loglist[ix].end_offset
+            done += offset
+        return done
+        
     def is_inside(self, ix, offset):
         logger = self.logger
         logger.put(5, '>OffsetRange.is_inside')
@@ -252,6 +267,19 @@ class OffsetRange:
             logger.put(5, 'ix=%d, offset=%d is inside' % (ix, offset))
         logger.put(5, '<OffsetRange.is_inside')
         return cond
+
+    def _recalc_total_size(self, loglist):
+        logger = self.logger
+        total = 0
+        logger.put(5, 'startix=%d, endix=%d' % (self.startix, self.endix))
+        for ix in range(self.startix, self.endix - 1, -1):
+            if ix == self.startix:
+                total = loglist[ix].end_offset - self.start_offset
+            elif ix == self.endix:
+                total += self.end_offset
+            else: total += loglist[ix].end_offset
+        logger.put(5, 'total=%d' % total)
+        self.total_size = total
 
 class LinePointer:
     def __init__(self, ix, offset, logger):
@@ -305,10 +333,10 @@ class Log:
                 raise epylog.OutOfRangeError(msg, logger)
         if whence:
             logger.put(5, 'Setting range END for entry "%s"' % self.entry)
-            self.orange.setend(ix, offset)
+            self.orange.setend(ix, offset, self.loglist)
         else:
             logger.put(5, 'Setting range START for entry "%s"' % self.entry)
-            self.orange.setstart(ix, offset)
+            self.orange.setstart(ix, offset, self.loglist)
         logger.put(5, '<Log.set_range_param')
 
     def getinode(self):
@@ -352,6 +380,10 @@ class Log:
                 message = self._lookup_repeated(system)
                 multiplier = int(mo.group(1))
             except epylog.FormatError: pass
+        done = self.orange.done_size(ix, offset, self.loglist)
+        total = self.orange.total_size
+        title = log.filename
+        logger.progressbar(1, title, done, total)
         if offset == log.end_offset:
             logger.put(5, 'End of log "%s" reached' % log.filename)
             ix -= 1
@@ -552,8 +584,8 @@ class Log:
         logger.put(5, 'start_offset=%d' % start_offset)
         logger.put(5, 'end_ix=%d' % end_ix)
         logger.put(5, 'end_offset=%d' % end_offset)
-        self.orange.setstart(start_ix, start_offset)
-        self.orange.setend(end_ix, end_offset)
+        self.orange.setstart(start_ix, start_offset, self.loglist)
+        self.orange.setend(end_ix, end_offset, self.loglist)
         logger.put(5, '<Log.set_range_by_timestamps')
 
     def is_range_empty(self):

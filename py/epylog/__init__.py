@@ -97,11 +97,9 @@ class Epylog:
         try:
             tmpdir = config.get('main', 'tmpdir')
             tempfile.tempdir = tmpdir
-        except:
-            pass
+        except: pass
         logger.put(3, 'Creating a safe temporary directory')
-        try:
-            tmpprefix = tempfile.mkdtemp('EPYLOG')
+        try: tmpprefix = tempfile.mkdtemp('EPYLOG')
         except:
             msg = 'Could not create a safe temp directory in "%s"' % tmpprefix
             raise ConfigError(msg, logger)
@@ -111,12 +109,15 @@ class Epylog:
         logger.put(3, 'Sticking tmpprefix into config to pass to other objs')
         config.tmpprefix = self.tmpprefix
         ##
+        # Create a file for unparsed strings.
+        #
+        self.unparsed = tempfile.mktemp('UNPARSED')
+        logger.put(5, 'Unparsed strings will go into %s' % self.unparsed)
+        ##
         # Get multimatch pref
         #
-        try:
-            self.multimatch = config.getboolean('main', 'multimatch')
-        except:
-            self.multimatch = 0
+        try: self.multimatch = config.getboolean('main', 'multimatch')
+        except: self.multimatch = 0
         logger.put(5, 'multimatch=%d' % self.multimatch)
         ##
         # Get threading pref
@@ -205,25 +206,24 @@ class Epylog:
                     logger.put(5, 'priorities[i] is now: %s' % module.name)
                     break
         self.modules = priorities
+        self.imodules = []
+        self.emodules = []
         for module in self.modules:
             logger.put(5, 'module: %s, priority: %d'
                        % (module.name, module.priority))
+            if module.is_internal(): self.imodules.append(module)
+            else: self.emodules.append(module)
         logger.put(5, '<Epylog.__init__')
 
     def process_modules(self):
         logger = self.logger
         logger.put(5, '>Epylog.process_modules')
         logger.put(3, 'Finding internal modules')
-        imodules = []
-        emodules = []
-        for module in self.modules:
-            if module.is_internal(): imodules.append(module)
-            else: emodules.append(module)
-        if len(imodules):
-            self._process_internal_modules(imodules)
-        if len(emodules):
+        if len(self.imodules):
+            self._process_internal_modules()
+        if len(self.emodules):
             logger.puthang(3, 'Processing external modules')
-            for module in emodules:
+            for module in self.emodules:
                 logger.puthang(1, 'Processing module "%s"' % module.name)
                 try:
                     module.invoke_external_module(self.cfgdir)
@@ -252,9 +252,13 @@ class Epylog:
             module_report = module.get_html_report()
             if module_report is not None:
                 self.report.append_module_report(module.name, module_report)
-            fsfh = module.get_filtered_strings_fh()
-            self.report.append_filtered_strings(module.name, fsfh)
-            fsfh.close()
+            if self.emodules:
+                ##
+                # We only need filtered strings if we have external modules
+                #
+                fsfh = module.get_filtered_strings_fh()
+                self.report.append_filtered_strings(module.name, fsfh)
+                fsfh.close()
         self.report.set_stamps(self.logtracker.get_stamps())
         logger.put(5, '<Epylog.make_report')
         return self.report.is_report_useful()
@@ -262,14 +266,19 @@ class Epylog:
     def publish_report(self):
         logger = self.logger
         logger.put(5, '>Epylog.publish_report')
-        if self.report.unparsed:
-            logger.put(2, 'Dumping all log strings into a temp file')
-            tempfile.tempdir = self.tmpprefix
-            rsfh = open(tempfile.mktemp('RAW'), 'w+')
-            wfh = open(tempfile.mktemp('WEED'), 'w+')
-            logger.put(3, 'RAW strings file created in "%s"' % rsfh.name)
-            self.logtracker.dump_all_strings(rsfh)
-        self.report.publish(rsfh, wfh)
+        logger.put(2, 'Dumping all log strings into a temp file')
+        tempfile.tempdir = self.tmpprefix
+        rawfh = open(tempfile.mktemp('RAW'), 'w+')
+        logger.put(3, 'RAW strings file created in "%s"' % rawfh.name)
+        self.logtracker.dump_all_strings(rawfh)
+        if not self.emodules:
+            ##
+            # All modules were internal, meaning we have all unparsed
+            # strings in the self.unparsed file.
+            #
+            unparsed = self._get_unparsed()
+        else: unparsed = None
+        self.report.publish(rawfh, unparsed)
         logger.put(5, '<Epylog.publish_report')
         
     def cleanup(self):
@@ -278,20 +287,28 @@ class Epylog:
         logger.put(2, 'Removing the temp dir "%s"' % self.tmpprefix)
         shutil.rmtree(self.tmpprefix)
 
-    def _process_internal_modules(self, modules):
+    def _get_unparsed(self):
+        fh = open(self.unparsed, 'r')
+        unparsed = fh.read()
+        fh.close
+        return unparsed
+
+    def _process_internal_modules(self):
         logger = self.logger
         logger.put(5, '>Epylog._process_internal_modules')
         logger.puthang(1, 'Processing internal modules')
         logger.put(4, 'Collecting logfiles used by internal modules')
+        upfh = open(self.unparsed, 'w')
+        logger.put(5, 'Opened unparsed strings file in "%s"' % self.unparsed)
         logmap = {}
-        for module in modules:
+        for module in self.imodules:
             for log in module.logs:
                 try: logmap[log.entry].append(module)
                 except KeyError: logmap[log.entry] = [module]
         logger.put(5, 'logmap follows')
         logger.put(5, logmap)
         pq = ProcessingQueue(QUEUE_LIMIT, logger)
-        logger.put(5, 'Starting the consumer threads')
+        logger.put(5, 'Starting the processing threads')
         threads = []
         try:
             for i in range(0, self.threads):
@@ -299,41 +316,54 @@ class Epylog:
                 t.start()
                 threads.append(t)
             for entry in logmap.keys():
-                logger.puthang(1, 'Processing Log: %s' % entry)
                 log = self.logtracker.getlog(entry)
                 matched = 0
+                lines = 0
                 while 1:
                     logger.put(5, 'Getting next line from "%s"' % entry)
                     try:
                         linemap = log.nextline()
                     except FormatError: continue
                     except OutOfRangeError: break
+                    lines += 1
                     logger.put(5, 'We have the following:')
                     logger.put(5, 'line=%s' % linemap['line'])
                     logger.put(5, 'stamp=%d' % linemap['stamp'])
                     logger.put(5, 'system=%s' % linemap['system'])
                     logger.put(5, 'message=%s' % linemap['message'])
                     logger.put(5, 'multiplier=%d' % linemap['multiplier'])
+                    match = 0
                     for module in logmap[entry]:
                         logger.put(5, 'Matching module "%s"' % module.name)
                         handler = module.message_match(linemap['message'])
                         if handler is not None:
-                            matched += 1
+                            match = 1
                             pq.put_linemap(linemap, handler, module)
                             if not self.multimatch:
                                 logger.put(5, 'multimatch is not set')
                                 logger.put(5, 'Not matching other modules')
                                 break
-                logger.put(1, '%d lines matched' % matched)
-                logger.endhang(1)
+                    matched += match
+                    if not match:
+                        logger.put(5, 'Writing the line to unparsed')
+                        upfh.write(linemap['line'])
+                bartitle = log.entry
+                message = '%d of %d lines parsed' % (matched, lines)
+                logger.endbar(1, bartitle, message)
         finally:
             logger.put(5, 'Notifying the threads that they may die now')
             pq.tell_threads_to_quit(threads)
-            logger.puthang(1, 'Waiting for all processing threads to quit')
-            for t in threads: t.join()
-            logger.endhang(1)
+            bartitle = 'Waiting for threads to finish'
+            bartotal = len(threads)
+            bardone = 1
+            for t in threads:
+                logger.progressbar(1, bartitle, bardone, bartotal)
+                t.join()
+                bardone += 1
+            logger.endbar(1, bartitle, 'all threads done')
+        upfh.close()
         logger.puthang(1, 'Finished all matching, now finalizing')
-        for module in modules:
+        for module in self.imodules:
             logger.puthang(1, 'Finalizing "%s"' % module.name)
             try:
                 rs = pq.get_resultset(module)
@@ -350,7 +380,6 @@ class Epylog:
         logger.endhang(1)
         logger.endhang(1)
         logger.put(5, '<Epylog._process_internal_modules')
-
 
 class ProcessingQueue:
     def __init__(self, limit, logger):
@@ -400,15 +429,13 @@ class ProcessingQueue:
     
     def tell_threads_to_quit(self, threads):
         self.mon.acquire()
+        self.logger.put(1, 'Telling all threads to quit')
         self.logger.put(5, 'Waiting till queue is empty')
-        while self.lineq:
-            self.ow.wait()
+        while self.lineq: self.ow.wait()
         self.logger.put(5, 'Set working to 0')
         self.working = 0
-        for t in threads:
-            self.iw.notify()
+        for t in threads: self.iw.notify()
         self.mon.release()
-
 
 class ConsumerThread(threading.Thread):
     def __init__(self, queue, logger):
@@ -578,11 +605,11 @@ class Logger:
         if (level <= self.loglevel):
             if self.hanging:
                 self.hanging = 0
-            print '%s%s' % (self.__getindent(), message)
+            print '%s%s' % (self._getindent(), message)
 
     def puthang(self, level, message):
         if (level <= self.loglevel):
-            print '%sInvoking: "%s"...' % (self.__getindent(), message)
+            print '%sInvoking: "%s"...' % (self._getindent(), message)
             self.hanging = 1
             self.hangmsg.append(message)
 
@@ -591,11 +618,37 @@ class Logger:
             hangmsg = self.hangmsg.pop()
             if self.hanging:
                 self.hanging = 0
-                print '%s%s...%s' % (self.__getindent(), hangmsg, message)
+                print '%s%s...%s' % (self._getindent(), hangmsg, message)
             else:
-                print '%s(Hanging from "%s")....%s' % (self.__getindent(),
+                print '%s(Hanging from "%s")....%s' % (self._getindent(),
                                                        hangmsg, message)
 
-    def __getindent(self):
+    def progressbar(self, level, title, done, total):
+        if level != self.loglevel: return
+        ##
+        # Do some nifty calculations to present the bar
+        #
+        if len(title) > 40: title = title[:40]
+        barwidth = 60 - len(title) - 2 - len(self._getindent())
+        barmask = "[%-" + str(barwidth) + "s]"
+        if total != 0: bardown = int(barwidth*(float(done)/float(total)))
+        else: bardown = 0
+        bar = barmask % ("=" * bardown)
+        sys.stdout.write("\r%s%s: %s\r" % (self._getindent(), title, bar))
+
+    def endbar(self, level, title, message):
+        if level != self.loglevel: return
+        if not message:
+            print
+            return
+        ##
+        # Do some nifty calculations to present the bar
+        #
+        if len(title) > 40: title = title[:40]
+        barwidth = 60 - len(title) - len(self._getindent()) - 2
+        message = '[%s]' % message.center(barwidth)
+        sys.stdout.write("\r%s%s: %s\n" % (self._getindent(), title, message))
+
+    def _getindent(self):
         indent = self.indent * len(self.hangmsg)
         return indent

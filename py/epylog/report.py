@@ -142,28 +142,35 @@ class Report:
 
     def set_stamps(self, stamps):
         logger = self.logger
-        logger.put(5, '>Publisher.set_stamps')
+        logger.put(5, '>Report.set_stamps')
         [self.start_stamp, self.end_stamp] = stamps
         logger.put(5, 'start_stamp=%d' % self.start_stamp)
         logger.put(5, 'end_stamp=%d' % self.end_stamp)
-        logger.put(5, '<Publisher.set_stamps')
-        
-    def publish(self, rawfh, weedfh):
+        logger.put(5, '<Report.set_stamps')
+
+    def mk_unparsed_from_raw(self, rawfh):
+        logger = self.logger
+        logger.put(5, '>Report.mk_unparsed_from_raw')
+        unparsed = ''
+        self.filt_fh.seek(0, 2)
+        if self.filt_fh.tell():
+            logger.puthang(1, 'Doing memory-friendly grep')
+            tempfile.tempdir = self.tmpprefix
+            weedfh = open(tempfile.mktemp('WEED'), 'w+')
+            self._memory_friendly_grep(rawfh, weedfh)
+            logger.endhang(3)
+            logger.puthang(3, 'Reading in weeded logs')
+            weedfh.seek(0)
+            unparsed = weedfh.read()
+            weedfh.close()
+            logger.endhang(1)
+        logger.put(5, '<Report.mk_unparsed_from_raw')
+        return unparsed
+    
+    def publish(self, rawfh, unparsed):
         logger = self.logger
         logger.put(5, '>Report.publish')
-        unparsed_strings = ''
-        if self.unparsed:
-            logger.put(2, 'Checking the size of filt_fh')
-            self.filt_fh.seek(0, 2)
-            if self.filt_fh.tell():
-                logger.puthang(1, 'Doing memory-friendly grep')
-                self._memory_friendly_grep(rawfh, weedfh)
-                logger.endhang(3)
-                logger.puthang(3, 'Reading in weeded logs')
-                weedfh.seek(0)
-                unparsed_strings = weedfh.read()
-                weedfh.close()
-                logger.endhang(1)
+        if unparsed is None: unparsed = self.mk_unparsed_from_raw(rawfh)
         logger.puthang(3, 'Reading in the template file "%s"' % self.template)
         fh = open(self.template)
         template = fh.read()
@@ -178,7 +185,7 @@ class Report:
                               endtime,
                               self.title,
                               self.module_reports,
-                              unparsed_strings,
+                              unparsed,
                               rawfh)
             logger.endhang(2)
 

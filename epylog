@@ -8,51 +8,6 @@ import time
 sys.path.insert(0, './py/')
 from epylog import *
 
-class Logger:
-    indent = '  '
-    hangmsg = []
-    hanging = 0
-    
-    def __init__(self, loglevel):
-        self.loglevel = loglevel
-
-    def is_quiet(self):
-        if self.loglevel == 0:
-            return 1
-        else:
-            return 0
-
-    def debuglevel(self):
-        return str(self.loglevel)
-
-    def put(self, level, message):
-        if (level <= self.loglevel):
-            if self.hanging:
-                self.hanging = 0
-            print '%s%s' % (self.__getindent(), message)
-
-    def puthang(self, level, message):
-        if (level <= self.loglevel):
-            print '%sInvoking: "%s"...' % (self.__getindent(), message)
-            self.hanging = 1
-            self.hangmsg.append(message)
-
-
-    def endhang(self, level, message='done'):
-        if (level <= self.loglevel):
-            hangmsg = self.hangmsg.pop()
-            if self.hanging:
-                self.hanging = 0
-                print '%s%s...%s' % (self.__getindent(), hangmsg, message)
-            else:
-                print '%s(Hanging from "%s")....%s' % (self.__getindent(),
-                                                       hangmsg, message)
-
-    def __getindent(self):
-        indent = self.indent * len(self.hangmsg)
-        return indent
-
-
 def mkstamp(hours=0, days=0):
     now = int(time.time())
     hours = hours + (days * 24)

@@ -199,10 +199,10 @@ class mail_mod(InternalModule):
         rep += self.report_line % ('%d %s' % (size, unit),
                                    'Total Transferred Size')
 
-        rep += self._get_top_report(yrs, 'Top %d active systems')
-        rep += self._get_top_report(crs, 'Top %d connecting hosts')
-        rep += self._get_top_report(srs, 'Top %d senders')
-        rep += self._get_top_report(rrs, 'Top %d recipients')
+        if yrs: rep += self._get_top_report(yrs, 'Top %d active systems')
+        if crs: rep += self._get_top_report(crs, 'Top %d connecting hosts')
+        if srs: rep += self._get_top_report(srs, 'Top %d senders')
+        if rrs: rep += self._get_top_report(rrs, 'Top %d recipients')
         
         report = self.report_wrap % rep
         

@@ -146,7 +146,6 @@ class MailPublisher:
             logger.endhang(3)
 
         if self.rawlogs:
-            logger.puthang(3, 'Gzipping the raw logs')
             ##
             # GzipFile doesn't work with StringIO. :/ Bleh.
             #
@@ -154,6 +153,9 @@ class MailPublisher:
             tempfile.tempdir = self.tmpprefix
             tfh = open(tempfile.mktemp('GZIP'), 'w+')
             gzfh = gzip.GzipFile('rawlogs', fileobj=tfh)
+            bartotal = rawfh.tell()
+            bardone = 0
+            bartitle = 'Gzipping the logs'
             rawfh.seek(0)
             logger.put(5, 'Doing chunked read from rawfh into gzfh')
             while 1:
@@ -162,16 +164,22 @@ class MailPublisher:
                     logger.put(5, 'Reached EOF')
                     break
                 gzfh.write(chunk)
+                bardone += len(chunk)
+                logger.progressbar(1, bartitle, bardone, bartotal)
                 logger.put(5, 'Wrote %d bytes' % len(chunk))
             gzfh.close()
             rawfh.close()
             rawfh = tfh
             rawfh.seek(0, 2)
             size = rawfh.tell()
-            logger.endhang(3, 'Strings gzipped down to %d bytes' % size)
+            ##
+            # Get rid of the progress bar
+            #
+            logger.endbar(1, bartitle, 'gzipped down to %d bytes' % size)
             if size > self.rawlogs:
-                logger.put(2, 'Gzipped Raw Logs over the defined max of "%d"'
-                           % self.rawlogs)
+                logger.put(1, '%d is over the defined max of "%d"'
+                           % (size, self.rawlogs))
+                logger.put(1, 'Not attaching the raw logs')
                 self.rawlogs = 0
             else:
                 logger.put(5, 'Reading in the gzipped logs')
