@@ -4,4 +4,3 @@ Apr 17 16:38:02 mail/mail spamd[25633]: clean message (-1.3/5.0) for srvidal:875
 Apr 17 16:38:53 mail/mail spamd[25653]: clean message (0.9/5.0) for sanders:1533 in 0.0 seconds, 3219 bytes. 
 Apr 17 16:39:18 mail/mail spamd[25666]: clean message (0.2/5.0) for mpror:851 in 0.0 seconds, 2923 bytes. 
 Apr 17 16:38:53 mail/mail spamd[25653]: identified spam (10.2/5.0) for sanders:1533 in 0.0 seconds, 3219 bytes. 
-Jan 16 16:48:41 mail/mail spamd[22217]: processing message <3.0.5.32.20040116164838.00fd2e90@mail-gr.acpub.duke.edu> for jzeigler:1636, expecting 4833 bytes.

@@ -42,72 +42,32 @@ class mail_mod(InternalModule):
         InternalModule.__init__(self)
         self.logger = logger
         rc = re.compile
-
-        ##
-        # Postfix regexes
-        #
         postfix_map = {
             rc('postfix/smtpd\[\d+\]:\s\S*:'): self.postfix_smtpd,
             rc('postfix/n*qmgr\[\d+\]:\s\S*:'): self.postfix_qmgr,
             rc('postfix/local\[\d+\]:\s\S*:'): self.postfix_local,
             rc('postfix/smtp\[\d+\]:\s\S*:\sto='): self.postfix_smtp
             }
-        postfix_weed = [
-            rc('postfix/smtp\[\d+\]: connect to'),
-            rc('postfix/smtp\[\d+\]: warning: no MX host'),
-            rc('postfix/smtp\[\d+\]: warning: numeric domain name'),
-            rc('postfix/smtpd.*: connect from'),
-            rc('postfix/smtpd.*: disconnect from'),
-            rc('postfix/smtpd.*: TLS connection established'),
-            rc('postfix/smtpd.*: lost connection'),
-            rc('postfix/cleanup'),
-            rc('postfix/pickup')
-            ]
 
-        ##
-        # Sendmail regexes
-        #
         sendmail_map = {
             rc('sendmail\['): self.sendmail
             }
-        sendmail_weed = [
-            rc('sendmail\[.*:.*NOQUEUE: Null connection from'),
-            rc('sendmail\[.*:.*timeout waiting for input')
-            ]
 
-        ##
-        # Qmail regexes
-        #
         qmail_map = {
             rc('qmail:\s\d+.\d+\sinfo\smsg'): self.qmail_infomsg,
             rc('qmail:\s\d+.\d+\sstarting\sdelivery'): self.qmail_startdev,
             rc('qmail:\s\d+.\d+\sdelivery'): self.qmail_delivery,
             rc('qmail:\s\d+.\d+\sbounce\smsg\s\d+'): self.qmail_bounce
             }
-        qmail_weed = [
-            rc('qmail:.* new msg'),
-            rc('qmail:.* end msg'),
-            rc('qmail:.* status:')
-            ]
         
         do_postfix = int(opts.get('enable_postfix', '0'))
         do_sendmail = int(opts.get('enable_sendmail', '1'))
         do_qmail = int(opts.get('enable_qmail', '0'))
 
         self.regex_map = {}
-        self.special = {}
-        weed_data = []
-        if do_postfix:
-            self.regex_map.update(postfix_map)
-            weed_data += postfix_weed
-        if do_sendmail:
-            self.regex_map.update(sendmail_map)
-            weed_data += sendmail_weed
-        if do_qmail:
-            self.regex_map.update(qmail_map)
-            weed_data += qmail_weed
-            
-        if weed_data: self.special['weed'] = weed_data
+        if do_postfix: self.regex_map.update(postfix_map)
+        if do_sendmail: self.regex_map.update(sendmail_map)
+        if do_qmail: self.regex_map.update(qmail_map)
         
         self.toplim = int(opts.get('top_report_limit', '5'))
 
@@ -140,7 +100,8 @@ class mail_mod(InternalModule):
         self.delidid  = 5
 
         self.report_wrap = '<table border="0" width="100%%" rules="cols" cellpadding="2">%s</table>'
-        self.subreport_wrap = '<tr><th colspan="2" align="left"><h3><font color="blue">%s</font></h3></th></tr>\n'        
+        self.subreport_wrap = '<tr><th colspan="2" align="left"><h3><font color="blue">%s</font></h3></th></tr>\n'
+        
         self.report_line = '<tr><td valign="top" align="right">%s</td><td valign="top" width="90%%">%s</td></tr>\n'
 
     ##
@@ -419,7 +380,7 @@ class mail_mod(InternalModule):
         if crs: rep += self._get_top_report(crs, 'Top %d connecting hosts')
         if srs: rep += self._get_top_report(srs, 'Top %d senders')
         if rrs: rep += self._get_top_report(rrs, 'Top %d recipients')
-
+        
         report = self.report_wrap % rep
         
         return report

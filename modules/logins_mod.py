@@ -58,22 +58,12 @@ class logins_mod(InternalModule):
             rc('pam_krb5\S*:\s\S+\ssucceeds\sfor'): self.pam_krb5_open,
             rc('pam_krb5\S*:\s\S+\sfails\sfor'): self.pam_krb5_failure
             }
-        pam_weed = [
-            rc('\(pam_unix\).*: session closed for'),
-            rc('\(pam_unix\).*: check pass;')
-            ]
-
         ##
         # XINETD reports
         #
         xinetd_map = {
             rc('xinetd\S*: START:'): self.xinetd_start
             }
-        xinetd_weed = [
-            rc('xinetd.*: .* Transport endpoint is not connected'),
-            rc('xinetd.*: EXIT:')
-            ]
-
         ##
         # SSH reports
         #
@@ -81,21 +71,6 @@ class logins_mod(InternalModule):
             rc('sshd\[\S*: Accepted'): self.sshd_open,
             rc('sshd\[\S*: Failed'): self.sshd_failure
             }
-        sshd_weed = [
-            rc('sshd.*: Generating new .* key.'),
-            rc('sshd.*: .* key generation complete'),
-            rc('sshd.*: Connection closed'),
-            rc('sshd.*: Could not reverse map address'),
-            rc('sshd.*: Received disconnect from')
-            ]
-        sshd_notice = {
-            rc('sftp-server.*'): (0, 'SFTP activity'),
-            rc('subsystem request for sftp'): (0, 'SFTP activity'),
-            rc('sshd\[\S+:.*receive identification string from (\S*)'):
-                (1, 'SSH scan from %s')
-            }
-
-
         ##
         # IMAPD and IPOP3D
         #
@@ -107,21 +82,6 @@ class logins_mod(InternalModule):
             rc('ipop3d\[\S*: Login\suser'): self.uw_imap_open,
             rc('ipop3d\[\S*: Auth\suser'): self.uw_imap_open
             }
-        uw_imap_weed = [
-            rc('imapd.*: AUTHENTICATE'),
-            rc('imapd.*: Logout'),
-            rc('imapd.*: Killed'),
-            rc('imapd.*: imap.*service init'),
-            rc('imapd.*: Command stream end of file'),
-            rc('imapd.*: Autologout'),
-            rc('imapd.*: Connection reset by peer'),
-            rc('ipop3d.*: AUTHENTICATE'),
-            rc('ipop3d.*: Logout'),
-            rc('ipop3d.*: Killed'),
-            rc('ipop3d.*: Autologout'),
-            rc('ipop3d.*: pop3.*service init')
-            ]
-
         ##
         # IMP
         #
@@ -131,8 +91,6 @@ class logins_mod(InternalModule):
             rc('HORDE\[\S*\s*\[imp\] Login'): self.imp3_open,
             rc('HORDE\[\S*\s*\[imp\] FAILED'): self.imp3_failure
             }
-        imp_weed = [rc('HORDE\[\S*\s*\[imp\] Logout')]
-        
         ##
         # DOVECOT
         #
@@ -140,7 +98,6 @@ class logins_mod(InternalModule):
             rc('imap-login:\sLogin:\s'): self.dovecot_open,
             rc('imap-login:\sAborted\slogin\s'): self.dovecot_failure
             }
-        
         ##
         # Courier-IMAP
         #
@@ -148,19 +105,7 @@ class logins_mod(InternalModule):
             rc('\sLOGIN,\suser=\S+,\sip=\[\S+\]'): self.courier_open,
             rc('\sLOGIN FAILED,\sip=\[\S+\]'): self.courier_failure
             }
-        courier_weed = [
-            rc('imapd.*: Connection, ip=\[\S+\]'),
-            rc('imapd.*: LOGOUT, user=\S+, ip=\[\S+\]'),
-            rc('imapd.*: Disconnected, ip=\[\S+\]'),
-            rc('imapd.*: DISCONNECTED, user=\S+, ip=\[\S+\]'),
-            rc('imapd.*: LOGOUT, ip=\[\S+\]'),
-            rc('pop3d.*: Connection, ip=\[\S+\]'),
-            rc('pop3d.*: LOGOUT, user=\S+, ip=\[\S+\]'),
-            rc('pop3d.*: Disconnected, ip=\[\S+\]'),
-            rc('pop3d.*: DISCONNECTED, user=\S+, ip=\[\S+\]'),
-            rc('pop3d.*: LOGOUT, ip=\[\S+\]')
-            ]
-        
+
         ##
         # ProFTPD
         #
@@ -171,37 +116,21 @@ class logins_mod(InternalModule):
         }
 
         regex_map = {}
-        special = {}
-        special['weed'] = []
-        special['notice'] = {}
-        if opts.get('enable_pam', "1") != "0":
-            regex_map.update(pam_map)
-            special['weed'] += pam_weed
-        if opts.get('enable_xinetd', "1") != "0":
-            regex_map.update(xinetd_map)
-            special['weed'] += xinetd_weed
+        if opts.get('enable_pam', "1") != "0": regex_map.update(pam_map)
+        if opts.get('enable_xinetd', "1") != "0": regex_map.update(xinetd_map)
         if opts.get('enable_sshd', "1") != "0": 
             regex_map.update(sshd_map)
-            special['weed'] += sshd_weed
-            special['notice'].update(sshd_notice)
             self.pam_ignore.append('sshd')
         if opts.get('enable_uw_imap', "0") != "0":
             regex_map.update(uw_imap_map)
-            special['weed'] += uw_imap_weed
             self.xinetd_ignore.append('imaps')
-        if opts.get('enable_imp', "0") != "0":
-            regex_map.update(imp_map)
-            special['weed'] += imp_weed
+        if opts.get('enable_imp', "0") != "0": regex_map.update(imp_map)
         if opts.get('enable_dovecot',"0") != "0": regex_map.update(dovecot_map)
-        if opts.get('enable_courier',"0") != "0":
-            regex_map.update(courier_map)
-            special['weed'] += courier_weed
+        if opts.get('enable_courier',"0") != "0": regex_map.update(courier_map)
         if opts.get('enable_proftpd',"0") != "0":
             regex_map.update(proftpd_map)
             self.pam_ignore.append('ftp')
             self.xinetd_ignore.append('ftp')
-
-        self.special = special
 
         self.safe_domains = []
         safe_domains = opts.get('safe_domains', '.*')
@@ -248,7 +177,6 @@ class logins_mod(InternalModule):
                              'publickey': 'pk',
                              'rhosts-rsa': 'rsa',
                              'rsa': 'rsa',
-                             'hostbased': 'host',
                              'none': 'none'}
 
         self.report_wrap = '<table width="100%%" rules="cols" cellpadding="2">%s</table>'

@@ -27,6 +27,12 @@
     <report>Fatal X errors</report>
   </notice>
 
+  <notice id="sftp">
+    <regex>sftp-server.*</regex>
+    <regex>subsystem request for sftp</regex>
+    <report>SFTP activity</report>
+  </notice>
+
   <notice id="floppy">
     <regex>floppy0:|\(floppy\)</regex>
     <report>Misc floppy errors</report>
@@ -42,6 +48,11 @@
     <report>Rebooted with Linux kernel %s</report>
   </notice>
   
+  <notice id="ssh_scan" critical="yes">
+    <regex>sshd\[\S*: Did not receive identification string from (\S*)</regex>
+    <report>SSH scan from %s</report>
+  </notice>
+
   <notice id="cdrom_vfs">
     <regex>VFS: busy inodes on changed media</regex>
     <report>dirty CDROM mount</report>
