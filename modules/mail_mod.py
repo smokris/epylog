@@ -53,12 +53,20 @@ class mail_mod(InternalModule):
             rc('sendmail\['): self.sendmail
             }
 
+        qmail_map = {
+            rc('qmail:\s\d+.\d+\sinfo\smsg'): self.qmail_infomsg,
+            rc('qmail:\s\d+.\d+\sstarting\sdelivery'): self.qmail_startdev,
+            rc('qmail:\s\d+.\d+\sdelivery'): self.qmail_delivery
+            }
+        
         do_postfix = int(opts.get('enable_postfix', '0'))
         do_sendmail = int(opts.get('enable_sendmail', '1'))
+        do_qmail = int(opts.get('enable_qmail', '0'))
 
         self.regex_map = {}
         if do_postfix: self.regex_map.update(postfix_map)
         if do_sendmail: self.regex_map.update(sendmail_map)
+        if do_qmail: self.regex_map.update(qmail_map)
         
         self.toplim = int(opts.get('top_report_limit', '5'))
 
@@ -75,12 +83,20 @@ class mail_mod(InternalModule):
         self.sendmail_from_re = rc('(<.*?>)')
         self.sendmail_relay_re = rc('(.*?)\s\[(\S*)\]')
 
+        self.qmail_ident_re = rc('qmail:\s(\d+)')
+        self.qmail_delid_re = rc('delivery\s(\d+):')
+        self.qmail_infoline_re = rc('bytes\s(\d+)\sfrom\s(<.*?>)')
+        self.qmail_startdev_re = rc('to\s\S+\s(\S+)')
+        self.qmail_delivery_re = rc('delivery\s\d+:\s(\S+):')
+
         self.procmail_re = rc('/procmail')
 
         self.bounce   = 0
         self.success  = 1
         self.warning  = 2
         self.procmail = 3
+        self.delidref = 4
+        self.delidid  = 5
 
         self.report_wrap = '<table border="0" width="100%%" rules="cols" cellpadding="2">%s</table>'
         self.subreport_wrap = '<tr><th colspan="2" align="left"><h3><font color="blue">%s</font></h3></th></tr>\n'
@@ -126,7 +142,7 @@ class mail_mod(InternalModule):
         if status == 'sent': status = self.success
         elif status == 'bounced': status = self.bounce
         else: status = self.warning
-        if self.procmail_re.search(comment): extra = self.procmail
+        if self.procmail_re.search(comment): extra = (self.procmail, 1)
         else: extra = None
         restuple = self._mk_restuple(sys, id, to=to, status=status,
                                      extra=extra)
@@ -163,7 +179,7 @@ class mail_mod(InternalModule):
         if mo:
             command, to, status = mo.groups()
             extra = None
-            if self.procmail_re.search(command): extra = self.procmail
+            if self.procmail_re.search(command): extra = (self.procmail, 1)
             to = self._fix_sendmail_address(to)
             if status == 'Sent': status = self.success
             elif status == 'Deferred': status = self.warning
@@ -180,6 +196,41 @@ class mail_mod(InternalModule):
             return {restuple: mult}
         return None
 
+    def qmail_infomsg(self, linemap):
+        sys, msg, mult = self.get_smm(linemap)
+        id = self._get_qmail_id(msg)
+        try: size, sender = self.qmail_infoline_re.search(msg).groups()
+        except:
+            size = 0
+            sender = 'unknown'
+        restuple = self._mk_restuple(sys, id, sender=sender, size=int(size))
+        return {restuple: mult}
+
+    def qmail_startdev(self, linemap):
+        sys, msg, mult = self.get_smm(linemap)
+        id = self._get_qmail_id(msg)
+        delid = self._get_qmail_delid(msg)
+        print 'id=%s, delid=%s' % (id, delid)
+        try: to = self.qmail_startdev_re.search(msg).group(1)
+        except: to = 'unknown'
+        extra = (self.delidref, delid)
+        restuple = self._mk_restuple(sys, id, to=to, extra=extra)
+        print restuple
+        return {restuple: mult}
+
+    def qmail_delivery(self, linemap):
+        sys, msg, mult = self.get_smm(linemap)
+        delid = self._get_qmail_delid(msg)
+        try:
+            status = self.qmail_delivery_re.search(msg).group(1)
+            if status == 'success': status = self.success
+            else: status = self.warning
+        except: status = self.warning
+        extra = (self.delidid, 1)
+        restuple = self._mk_restuple(sys, delid, status=status, extra=extra)
+        print restuple
+        return {restuple: mult}
+
     ##
     # HElpers
     #
@@ -195,6 +246,16 @@ class mail_mod(InternalModule):
 
     def _get_sendmail_id(self, str):
         try: id = self.sendmail_ident_re.search(str).group(1)
+        except: id = 'unknown'
+        return id
+
+    def _get_qmail_id(self, str):
+        try: id = self.qmail_ident_re.search(str).group(1)
+        except: id = 'unknown'
+        return id
+
+    def _get_qmail_delid(self, str):
+        try: id = self.qmail_delid_re.search(str).group(1)
         except: id = 'unknown'
         return id
 
@@ -227,12 +288,23 @@ class mail_mod(InternalModule):
         ##
         # Go through the results and make sense out of them
         #
+        print rs
         msgdict = {}
+        delids = {}
         while 1:
             try: msgtup, mult = rs.popitem()
             except: break
-            system, id, client, sender, rcpt, size, status, extra = msgtup
+            extra = None
+            system, id, client, sender, rcpt, size, status, extralst = msgtup
             if system is None or (id is None or id is 'unknown'): continue
+            if extralst is not None:
+                if extralst[0] == self.procmail: extra = self.procmail
+                elif extralst[0] == self.delidref:
+                    print 'idref: %s' % extralst[1]
+                    delids[extralst[1]] = id
+                elif extralst[0] == self.delidid:
+                    id = delids.get(id, 'unknown')
+                    print 'new id: %s' % id
             key = (system, id)
             try: msglist = msgdict[key]
             except KeyError: msglist = [[], [], [], [], [], []]
@@ -243,6 +315,7 @@ class mail_mod(InternalModule):
             if status is not None: msglist[4].append(status)
             if extra is not None: msglist[5].append(extra)
             msgdict[key] = msglist
+        print msgdict
         ##
         # Do some real calculations now that we have the results collapsed.
         #
