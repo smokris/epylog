@@ -150,6 +150,7 @@ class logins_mod(InternalModule):
         self.imp2_fail_re = rc('FAILED\s(\S*)\sto\s(\S*):\S*\sas\s(\S*)')
         self.imp3_open_re = rc('success\sfor\s(\S*)\s\[(\S*)\]\sto\s\{(\S*):')
         self.imp3_fail_re = rc('LOGIN\s(\S*)\sto\s(\S*):\S*\sas\s(\S*)')
+        self.fake_ipv6_re = rc('^::ffff:(\S+)')
         
         self.sshd_methods = {'password': 'pw',
                              'publickey': 'pk',
@@ -516,6 +517,11 @@ class logins_mod(InternalModule):
         elif host: userat = '@%s' % host
         else: userat = 'unknown'
         return userat
+
+    def _unfakeipv6(self, rhost):
+        mo = self.fake_ipv6_re.search(rhost)
+        if mo: rhost = mo.group(1)
+        return rhost
 
     ##
     # FINALIZE!!
