@@ -400,6 +400,7 @@ class logins_mod(InternalModule):
             return None
         service, user, rhost = mo.groups()
         service = '%s(cr)' % service
+        rhost = self._unfakeipv6(rhost)
         rhost = self.gethost(rhost)
         restuple = self._mk_restuple(action, system, service, user, '', rhost)
         return {restuple: mult}
@@ -413,6 +414,7 @@ class logins_mod(InternalModule):
             return None
         service, rhost = mo.groups()
         service = '%s(cr)' % service
+        rhost = self._unfakeipv6(rhost)
         rhost = self.gethost(rhost)
         user = 'unknown'
         restuple = self._mk_restuple(action, system, service, user, '', rhost)
