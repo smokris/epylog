@@ -1,0 +1,3 @@
+Apr 15 23:34:15 mail/mail postfix/smtp[18846]: warning: numeric domain name in resource data of MX record for freemail.globalsite.com.br: 200.192.176.25
+Apr 15 23:34:47 mail/mail postfix/smtp[18850]: warning: no MX host for coolmusicforyou.net has a valid A record
+Apr 15 23:34:47 mail/mail postfix/smtp[18853]: warning: no MX host for karlmarxclub.com has a valid A record
