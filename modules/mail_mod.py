@@ -291,6 +291,7 @@ class mail_mod(InternalModule):
         print rs
         msgdict = {}
         delids = {}
+        delivs = {}
         while 1:
             try: msgtup, mult = rs.popitem()
             except: break
@@ -301,10 +302,10 @@ class mail_mod(InternalModule):
                 if extralst[0] == self.procmail: extra = self.procmail
                 elif extralst[0] == self.delidref:
                     print 'idref: %s' % extralst[1]
-                    delids[extralst[1]] = id
+                    delids[extralst[1]] = (system, id)
                 elif extralst[0] == self.delidid:
-                    id = delids.get(id, 'unknown')
-                    print 'new id: %s' % id
+                    delivs[id] = status
+                    continue
             key = (system, id)
             try: msglist = msgdict[key]
             except KeyError: msglist = [[], [], [], [], [], []]
@@ -316,6 +317,13 @@ class mail_mod(InternalModule):
             if extra is not None: msglist[5].append(extra)
             msgdict[key] = msglist
         print msgdict
+        if delids:
+            while 1:
+                try: delid, key = delids.popitem()
+                except: break
+                if key in msgdict:
+                    msglist[key][4].append(delivs[delid])
+                    
         ##
         # Do some real calculations now that we have the results collapsed.
         #
