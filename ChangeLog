@@ -4,6 +4,7 @@ Epylog-0.9.6
 	* Added pam_krb5 handling for logins module
 	* Added dovecot imap handling
 	* Added courier imap handling
+	* Only load our mytempfile if mkdtemp not available (python < 2.3)
 
 Epylog-0.9.5
 	* Fix for quasi-bug #6 (docstrings added)
