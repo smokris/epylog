@@ -81,11 +81,10 @@ popd
 %{__install} -m 644 etc/modules.d/*.conf \
     %{buildroot}%{_sysconfdir}/%{name}/modules.d/
 FILES="epylog.conf report_template.html trojans.list"
-FILES="$FILES weed_dist.cf weed_local.cf notice_dist.xml"
+FILES="$FILES weed_dist.cf weed_local.cf notice_dist.xml notice_local.xml"
 for FILE in $FILES; do
   %{__install} -m 644 etc/$FILE %{buildroot}%{_sysconfdir}/%{name}/$FILE
 done
-touch %{buildroot}%{_sysconfdir}/%{name}/notice_local.xml
 ##
 # Install the modules
 #
@@ -134,7 +133,6 @@ popd
 %{_perldir}/%{name}.pm
 %{_mandir}/man*/*
 %config(noreplace) %{_sysconfdir}/%{name}
-%ghost %config(noreplace) %{_sysconfdir}/%{name}/notice_local.xml
 %doc doc/*
 
 %changelog
