@@ -96,7 +96,7 @@ AC_SUBST(PY_MODULE_DIR)
 AC_MSG_CHECKING(for --with-python-dirs)
 AC_ARG_WITH(python-dirs, [  --with-python-dirs      Put modules in python's site-packages dir],
 [
-  PY_MODULE_DIR=$PY_STD_LIB
+  PY_MODULE_DIR=$withval
   AC_MSG_RESULT(yes)
 ],
 [
