@@ -75,8 +75,9 @@ mv AUTHORS ChangeLog INSTALL LICENSE README doc/
 %doc doc/*
 
 %changelog
-* Thu May  1 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.9.3
+* Thu May  1 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.9.3-1
 - Now using autoconf to do the building.
+- Added qmail support in mail module.
 
 * Tue Apr 29 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.9.2-1
 - Notices module reworked to support custom notifications.
