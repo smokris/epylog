@@ -49,7 +49,7 @@ loghost using syslog or syslog-ng.
 ##
 # Remove docs
 #
-%{__rm} -rf %{buildroot}/share/doc
+%{__rm} -rf %{buildroot}%{_defaultdocdir}
 ##
 # Gzip up manpages
 #
