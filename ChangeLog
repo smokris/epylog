@@ -1,3 +1,8 @@
+Epylog-1.0.1
+	* Tiny fixes with Cyrus handling routines in logins, which made them
+	  not work.
+	* Automatically detect python version during .spec building.
+	
 Epylog-1.0
 	* Out with 1.0 already!
 	* Handle ::ffff: fake ipv6 addresses for hostname resolution
