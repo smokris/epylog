@@ -27,3 +27,7 @@ ports_collapse = 5
 enable_iptables = 1
 enable_ipchains = 1
 enable_ipfilter = 0
+##
+# Sort by any of the following: packets, source, dest, port
+#
+sortby=packets

@@ -59,6 +59,7 @@ class packets_mod(InternalModule):
             self.regex_map.update(ipchains_map)
         if opts.get('enable_ipfilter', '0') == '1':
             self.regex_map.update(ipfilter_map)
+        self.sortby = opts.get('sortby', 'packets')
 
         self.comment_line_re = rc('^\s*#')
         self.empty_line_re = rc('^\s*$')
@@ -185,6 +186,16 @@ class packets_mod(InternalModule):
         try: desc = '%s&nbsp;(%s)' % (self.svcdict[port], port)
         except KeyError: desc = port
         return desc
+
+    def _addfin(self, fin, packets, source, system, port, logtype):
+        if self.sortby == 'packets':
+            fin.append(packets, source, system, port, logtype)
+        elif self.sortby == 'source':
+            fin.append(source, packets, system, port, logtype)
+        elif self.sortby == 'system':
+            fin.append(system, packets, source, port, logtype)
+        elif self.sortby == 'port':
+            fin.append(port, packets, source, system, logtype)
     
     ##
     # Finalize!
@@ -219,7 +230,7 @@ class packets_mod(InternalModule):
                 if len(logtypes) > 1: logtype = '[%d]' % len(logtypes)
                 else: logtype = logtypes[0]
                 system = self.collapsed_hosts_rep % len(systems)
-                fin.append((packets, source, system, port, logtype))
+                self._addfin(fin, packets, source, system, port, logtype)
             else:
                 for system in systems:
                     logger.put(2, 'Processing system %s' % system)
@@ -245,7 +256,8 @@ class packets_mod(InternalModule):
                             logtype = '[%d]' % len(logtypes)
                         else: logtype = logtypes[0]
                         port = self.collapsed_ports_rep % len(ports)
-                        fin.append((packets, source, system, port, logtype))
+                        self._addfin(fin, packets, source, system, port,
+                                     logtype)
                     else:
                         for port in ports:
                             submap = dstrs.get_submap((system, port))
@@ -253,16 +265,24 @@ class packets_mod(InternalModule):
                                 try: entry, packets = submap.popitem()
                                 except KeyError: break
                                 logtype = entry[0]
-                                fin.append((packets, source, system, port,
-                                            logtype))
+                                self._addfin(fin, packets, source, system,
+                                             port, logtype)
         report = ''
         flipper = ''
         fin.sort()
-        fin.reverse()
+        if self.sortby == 'packets':
+            fin.reverse()
         for entry in fin:
             if flipper: flipper = ''
             else: flipper = self.flip
-            packets, source, system, port, logtype = entry
+            if self.sortby == 'packets':
+                packets, source, system, port, logtype = entry
+            elif self.sortby == 'source':
+                source, packets, system, port, logtype = entry
+            elif self.sortby == 'system':
+                system, packets, source, port, logtype = entry
+            elif self.sortby == 'port':
+                port, packets, source, system, logtype = entry
             report += self.line_rep % (flipper, packets, source, system,
                                        logtype, port)
 
