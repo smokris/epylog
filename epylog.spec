@@ -34,11 +34,11 @@ New log notifier and analyzer with modular analysis options.
     py/epylog/__init__.py
 
 %build
-cat <<EOF | %{__python}
+cat <<EOF | %{__python}2
 from compileall import compile_dir
 compile_dir('py')
 EOF
-cat <<EOF | %{__python} -OO
+cat <<EOF | %{__python}2 -OO
 from compileall import compile_dir
 compile_dir('py')
 EOF
