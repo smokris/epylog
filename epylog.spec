@@ -1,5 +1,9 @@
 # $Id$
 
+%define _vardir  %{_localstatedir}/lib/epylog
+%define _pydir   %{_libdir}/python2.2/site-packages
+%define _perldir %{_libdir}/perl5/site_perl
+
 Summary: New logs analyzer and parser.
 Name: epylog
 Version: 0.9.3
