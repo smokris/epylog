@@ -3,4 +3,4 @@
 #
 # $Id$
 #
-/usr/sbin/epylog --quiet
+/usr/sbin/epylog --quiet --store-offsets

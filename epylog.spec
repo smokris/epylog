@@ -1,34 +1,50 @@
 # $Id$
 
-%define _vardir   /var/lib
-%define _perldir  /usr/lib/perl5/site_perl
-%define __perldoc /usr/bin/perldoc
+%define _vardir   %{_localstatedir}/lib
+%define _perldir  %{_libdir}/perl5/site_perl
+%define __perldoc %{_bindir}/perldoc
+%define _pydir    %{_libdir}/python2.2/site-packages
 
 Summary: New logs analyzer and parser.
 Name: epylog
-Version: 0.9.3
-Release: 1
+Version: 0.8
+Release: 0.1
 License: GPL
 Group: Applications/System
 Source: http://www.dulug.duke.edu/epylog/download/%{name}-%{version}.tar.gz
 Packager: Konstantin Riabitsev <icon@phy.duke.edu>
-Vendor: Duke University <epylog-list@lists.dulug.duke.edu>
+Vendor: Duke University
 BuildRoot: /var/tmp/%{name}-%{version}-root
 BuildArch: noarch
-Requires: metamail mktemp perl >= 5.6
+BuildPrereq: perl, python, file, gzip, sed
+Requires: python >= 2.2, perl >= 5.6, elinks, grep
 
 %description
 New log notifier and analyzer with modular analysis options.
 
 %prep
-%setup -q -n %{name}-%{version}
-# fix version
-%{__perl} -pi -e "s/^VERSION=.*/VERSION='%{name}-%{version}-%{release}'/g" epylog
+%setup -q
+##
+# Fix version.
+#
+%{__perl} -pi -e \
+    "s/^VERSION\s*=\s*.*/VERSION = '%{name}-%{version}-%{release}'/g" \
+    py/epylog/__init__.py
 
 %build
-# build module documentation.
+cat <<EOF | %{__python}
+from compileall import compile_dir
+compile_dir('py')
+EOF
+cat <<EOF | %{__python} -OO
+from compileall import compile_dir
+compile_dir('py')
+EOF
+##
+# Build module documentation.
+#
 MDOCDIR="doc/modules"
-mkdir -m0755 -p $MDOCDIR
+%{__mkdir_p} -m 755 $MDOCDIR
 for FILE in modules/*; do
   TYPE=`%{__file} -ib $FILE 2>/dev/null`
   case $TYPE in
@@ -37,8 +53,15 @@ for FILE in modules/*; do
       ;;
     application/x-sh)
       %{__grep} -E "^#" $FILE | %{__sed} \
-	"/#!\/bin\/bash/d;/#!\/bin\/sh/d;/Copyright/,//d;s/^#//g;s/^ //g" \
-	> $MDOCDIR/`basename $FILE .sh`.txt
+        "/#!\/bin\/bash/d;/#!\/bin\/sh/d;/Copyright/,//d;s/^#//g;s/^ //g" \
+        > $MDOCDIR/`basename $FILE .sh`.txt
+      ;;
+    ##
+    # file is a little not right in the head
+    # This is really python
+    #
+    text/x-java; charset=us-ascii)
+      echo "Not doing documentation for python modules yet. FIXME!"
       ;;
     *)
       ;;
@@ -46,59 +69,91 @@ for FILE in modules/*; do
 done
 # build the perl module manpage
 %{__perldoc} epylog.pm > man/epylog.3
+##
+# TODO: Build python docs
+#
 
-# move template.mod.pl into doc.
-mv modules/template.mod.pl doc/
+##
+# Move template.mod.pl into doc.
+#
+%{__mv} modules/template.mod.pl doc/
 
 %install
-[ "$RPM_BUILD_ROOT" != "/" ] && rm -rf $RPM_BUILD_ROOT
-mkdir -m0755 -p $RPM_BUILD_ROOT%{_sysconfdir}/epylog
-mkdir -m0755 -p $RPM_BUILD_ROOT%{_sysconfdir}/cron.daily
-mkdir -m0700 -p $RPM_BUILD_ROOT%{_vardir}/epylog
-mkdir -m0755 -p $RPM_BUILD_ROOT%{_libdir}/epylog/modules
-mkdir -m0755 -p $RPM_BUILD_ROOT%{_sbindir}
-
-install -m0755 modules/* $RPM_BUILD_ROOT%{_libdir}/epylog/modules/
-install -m0644 etc/* $RPM_BUILD_ROOT%{_sysconfdir}/epylog/
-install -m0755 epylog $RPM_BUILD_ROOT%{_sbindir}
-install -m0755 cron/epylog-cron.daily \
-	$RPM_BUILD_ROOT%{_sysconfdir}/cron.daily/epylog.cron
-
-# install manpages
+%{__rm} -rf %{buildroot}
+%{__mkdir_p} -m 700 %{buildroot}%{_vardir}/%{name}
+##
+# Install the python libraries
+#
+%{__mkdir_p} -m 755 %{buildroot}%{_pydir}/%{name}
+%{__install} -m 644 py/epylog/*.py* %{buildroot}%{_pydir}/%{name}/
+##
+# Install the configs
+#
+%{__mkdir_p} -m 755 %{buildroot}%{_sysconfdir}/%{name}/modules.d
+%{__install} -m 644 etc/modules.d/*.conf \
+    %{buildroot}%{_sysconfdir}/%{name}/modules.d/
+for FILE in epylog.conf report_template.html trojans.list weed.list; do
+  %{__install} -m 644 etc/$FILE %{buildroot}%{_sysconfdir}/%{name}/$FILE
+done
+##
+# Install the modules
+#
+%{__mkdir_p} -m 755 %{buildroot}%{_libdir}/%{name}/modules
+%{__install} -m 755 modules/* %{buildroot}%{_libdir}/%{name}/modules/
+##
+# Install the executable
+#
+%{__mkdir_p} -m 755 %{buildroot}%{_sbindir}
+%{__install} -m 755 epylog %{buildroot}%{_sbindir}/%{name}
+##
+# Install the cron script
+#
+%{__mkdir_p} -m 755 %{buildroot}%{_sysconfdir}/cron.daily
+%{__install} -m 755 cron/epylog-cron.daily \
+    %{buildroot}%{_sysconfdir}/cron.daily/%{name}.cron
+##
+# Install manpages
+#
 pushd man
 for MAN in *.*; do 
 	SEC=`echo $MAN | sed "s/.*\.//g"`
 	gzip $MAN
-        LOC="$RPM_BUILD_ROOT%{_mandir}/man$SEC"
-        mkdir -m0755 -p $LOC
-        install -m0644 $MAN.gz $LOC
+    LOC="%{buildroot}%{_mandir}/man$SEC"
+    %{__mkdir_p} -m 755 $LOC
+    %{__install} -m 644 $MAN.gz $LOC
 done
 popd
-
-# install the perl module
-mkdir -m0755 -p $RPM_BUILD_ROOT%{_perldir}
-install -m0644 epylog.pm $RPM_BUILD_ROOT%{_perldir}
+##
+# Install the perl module
+#
+%{__mkdir_p} -m 755 %{buildroot}%{_perldir}
+%{__install} -m 644 epylog.pm %{buildroot}%{_perldir}/%{name}.pm
 
 %clean
-[ "$RPM_BUILD_ROOT" != "/" ] && rm -rf $RPM_BUILD_ROOT
+%{__rm} -rf %{buildroot}
 
 %files
 %defattr(-,root,root)
-%dir %{_vardir}/epylog
-%dir %{_libdir}/epylog
-%dir %{_libdir}/epylog/modules
-%{_libdir}/epylog/modules/*
-%{_sbindir}/epylog
-%{_sysconfdir}/cron.daily/epylog.cron
-%{_perldir}/epylog.pm
+%dir %{_vardir}/%{name}
+%dir %{_libdir}/%{name}
+%dir %{_libdir}/%{name}/modules
+%{_libdir}/%{name}/modules/*
+%{_pydir}/%{name}
+%{_sbindir}/%{name}
+%{_sysconfdir}/cron.daily/%{name}.cron
+%{_perldir}/%{name}.pm
 %{_mandir}/man3/*
 %{_mandir}/man5/*
 %{_mandir}/man8/*
 %config %dir %{_sysconfdir}/epylog
+%config %dir %{_sysconfdir}/epylog/modules.d
 %config(noreplace) %{_sysconfdir}/epylog/*
 %doc doc/*
 
 %changelog
+* Sat Jan 18 2003 Konstantin Riabitsev <icon@phy.duke.edu>
+- First attempt at building the epylog version.
+
 * Mon Jun 17 2002 Konstantin Riabitsev <icon@phy.duke.edu>
 - Version 0.9.1, 0.9.2, 0.9.3.
 - Miscellaneous bugfixes and enhancements.

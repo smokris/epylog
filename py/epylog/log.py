@@ -66,8 +66,8 @@ class LogFile:
     def set_init_offset(self):
         logger = self.logger
         logger.put(5, 'Entering LogFile.set_init_offset')
-        logger.put(2, 'Setting to last 24 hours since last entry')
-        dayago = int('%d' % self.__get_log_end_stamp()) - 86400
+        logger.put(2, 'Setting to last 12 hours since last entry')
+        dayago = int('%d' % self.__get_log_end_stamp()) - 43200
         logger.put(3, 'dayago=%d' % dayago)
         try:
             offset = self.find_offset_by_timestamp(dayago)
