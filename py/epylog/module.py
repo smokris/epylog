@@ -205,8 +205,9 @@ class Module:
         logger.put(5, 'filename=%s' % filename)
         logger.put(4, 'Opening the "%s" for writing' % filename)
         fh = open(filename, 'w')
+        len = 0
         for log in self.logs:
-            len = log.dump_strings(fh)
+            len = len + log.dump_strings(fh)
         logger.put(3, 'Total length of the log is "%d"' % len)
         return len
 
