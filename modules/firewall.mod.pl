@@ -26,7 +26,7 @@ currently recognizes ipchains, iptables and ipfilter.
 =cut
 # the rest of the documentation is at the end of the file
 
-use DULog;
+use epylog;
 use strict;
 
 # Copyright (C) 2001-2002 Michael D. Stenner <mstenner@phy.duke.edu>
@@ -49,10 +49,10 @@ use strict;
 
 ##############################################################################
 
-my $du = new DULog();
+my $du = new epylog();
 $du->init("firewall");
 
-### general dulog options
+### general epylog options
 my $confdir   =  $du->option("CONFDIR",          ".");   # where to find config
 
 # $ip?_pattern is a regex that marks a hit - first captured string is
@@ -242,7 +242,7 @@ sub process_packet {
     $offrep{$or} = exists($offrep{$or}) ? $offrep{$or} + $num : $num;
     
     # now that we have successfully processed this line, print it to
-    # FILTER so dulog knows we caught it.
+    # FILTER so epylog knows we caught it.
     $du->pushfilt($line);
     
     undef $host;
@@ -463,9 +463,9 @@ sub collapse {
 =head1 OPTIONS
 
 This module accepts a number of options.  All options are read from
-environment variables.  These options can be set in the dulog config
-file (/etc/dulog/dulog.conf by default).  For example, to change the
-iptables pattern, put this in your dulog.conf file:
+environment variables.  These options can be set in the epylog config
+file (/etc/epylog/epylog.conf by default).  For example, to change the
+iptables pattern, put this in your epylog.conf file:
 
     export FIREWALL_IPTABLES_PATTERN='firewall (REJECT|DROP):'
 
@@ -474,9 +474,9 @@ or change the way your iptables rules log.
 
 Here are the options and their default values:
 
-=head2 GENERAL DULOG OPTIONS
+=head2 GENERAL EPYLOG OPTIONS
 
-These options are officially sanctioned by dulog and are common to
+These options are officially sanctioned by epylog and are common to
 most modules.
 
 =over 5
@@ -495,20 +495,20 @@ loss.  QUIET mode overrides DEBUG mode.
 
 =item LOGCAT => unset (read from STDIN)
 
-This variable is set by dulog and is the file containing logs that
+This variable is set by epylog and is the file containing logs that
 should be read by the module.  If unset, this module reads logs from
 STDIN.
 
 =item LOGREPORT => unset (write to STDOUT)
 
-This variable is set by dulog and is the file to which the final
+This variable is set by epylog and is the file to which the final
 report should be written.  If unset, this module writes the report to
 STDOUT.
 
 =item LOGFILTER => unset (write to STDERR)
 
-This variable is set by dulog and is the file to which the lines
-processed by your module should be written. Dulog will fgrep this
+This variable is set by epylog and is the file to which the lines
+processed by your module should be written. Epylog will fgrep this
 file against the log report before mailing it (if configured to do
 so). If unset, this module will output to STDERR.
 
@@ -516,7 +516,7 @@ so). If unset, this module will output to STDERR.
 
 Location where configuration files are looked for.  The only file used
 by this module is the list of known trojans.  NOTE: don't be alarmed
-by the default value.  It's that way for easy testing and dulog
+by the default value.  It's that way for easy testing and epylog
 overrides it.
 
 =back
