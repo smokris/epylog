@@ -68,12 +68,18 @@ class packets_mod(InternalModule):
         self.ipchains_re = rc('\slog:\s\S+\s(\S*).*\sPROTO=(\d+)\s(\S*):\d*\s\S*:(\d+)')
         self.ipfilter_re = rc('ipmon\[\d+\]:.*\s(\S+),\d+\s->\s\S+,(\d+)\sPR\s(\S+)')
         self.etc_services_re = rc('^(\S*)\s+(\S*)')
+        self.trojan_list_re = rc('^(\S*)\s+(.*)')
         self.etc_protocols_re = rc('^(\S*)\s+(\S*)')
 
-        self.svcdict = self._parse_etc_services()
+        svcdict = self._parse_etc_services()
 
+        trojans = opts.get('trojan_list', '')
         self.systems_collapse = int(opts.get('systems_collapse', '10'))
         self.ports_collapse = int(opts.get('ports_collapse', '10'))
+
+        self.trojan_warning_wrap = '<font color="red">%s</font>'
+        if trojans: svcdict = self._parse_trojan_list(trojans, svcdict)
+        self.svcdict = svcdict
 
         self.protodict = self._parse_etc_protocols()
 
@@ -116,6 +122,22 @@ class packets_mod(InternalModule):
             try: service, pproto = self.etc_services_re.search(line).groups()
             except: continue
             svcdict[pproto] = service
+        return svcdict
+
+    def _parse_trojan_list(self, fileloc, svcdict):
+        try: fh = open(fileloc, 'r')
+        except:
+            self.logger.put(0, 'Could not open %s for reading!' % fileloc)
+            return svcdict
+        while 1:
+            line = fh.readline()
+            if not line: break
+            if (self.comment_line_re.search(line)
+                or self.empty_line_re.search(line)): continue
+            try: pproto, trojan = self.trojan_list_re.search(line).groups()
+            except: continue
+            if pproto not in svcdict:
+                svcdict[pproto] = self.trojan_warning_wrap % trojan
         return svcdict
 
     ##

@@ -9,6 +9,10 @@ priority = 1
 
 [conf]
 ##
+# Where to look for the trojans list.
+#
+trojan_list = %%pkgconfdir%%/trojans.list
+##
 # If a remote host hits this many systems, then don't list them namely,
 # but collapse them into a nice report, e.g.: [50 hosts]
 #
