@@ -1,13 +1,15 @@
-epylog Roadmap
+Epylog Roadmap
 -------------
 
 /-> 0.9 You are here.
+|       * Normalize logging calls.
+|       * Add doc strings to python code
+|       * Bugfixes and cleanups
+|       * Release the project on freshmeat
 |
 |-> 1.0 Do bugfixes
-| |
-|  \-> 1.0.N do bugfixes
 |
-\-> 2.0 Pending core rewrite in Python.
+\-> 1.1 i18n support
 
 -- 
 $Id$
