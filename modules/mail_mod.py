@@ -333,7 +333,7 @@ class mail_mod(InternalModule):
                 try: delid, key = delids.popitem()
                 except: break
                 if key in msgdict:
-                    msgdict[key][4].append(delivs[delid])
+                    if delid in delivs: msgdict[key][4].append(delivs[delid])
                     
         ##
         # Do some real calculations now that we have the results collapsed.
