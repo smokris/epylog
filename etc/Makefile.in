@@ -25,32 +25,28 @@ COMPILEDIR_SCRIPT = $(top_srcdir)/compiledir
 
 CRON_DIR = @CRON_DIR@
 TEMP_DIR = @TEMP_DIR@
-PYTHON_BIN = @PYTHON_BIN@
 PY_MODULE_DIR = @PY_MODULE_DIR@
 PERL_MODULE_DIR = @PERL_MODULE_DIR@
 MODULES_DIR = $(pkgdatadir)/modules
 LYNX_BIN = @LYNX_BIN@
 
-SUBDIRS = cron etc perl man py modules
-INSTALLDIRS = $(pkgdocdir) $(pkgvardir) $(sbindir)
-DOCFILES = AUTHORS ChangeLog INSTALL LICENSE README
-DOCDIRS = doc
+PYDIRS = 
+SUBDIRS = modules.d
+INSTALLDIRS = $(pkgconfdir)
+CFGFILES = epylog.conf notice_dist.xml notice_local.xml report_template.html \
+	trojans.list weed_dist.cf weed_local.cf
 
 all:
-	sed -e 's|%%PYTHON_BIN%%|$(PYTHON_BIN)|g; s|%%pkgconfdir%%|$(pkgconfdir)|g; s|%%PY_MODULE_DIR%%|$(PY_MODULE_DIR)|g' epylog.in > epylog
-	chmod +x epylog
 	for subdir in $(SUBDIRS) ; do \
 	  $(MAKE) -C $$subdir all ; \
 	done
+	sed -e 's|%%pkgconfdir%%|$(pkgconfdir)|g; s|%%TEMP_DIR%%|$(TEMP_DIR)|g; s|%%pkgvardir%%|$(pkgvardir)|g; s|%%LYNX_BIN%%|$(LYNX_BIN)|g' \
+		epylog.conf.in > epylog.conf
 
 install: all installdirs
-	for DOC in $(DOCFILES); do \
-	  $(INSTALL_DATA) $$DOC $(DESTDIR)$(pkgdocdir); \
+	for CFGFILE in $(CFGFILES); do \
+	  $(INSTALL_DATA) $$CFGFILE $(DESTDIR)$(pkgconfdir)/$$CFGFILE; \
 	done
-	for DOCDIR in $(DOCDIRS); do\
-	  cp -rp $$DOCDIR $(DESTDIR)$(pkgdocdir); \
-	done
-	$(INSTALL_SCRIPT) epylog $(DESTDIR)$(sbindir)/epylog
 	for subdir in $(SUBDIRS) ; do \
 	  $(MAKE) -C $$subdir install ; \
 	done
@@ -59,30 +55,24 @@ uninstall:
 	for subdir in $(SUBDIRS) ; do \
 	  $(MAKE) -C $$subdir uninstall ; \
 	done
-	$(RM) -rf $(pkgdocdir)
-	$(RM) $(sbindir)/epylog
-	rmdir $(pkgvardir)
+	for CFGFILE in $(CFGFILES); do \
+	  $(RM) $(pkgconfdir)/$$CFGFILE; \
+	done
+	rmdir $(pkgconfdir)
 
 clean:
+	$(RM) epylog.conf
 	for subdir in $(SUBDIRS) ; do \
 	  $(MAKE) -C $$subdir clean ; \
 	done
-	$(RM) epylog
 
 distclean: clean
+	$(RM) Makefile
 	for subdir in $(SUBDIRS) ; do \
 	  $(MAKE) -C $$subdir distclean ; \
 	done
-	$(RM) config.log
-	$(RM) config.cache
-	$(RM) Makefile
-	$(RM) config.status
-	$(RM) epylog
-	$(RM) compiledir
-	$(RM) -rf autom4te.cache
 
 installdirs:
 	for dir in $(INSTALLDIRS); do \
 	  $(top_srcdir)/mkinstalldirs $(DESTDIR)/$$dir ; \
 	done
-

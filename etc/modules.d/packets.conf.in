@@ -1,6 +1,6 @@
 [module]
 desc = Packet Filter
-exec = /usr/share/epylog/modules/packets_mod.py
+exec = %%MODULES_DIR%%/packets_mod.py
 files = /var/log/messages[.#]
 enabled = yes
 internal = yes
@@ -11,16 +11,16 @@ priority = 1
 ##
 # Where to look for the trojans list.
 # 
-trojan_list = /etc/epylog/trojans.list
+trojan_list = %%pkgconfdir%%/trojans.list
 ##
 # If a remote host hits this many systems, then don't list them namely,
 # but collapse them into a nice report, e.g.: [50 hosts]
 #
-systems_collapse = 10
+systems_collapse = 5
 ##
 # Useful for massive portscans. Don't list all the ports namely, but
 # present them in a collapsed view. E.g.: [50 ports]
-ports_collapse = 10
+ports_collapse = 5
 ##
 # Enable iptables, ipchains, ipfilter, or all three.
 #

@@ -25,32 +25,28 @@ COMPILEDIR_SCRIPT = $(top_srcdir)/compiledir
 
 CRON_DIR = @CRON_DIR@
 TEMP_DIR = @TEMP_DIR@
-PYTHON_BIN = @PYTHON_BIN@
 PY_MODULE_DIR = @PY_MODULE_DIR@
 PERL_MODULE_DIR = @PERL_MODULE_DIR@
 MODULES_DIR = $(pkgdatadir)/modules
 LYNX_BIN = @LYNX_BIN@
 
-SUBDIRS = cron etc perl man py modules
-INSTALLDIRS = $(pkgdocdir) $(pkgvardir) $(sbindir)
-DOCFILES = AUTHORS ChangeLog INSTALL LICENSE README
-DOCDIRS = doc
+PYDIRS = 
+SUBDIRS = 
+INSTALLDIRS = $(pkgconfdir)/modules.d
+MCONFS = mail packets weeder logins notices spamd
 
 all:
-	sed -e 's|%%PYTHON_BIN%%|$(PYTHON_BIN)|g; s|%%pkgconfdir%%|$(pkgconfdir)|g; s|%%PY_MODULE_DIR%%|$(PY_MODULE_DIR)|g' epylog.in > epylog
-	chmod +x epylog
 	for subdir in $(SUBDIRS) ; do \
 	  $(MAKE) -C $$subdir all ; \
 	done
+	for MCONF in $(MCONFS); do \
+	  sed -e 's|%%pkgconfdir%%|$(pkgconfdir)|g; s|%%MODULES_DIR%%|$(MODULES_DIR)|g' $$MCONF.conf.in > $$MCONF.conf; \
+	done
 
 install: all installdirs
-	for DOC in $(DOCFILES); do \
-	  $(INSTALL_DATA) $$DOC $(DESTDIR)$(pkgdocdir); \
+	for MCONF in $(MCONFS); do \
+	  $(INSTALL_DATA) $$MCONF.conf $(DESTDIR)$(pkgconfdir)/modules.d/; \
 	done
-	for DOCDIR in $(DOCDIRS); do\
-	  cp -rp $$DOCDIR $(DESTDIR)$(pkgdocdir); \
-	done
-	$(INSTALL_SCRIPT) epylog $(DESTDIR)$(sbindir)/epylog
 	for subdir in $(SUBDIRS) ; do \
 	  $(MAKE) -C $$subdir install ; \
 	done
@@ -59,30 +55,26 @@ uninstall:
 	for subdir in $(SUBDIRS) ; do \
 	  $(MAKE) -C $$subdir uninstall ; \
 	done
-	$(RM) -rf $(pkgdocdir)
-	$(RM) $(sbindir)/epylog
-	rmdir $(pkgvardir)
+	for MCONF in $(MCONFS); do \
+	  $(RM) $(pkgconfdir)/modules.d/$$MCONF.conf; \
+	done
+	rmdir $(pkgconfdir)/modules.d
 
 clean:
+	for MCONF in $(MCONFS); do \
+	  $(RM) $$MCONF.conf; \
+	done
 	for subdir in $(SUBDIRS) ; do \
 	  $(MAKE) -C $$subdir clean ; \
 	done
-	$(RM) epylog
 
 distclean: clean
+	$(RM) Makefile
 	for subdir in $(SUBDIRS) ; do \
 	  $(MAKE) -C $$subdir distclean ; \
 	done
-	$(RM) config.log
-	$(RM) config.cache
-	$(RM) Makefile
-	$(RM) config.status
-	$(RM) epylog
-	$(RM) compiledir
-	$(RM) -rf autom4te.cache
 
 installdirs:
 	for dir in $(INSTALLDIRS); do \
 	  $(top_srcdir)/mkinstalldirs $(DESTDIR)/$$dir ; \
 	done
-

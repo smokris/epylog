@@ -1,6 +1,6 @@
 [module]
 desc = Weedeater
-exec = /usr/share/epylog/modules/weeder_mod.py
+exec = %%MODULES_DIR%%/weeder_mod.py
 files = /var/log/messages[.#], /var/log/secure[.#], /var/log/maillog[.#]
 enabled = yes
 internal = yes
@@ -11,11 +11,11 @@ priority = 10
 ##
 # Where to look for a weed_dist.cf file.
 #
-weed_dist = /etc/epylog/weed_dist.cf
+weed_dist = %%pkgconfdir%%/weed_dist.cf
 ##
 # Where to look for a weed_local.cf file
 #
-weed_local = /etc/epylog/weed_local.cf
+weed_local = %%pkgconfdir%%/weed_local.cf
 ##
 # This is where it gets interesting.
 # If you look into weed_dist.cf, you will notice that the entries

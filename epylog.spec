@@ -1,15 +1,9 @@
 # $Id$
 
-%define _vardir   %{_localstatedir}/lib
-%define _perldir  %{_libdir}/perl5/site_perl
-%define __perldoc %{_bindir}/perldoc
-%define __pydoc   %{_bindir}/pydoc
-%define _pydir    %{_libdir}/python2.2/site-packages
-
 Summary: New logs analyzer and parser.
 Name: epylog
-Version: 0.9.2
-Release: 1
+Version: 0.9.3
+Release: 0.1
 License: GPL
 Group: Applications/System
 Source: http://linux.duke.edu/projects/epylog/download/%{name}-%{version}.tar.gz
@@ -17,7 +11,7 @@ Packager: Konstantin Riabitsev <icon@phy.duke.edu>
 Vendor: Duke University
 BuildRoot: %{_tmppath}/%{name}-%{version}-root
 BuildArch: noarch
-BuildPrereq: %{__pydoc}, perl, python, file, gzip, sed
+BuildPrereq: perl, python, gzip, sed
 Requires: /usr/bin/python2, perl >= 5.6, elinks, grep
 #Obsoletes: dulog
 Provides: perl(epylog)
@@ -32,6 +26,9 @@ loghost using syslog or syslog-ng.
 
 %prep
 %setup -q
+%configure \
+    --with-python=/usr/bin/python2 \
+    --with-lynx=/usr/bin/links
 ##
 # Fix version.
 #
@@ -40,84 +37,19 @@ loghost using syslog or syslog-ng.
     py/epylog/__init__.py
 
 %build
-cat <<EOF | %{__python}2
-from compileall import compile_dir
-compile_dir('py')
-compile_dir('modules')
-EOF
-cat <<EOF | %{__python}2 -OO
-from compileall import compile_dir
-compile_dir('py')
-compile_dir('modules')
-EOF
-##
-# Build module documentation.
-#
-MDOCDIR="doc/modules"
-%{__mkdir_p} -m 755 $MDOCDIR
-for FILE in `ls modules/*.pl`; do
-    %{__perldoc} -t $FILE > $MDOCDIR/`basename $FILE .pl`.txt
-done
-pushd modules
-for FILE in `ls *.py`; do
-    %{__pydoc} ./$FILE > ../$MDOCDIR/`basename $FILE .py`.txt
-done
-popd
-# build the perl module manpage
-%{__perldoc} perl/epylog.pm > man/epylog.3
+%{__make}
 
 %install
 %{__rm} -rf %{buildroot}
-%{__mkdir_p} -m 700 %{buildroot}%{_vardir}/%{name}
+%{__make} install DESTDIR=%{buildroot}
 ##
-# Install the python libraries
+# Remove docs
 #
-%{__mkdir_p} -m 755 %{buildroot}%{_pydir}/%{name}
-%{__install} -m 644 py/epylog/*.py* %{buildroot}%{_pydir}/%{name}/
+%{__rm} -rf %{buildroot}/share/doc
 ##
-# Install the configs
+# Gzip up manpages
 #
-%{__mkdir_p} -m 755 %{buildroot}%{_sysconfdir}/%{name}/modules.d
-%{__install} -m 644 etc/modules.d/*.conf \
-    %{buildroot}%{_sysconfdir}/%{name}/modules.d/
-FILES="epylog.conf report_template.html trojans.list"
-FILES="$FILES weed_dist.cf weed_local.cf notice_dist.xml notice_local.xml"
-for FILE in $FILES; do
-  %{__install} -m 644 etc/$FILE %{buildroot}%{_sysconfdir}/%{name}/$FILE
-done
-##
-# Install the modules
-#
-%{__mkdir_p} -m 755 %{buildroot}%{_datadir}/%{name}/modules
-%{__install} -m 755 modules/* %{buildroot}%{_datadir}/%{name}/modules/
-##
-# Install the executable
-#
-%{__mkdir_p} -m 755 %{buildroot}%{_sbindir}
-%{__install} -m 755 epylog %{buildroot}%{_sbindir}/%{name}
-##
-# Install the cron script
-#
-%{__mkdir_p} -m 755 %{buildroot}%{_sysconfdir}/cron.daily
-%{__install} -m 755 cron/epylog-cron.daily \
-    %{buildroot}%{_sysconfdir}/cron.daily/%{name}.cron
-##
-# Install manpages
-#
-pushd man
-for MAN in *.*; do 
-	SEC=`echo $MAN | sed "s/.*\.//g"`
-	gzip $MAN
-    LOC="%{buildroot}%{_mandir}/man$SEC"
-    %{__mkdir_p} -m 755 $LOC
-    %{__install} -m 644 $MAN.gz $LOC
-done
-popd
-##
-# Install the perl module
-#
-%{__mkdir_p} -m 755 %{buildroot}%{_perldir}
-%{__install} -m 644 perl/epylog.pm %{buildroot}%{_perldir}/%{name}.pm
+find %{buildroot}/share/man -type f --exec %{__gzip} {} \;
 
 %clean
 %{__rm} -rf %{buildroot}
@@ -136,6 +68,9 @@ popd
 %doc doc/*
 
 %changelog
+* Thu May  1 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.9.3
+- Now using autoconf to do the building.
+
 * Tue Apr 29 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.9.2-1
 - Notices module reworked to support custom notifications.
 - Weeder module now supports 'ALL' for enable

@@ -1,6 +1,6 @@
 [module]
 desc = Notices
-exec = /usr/share/epylog/modules/notices_mod.py
+exec = %%MODULES_DIR%%/notices_mod.py
 files = /var/log/messages[.#], /var/log/secure[.#], /var/log/maillog[.#]
 enabled = yes
 internal = yes
@@ -11,12 +11,12 @@ priority = 7
 ##
 # Where is your notice_dist.xml file?
 #
-notice_dist = /etc/epylog/notice_dist.xml
+notice_dist = %%pkgconfdir%%/notice_dist.xml
 ##
 # Add your own notices into notice_local.xml, not into notice_dist.xml!
 # This way you don't risk missing future revisions to notice_dist.xml
 #
-notice_local = /etc/epylog/notice_local.xml
+notice_local = %%pkgconfdir%%/notice_local.xml
 ##
 # You can list the ids of <notice> members from notice_dist.xml here 
 # namely, or you can use ALL to enable all of them. There is no need

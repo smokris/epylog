@@ -31,26 +31,22 @@ PERL_MODULE_DIR = @PERL_MODULE_DIR@
 MODULES_DIR = $(pkgdatadir)/modules
 LYNX_BIN = @LYNX_BIN@
 
-SUBDIRS = cron etc perl man py modules
-INSTALLDIRS = $(pkgdocdir) $(pkgvardir) $(sbindir)
-DOCFILES = AUTHORS ChangeLog INSTALL LICENSE README
-DOCDIRS = doc
+SUBDIRS = 
+INSTALLDIRS = $(CRON_DIR)
+CRONFILES = epylog.cron
 
 all:
-	sed -e 's|%%PYTHON_BIN%%|$(PYTHON_BIN)|g; s|%%pkgconfdir%%|$(pkgconfdir)|g; s|%%PY_MODULE_DIR%%|$(PY_MODULE_DIR)|g' epylog.in > epylog
-	chmod +x epylog
+	for CRONFILE in $(CRONFILES); do \
+	  sed 's|%%sbindir%%|$(sbindir)|g' $$CRONFILE.in > $$CRONFILE; \
+	done
 	for subdir in $(SUBDIRS) ; do \
 	  $(MAKE) -C $$subdir all ; \
 	done
 
 install: all installdirs
-	for DOC in $(DOCFILES); do \
-	  $(INSTALL_DATA) $$DOC $(DESTDIR)$(pkgdocdir); \
+	for CRONFILE in $(CRONFILES); do \
+	  $(INSTALL_SCRIPT) $$CRONFILE $(DESTDIR)$(CRON_DIR)/$$CRONFILE; \
 	done
-	for DOCDIR in $(DOCDIRS); do\
-	  cp -rp $$DOCDIR $(DESTDIR)$(pkgdocdir); \
-	done
-	$(INSTALL_SCRIPT) epylog $(DESTDIR)$(sbindir)/epylog
 	for subdir in $(SUBDIRS) ; do \
 	  $(MAKE) -C $$subdir install ; \
 	done
@@ -59,27 +55,21 @@ uninstall:
 	for subdir in $(SUBDIRS) ; do \
 	  $(MAKE) -C $$subdir uninstall ; \
 	done
-	$(RM) -rf $(pkgdocdir)
-	$(RM) $(sbindir)/epylog
-	rmdir $(pkgvardir)
+	for CRONFILE in $(CRONFILES); do \
+	  $(RM) $(CRON_DIR)/$$CRONFILE; \
+	done
 
 clean:
 	for subdir in $(SUBDIRS) ; do \
 	  $(MAKE) -C $$subdir clean ; \
 	done
-	$(RM) epylog
+	$(RM) $(CRONFILES)
 
 distclean: clean
 	for subdir in $(SUBDIRS) ; do \
 	  $(MAKE) -C $$subdir distclean ; \
 	done
-	$(RM) config.log
-	$(RM) config.cache
 	$(RM) Makefile
-	$(RM) config.status
-	$(RM) epylog
-	$(RM) compiledir
-	$(RM) -rf autom4te.cache
 
 installdirs:
 	for dir in $(INSTALLDIRS); do \

@@ -25,32 +25,26 @@ COMPILEDIR_SCRIPT = $(top_srcdir)/compiledir
 
 CRON_DIR = @CRON_DIR@
 TEMP_DIR = @TEMP_DIR@
-PYTHON_BIN = @PYTHON_BIN@
 PY_MODULE_DIR = @PY_MODULE_DIR@
 PERL_MODULE_DIR = @PERL_MODULE_DIR@
 MODULES_DIR = $(pkgdatadir)/modules
 LYNX_BIN = @LYNX_BIN@
 
-SUBDIRS = cron etc perl man py modules
-INSTALLDIRS = $(pkgdocdir) $(pkgvardir) $(sbindir)
-DOCFILES = AUTHORS ChangeLog INSTALL LICENSE README
-DOCDIRS = doc
+PYDIRS =
+SUBDIRS = 
+INSTALLDIRS = $(mandir)/man8 $(mandir)/man5
+MANFILES = epylog.8 epylog.conf.5 epylog-modules.5
 
 all:
-	sed -e 's|%%PYTHON_BIN%%|$(PYTHON_BIN)|g; s|%%pkgconfdir%%|$(pkgconfdir)|g; s|%%PY_MODULE_DIR%%|$(PY_MODULE_DIR)|g' epylog.in > epylog
-	chmod +x epylog
 	for subdir in $(SUBDIRS) ; do \
 	  $(MAKE) -C $$subdir all ; \
 	done
 
 install: all installdirs
-	for DOC in $(DOCFILES); do \
-	  $(INSTALL_DATA) $$DOC $(DESTDIR)$(pkgdocdir); \
+	for MANFILE in $(MANFILES); do \
+	  MANDIR=$(mandir)/man`echo $$MANFILE | sed -e 's/.*\.//g'`; \
+	  $(INSTALL_DATA) $$MANFILE $(DESTDIR)$$MANDIR/$$MANFILE; \
 	done
-	for DOCDIR in $(DOCDIRS); do\
-	  cp -rp $$DOCDIR $(DESTDIR)$(pkgdocdir); \
-	done
-	$(INSTALL_SCRIPT) epylog $(DESTDIR)$(sbindir)/epylog
 	for subdir in $(SUBDIRS) ; do \
 	  $(MAKE) -C $$subdir install ; \
 	done
@@ -59,27 +53,21 @@ uninstall:
 	for subdir in $(SUBDIRS) ; do \
 	  $(MAKE) -C $$subdir uninstall ; \
 	done
-	$(RM) -rf $(pkgdocdir)
-	$(RM) $(sbindir)/epylog
-	rmdir $(pkgvardir)
+	for MANFILE in $(MANFILES); do \
+	  MANDIR=$(mandir)/man`echo $$MANFILE | sed -e 's/.*\.//g'`; \
+	  $(RM) $$MANDIR/$$MANFILE; \
+	done
 
 clean:
 	for subdir in $(SUBDIRS) ; do \
 	  $(MAKE) -C $$subdir clean ; \
 	done
-	$(RM) epylog
 
 distclean: clean
 	for subdir in $(SUBDIRS) ; do \
 	  $(MAKE) -C $$subdir distclean ; \
 	done
-	$(RM) config.log
-	$(RM) config.cache
 	$(RM) Makefile
-	$(RM) config.status
-	$(RM) epylog
-	$(RM) compiledir
-	$(RM) -rf autom4te.cache
 
 installdirs:
 	for dir in $(INSTALLDIRS); do \

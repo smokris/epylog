@@ -1,6 +1,6 @@
 [module]
 desc = Mail Report
-exec = /usr/share/epylog/modules/mail_mod.py
+exec = %%MODULES_DIR%%/mail_mod.py
 files = /var/log/maillog[.#]
 enabled = yes
 internal = yes

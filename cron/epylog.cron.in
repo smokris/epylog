@@ -1,0 +1,6 @@
+#!/bin/sh
+# Run epylog daily.
+#
+# $Id$
+#
+%%sbindir%%/epylog --quiet --store-offsets

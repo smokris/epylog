@@ -41,23 +41,15 @@ if test -z "$PYTHON_BIN"; then
   fi
 fi
 
-CRON_DIR=/etc/cron.daily
+AC_SUBST(CRON_DIR)
+CRON_DIR=$sysconfdir/cron.daily
 AC_MSG_CHECKING(for --with-crondir)
 AC_ARG_WITH(crondir, [  --with-crondir=DIR      Where to install the cron script],
 [
-  AC_SUBST(CRON_DIR)
   CRON_DIR="$withval"
   AC_MSG_RESULT($CRON_DIR)
 ],
 AC_MSG_RESULT(will use $CRON_DIR))
-
-# check for cron dir
-AC_MSG_CHECKING(if $CRON_DIR is a directory)
-if ! test -d $CRON_DIR; then
-  AC_MSG_RESULT(no)
-  AC_MSG_ERROR(Cron directory $CRON_DIR doesn't exist)
-fi
-AC_MSG_RESULT(yes)
 
 # find out python version
 AC_MSG_CHECKING(Python version)
@@ -111,8 +103,8 @@ AC_ARG_WITH(site-perl, [  --with-site-perl        Put perl module in site-perl d
   AC_MSG_RESULT(yes)
 ],
 [
-  eval `perl '-V:installsitelib'`
-  PERL_MODULE_DIR=$installsitelib
+  #eval `perl '-V:installsitelib'`
+  PERL_MODULE_DIR=$libdir/perl5/site-perl
   AC_MSG_RESULT(will use $PERL_MODULE_DIR)
 ])
 
@@ -124,10 +116,35 @@ AC_ARG_WITH(temp-dir, [  --with-temp-dir         Use this for temp dir (/var/tmp
   AC_MSG_RESULT(yes)
 ],
 [
-  PERL_MODULE_DIR=/var/tmp
-  AC_MSG_RESULT(will use $PERL_MODULE_DIR)
+  TEMP_DIR=/var/tmp
+  AC_MSG_RESULT(will use $TEMP_DIR)
 ])
 
-AC_OUTPUT_COMMANDS(chmod +x epylog)
+AC_SUBST(LYNX_BIN)
+AC_MSG_CHECKING(for --with-lynx)
+AC_ARG_WITH(lynx, [  --with-lynx             Lynx/links/w3m location (/usr/bin/lynx)],
+[
+  LYNX_BIN=$withval
+  AC_MSG_RESULT(yes)
+],
+[
+  AC_MSG_RESULT(no)
+  for lynxpath in /usr/bin/lynx /usr/bin/links /usr/bin/w3m; do
+    AC_MSG_CHECKING(for $lynxpath)
+    if ! test -x $lynxpath; then
+      AC_MSG_RESULT(no)
+    else
+      AC_MSG_RESULT(yes)
+      LYNX_BIN=$lynxpath
+      break
+    fi
+  done
+  if test -z "$LYNX_BIN"; then
+    AC_MSG_ERROR(Lynx not found. Please specify with --with-lynx)
+  fi
+])
+
 AC_OUTPUT_COMMANDS(chmod +x compiledir)
-AC_OUTPUT(Makefile compiledir epylog)
+AC_OUTPUT(Makefile cron/Makefile etc/Makefile etc/modules.d/Makefile \
+                   perl/Makefile man/Makefile modules/Makefile \
+                   py/Makefile compiledir)
