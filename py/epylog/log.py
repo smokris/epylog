@@ -367,7 +367,6 @@ class Log:
                 offset, self.loglist[ix].filename, self.loglist[ix].end_offset)
             logger.put(0, msg)
             self.orange.setstart(ix, self.loglist[ix].end_offset, self.loglist)
-            self.orange.setend(ix, self.loglist[ix].end_offset, self.loglist)
         else:
             if whence:
                 logger.put(3, 'Setting range END for entry "%s"' % self.entry)
