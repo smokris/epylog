@@ -7,7 +7,7 @@
 
 Summary: New logs analyzer and parser.
 Name: epylog
-Version: 0.8.8
+Version: 0.8.9
 Release: 1
 License: GPL
 Group: Applications/System
@@ -144,6 +144,10 @@ popd
 %doc doc/*
 
 %changelog
+* Mon Feb 10 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.8.9-1
+- Several fixes in fine_locate routines causing it not to break
+  on logs with non-consecutive entries and live logs.
+
 * Fri Feb 07 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.8.7-1
 - More fixes for the memory-friendly grep.
 

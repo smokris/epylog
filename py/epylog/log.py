@@ -716,6 +716,16 @@ class LogFile:
                     after_stamp = current_stamp
                     self.__lineback()
                 offset = self.fh.tell()
+                if offset >= self.end_offset:
+                    ##
+                    # We have reached the end of the initialized log.
+                    # There are possibly entries past this point, but
+                    # we can't trust them, as they are appended after the
+                    # init and can screw us up.
+                    #
+                    logger.put(5, 'End of initialized log reached, breaking')
+                    self.fh.seek(self.end_offset)
+                    break
                 if current_stamp is None:
                     current_stamp = self.__get_stamp()
                     self.fh.seek(offset)
