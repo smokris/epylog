@@ -123,7 +123,7 @@ class Module:
         logger.put(2, 'Invoking "%s"' % self.executable)
         exitcode = os.system(self.executable)
         logger.put(2, 'External module finished with code "%d"' % exitcode)
-        if exitcode:
+        if exitcode and exitcode != 256:
             raise epylog.ModuleExecError(('External module "%s" exited '
                                         + 'abnormally (exit code "%d")')
                                         % (self.executable, exitcode), logger)
