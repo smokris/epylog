@@ -71,6 +71,7 @@ sshd.*: Generating new .* key.
 sshd.*: .* key generation complete
 sshd.*: Connection closed
 sshd.*: Could not reverse map address
+sshd.*: Received disconnect from
 
 [xinetd]
 xinetd.*: .* Transport endpoint is not connected
