@@ -1,3 +1,7 @@
+Epylog-0.9.6
+	* Small bugfix in repeated line lookup routines
+	* Switched xml handling code from pyxml to libxml2
+
 Epylog-0.9.5
 	* Fix for quasi-bug #6 (docstrings added)
 	* Fix for bug #57
