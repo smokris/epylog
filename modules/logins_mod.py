@@ -190,7 +190,6 @@ class logins_mod(InternalModule):
         self.imp3_fail_re = rc('LOGIN\s(\S*)\sto\s(\S*):\S*\sas\s(\S*)')
         self.proftpd_open_re = rc('proftpd\[\S*:.*\[(\S+)\].*USER\s(.*):\sLogin\ssuccessful')
         self.proftpd_failure_re = rc('proftpd\[\S*:.*\[(\S+)\].*USER\s([^:\s]*)')
-        self.fake_ipv6_re = rc('^::ffff:(\S+)')
         self.qpopper_open_re = rc('user "(.*)" at \(.*\)\s(\S*)')
         self.qpopper_fail_re = rc(':\s(.*)\sat\s(\S*)')
         self.cyrus_open_re = rc('login:.*\[(\S*)\]\s(\S*)\s')
@@ -452,7 +451,6 @@ class logins_mod(InternalModule):
             return None
         service, user, rhost = mo.groups()
         service = '%s(cr)' % service
-        rhost = self._unfakeipv6(rhost)
         rhost = self.gethost(rhost)
         restuple = self._mk_restuple(action, system, service, user, '', rhost)
         return {restuple: mult}
@@ -466,7 +464,6 @@ class logins_mod(InternalModule):
             return None
         service, rhost = mo.groups()
         service = '%s(cr)' % service
-        rhost = self._unfakeipv6(rhost)
         rhost = self.gethost(rhost)
         user = 'unknown'
         restuple = self._mk_restuple(action, system, service, user, '', rhost)
@@ -647,11 +644,6 @@ class logins_mod(InternalModule):
         elif host: userat = '@%s' % host
         else: userat = 'unknown'
         return userat
-
-    def _unfakeipv6(self, rhost):
-        mo = self.fake_ipv6_re.search(rhost)
-        if mo: rhost = mo.group(1)
-        return rhost
 
     def _get_cyrus_service(self, str):
         service = 'unknown'

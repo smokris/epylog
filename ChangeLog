@@ -1,4 +1,10 @@
-Epylog-0.9.7-cvs
+Epylog-1.0
+    * Out with 1.0 already!
+    * Handle ::ffff: fake ipv6 addresses for hostname resolution
+    * Do not depend on elinks in RPM.
+    * Default setting is to send html-only (so we don't depend on lynx)
+
+Epylog-0.9.7
 	* Accepted Makefile patches from Will Newton
 	* Accepted patches for missing logs from Will Newton (#135)
 	* Fixes for bugs/RFEs: #136, #146, #148, #210, and others.

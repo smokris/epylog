@@ -47,7 +47,7 @@ from report import Report
 from module import Module
 from log import LogTracker
 
-VERSION = 'Epylog-0.9.7'
+VERSION = 'Epylog-1.0'
 CHUNK_SIZE = 8192
 GREP_LINES = 10000
 QUEUE_LIMIT = 500
@@ -759,12 +759,15 @@ class InternalModule:
 
     def gethost(self, ip_addr):
         """do reverse lookup on an ip address"""
+        ##
+        # Handle silly fake ipv6 addresses
+        #
+        try: if ip_addr[:7] == '::ffff:': ip_addr = ip_addr[7:]
+        except: pass
         try: return self._known_hosts[ip_addr]
         except KeyError: pass
-
         try: name = socket.gethostbyaddr(ip_addr)[0]
         except socket.error: name = ip_addr
-
         self._known_hosts[ip_addr] = name
         return name
         

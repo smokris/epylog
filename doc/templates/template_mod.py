@@ -64,6 +64,16 @@ class template_mod(InternalModule):
         # See the methods in epylog.InternalModule for insight on
         # which convenience methods are available to you.
         #
+        
+        ##
+        # WARNING WARNING WARNING
+        #
+        # Please read documents/modules.txt, especially the section about
+        # making your modules THREAD SAFE. You _CANNOT_ access external
+        # objects for writing! This will cause data loss. This step should be
+        # SOLELY for analyzing the log string and doing network lookups.
+        # All processing should be done in finalize stage.
+        #
 
         ##
         # DO SOME STUFF HERE

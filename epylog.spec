@@ -11,8 +11,8 @@
 
 Summary:        New logs analyzer and parser.
 Name:           epylog
-Version:        0.9.7
-Release:        1.%{_pyver}
+Version:        1.0
+Release:        0.%{_pyver}
 Epoch:          0
 License:        GPL
 Group:          Applications/System
@@ -21,8 +21,8 @@ URL:            http://linux.duke.edu/projects/epylog/
 BuildRoot:      %{_tmppath}/%{name}-%{version}-root
 BuildArch:      noarch
 BuildPrereq:    perl, %{_python}, gzip, sed
-Requires:       %{_python}, elinks, libxml2-python
-#Obsoletes:      dulog
+Requires:       %{_python}, libxml2-python
+Obsoletes:      dulog
 
 %description
 Epylog is a new log notifier and parser which runs periodically out of
@@ -113,6 +113,10 @@ external perl modules, or intend to write some of your own.
 #------------------------------------------------------------------------------
 
 %changelog
+* Fri Apr 09 2004 Konstantin Ryabitsev <icon@linux.duke.edu> 1.0
+- Version 1.0
+- Do not depend on elinks to make things simpler
+
 * Mon Feb 09 2004 Konstantin Ryabitsev <icon@linux.duke.edu> 0.9.7-1
 - Version 0.9.7
 - Depend on python version.

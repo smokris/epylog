@@ -1,15 +1,10 @@
 Epylog Roadmap
 -------------
 
-/-> 0.9 You are here.
-|       * Normalize logging calls.
-|       * Add doc strings to python code
-|       * Bugfixes and cleanups
-|       * Release the project on freshmeat
+/-> 1.0 You are here
+|   * Do bugfixes
 |
-|-> 1.0 Do bugfixes
-|
-\-> 1.1 i18n support
+\-> 1.1 See Linux@DUKE Bugzilla
 
 -- 
 $Id$
