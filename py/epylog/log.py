@@ -393,20 +393,6 @@ class Log:
             raise epylog.OutOfRangeError(msg, logger)
         log = self.loglist[ix]
         line, offset = log.get_line_at_offset(offset)
-        try:
-            stamp, system, message = get_stamp_sys_msg(line, self.monthmap)
-        except ValueError, e:
-            logger.put(0, 'Invalid syslog format string in %s: %s' %
-                       (log.filename, line))
-            # Pass it on
-            raise epylog.FormatError(e, logger)
-        mo = epylog.MESSAGE_REPEATED_RE.search(message)
-        multiplier = 1
-        if mo:
-            try:
-                message = self._lookup_repeated(system)
-                multiplier = int(mo.group(1))
-            except epylog.FormatError: pass
         done = self.orange.done_size(ix, offset, self.loglist)
         total = self.orange.total_size
         title = log.filename
@@ -416,13 +402,27 @@ class Log:
             ix -= 1
             offset = 0
         self.lp.set(ix, offset)
-        log.repeated_cache[system] = message
+        try:
+            stamp, system, message = get_stamp_sys_msg(line, self.monthmap)
+            multiplier = 1
+            mo = epylog.MESSAGE_REPEATED_RE.search(message)
+            if mo:
+                try:
+                    message = self._lookup_repeated(system)
+                    multiplier = int(mo.group(1))
+                except epylog.FormatError: pass
+            log.repeated_cache[system] = message
+            linemap = {'line': line,
+                       'stamp': stamp,
+                       'system': system,
+                       'message': message,
+                       'multiplier': multiplier}
+        except ValueError, e:
+            logger.put(0, 'Invalid syslog format string in %s: %s' %
+                       (log.filename, line))
+            # Pass it on
+            raise epylog.FormatError(line, logger)
         logger.put(5, '<Log.nextline')
-        linemap = {'line': line,
-                   'stamp': stamp,
-                   'system': system,
-                   'message': message,
-                   'multiplier': multiplier}
         return linemap
 
     def _lookup_repeated(self, system):

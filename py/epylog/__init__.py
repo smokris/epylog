@@ -350,7 +350,10 @@ class Epylog:
                     logger.put(5, 'Getting next line from "%s"' % entry)
                     try:
                         linemap = log.nextline()
-                    except FormatError: continue
+                    except FormatError, e:
+                        logger.put(5, 'Writing the line to unparsed')
+                        upfh.write(str(e))
+                        continue
                     except OutOfRangeError: break
                     lines += 1
                     logger.put(5, 'We have the following:')
