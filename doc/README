@@ -1,14 +1,17 @@
-epylog
+Epylog
 ------
-epylog is a simple new log notifier and parser which runs periodically
-(hourly or daily, whichever you prefer), tails your logs, tries to
-process some of the entries in order to present them in a more
-comprehensive format, and then mails you the output.
+Epylog is a new log notifier and parser which runs periodically out of
+cron, looks at your logs, processes the entries in order to present
+them in a more comprehensive format, and then provides you with the
+output. It is written specifically with large network clusters in mind
+where a lot of machines (around 50 and upwards) log to the same
+loghost using syslog or syslog-ng.
 
-The epylog engine should work on most unix systems, alhough currently
-the modules are only written to work with linux (and in particularly,
-the dulug distribution of Linux). It should work with any Red Hat
-distribution concurrent with Dulug release and maybe some others.
+Alternatively, Epylog can be invoked from the command line and provide
+a log report based on a certain provided time period. In this case it
+relies on syslog timestamps to find the offsets, as opposed to the
+end-of-log offsets stored during the last run, though this behavior is
+not as reliable and is easily thwarted by skewed clocks.
 
 AUTHOR
 -------
@@ -16,22 +19,17 @@ Konstantin Riabitsev <icon@phy.duke.edu>
 
 OBTAINING
 ----------
-http://www.dulug.duke.edu/epylog/
+http://linux.duke.edu/projects/epylog/
 
-RUNNING
---------
-You can run epylog from your console by simply executing "epylog". If
-you want to run it from cron, they you will probably want to run it
-with "epylog --quiet", so nothing goes onto the console.
-
-BUGREPORTS
------------
-Please send any bug reports to the mailing list.
+BUGS
+------
+Please file the bugs in the Epylog bugzilla:
+http://devel.linux.duke.edu/bugzilla/
 
 MAILING LIST
 -------------
 The mailing list for epylog-related questions is:
-epylog-list@lists.dulug.duke.edu. Please send all your inquires there.
+epylog@linux.duke.edu. Please send all your inquires there.
 
 LICENSE
 --------
@@ -57,10 +55,10 @@ are covered under different licenses (see further).
 
 MODULES
 --------
-Modules are the parsing engine of epylog. For more info please see "man
+Modules are the parsing soul of epylog. For more info please see "man
 epylog-modules". If you wrote a module, you are encouraged to
 contribute it to the epylog so other people can make use of it. 
-Please send your modules to icon@phy.duke.edu.
+Please inquire on the list for more information.
 
 MODULES LICENSE
 ----------------
