@@ -189,13 +189,13 @@ class packets_mod(InternalModule):
 
     def _addfin(self, fin, packets, source, system, port, logtype):
         if self.sortby == 'packets':
-            fin.append(packets, source, system, port, logtype)
+            fin.append((packets, source, system, port, logtype))
         elif self.sortby == 'source':
-            fin.append(source, packets, system, port, logtype)
+            fin.append((source, packets, system, port, logtype))
         elif self.sortby == 'system':
-            fin.append(system, packets, source, port, logtype)
+            fin.append((system, packets, source, port, logtype))
         elif self.sortby == 'port':
-            fin.append(port, packets, source, system, logtype)
+            fin.append((port, packets, source, system, logtype))
     
     ##
     # Finalize!
