@@ -21,7 +21,7 @@ This module contains the main classes and methods for Epylog.
 #
 # $Id$
 #
-# @Author Konstantin Riabitsev <icon@phy.duke.edu>
+# @Author Konstantin Ryabitsev <icon@linux.duke.edu>
 # @version $Date$
 #
 

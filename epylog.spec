@@ -9,7 +9,7 @@
 Summary:        New logs analyzer and parser.
 Name:           epylog
 Version:        0.9.7
-Release:        0.1
+Release:        0.2
 Epoch:          0
 License:        GPL
 Group:          Applications/System
@@ -110,75 +110,78 @@ external perl modules, or intend to write some of your own.
 #------------------------------------------------------------------------------
 
 %changelog
-* Mon Sep 22 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.9.6-1
+* Mon Feb 09 2004 Konstantin Ryabitsev <icon@linux.duke.edu> 0.9.7-1
+- Version 0.9.7
+
+* Mon Sep 22 2003 Konstantin Ryabitsev <icon@linux.duke.edu> 0.9.6-1
 - Version 0.9.6
 
-* Wed Jul 23 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.9.5-1
+* Wed Jul 23 2003 Konstantin Ryabitsev <icon@linux.duke.edu> 0.9.5-1
 - Version 0.9.5
 
-* Tue May 20 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.9.4-1
+* Tue May 20 2003 Konstantin Ryabitsev <icon@linux.duke.edu> 0.9.4-1
 - Specfile cleanups to make it more easily adaptable for Linux@DUKE.
 - Fix for bug 38 (incorrect offsets were causing backtrace)
 - Normalized logger calls (bug 9)
 - Enhancements to mail and packets modules
 
-* Thu May  1 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.9.3-1
+* Thu May  1 2003 Konstantin Ryabitsev <icon@linux.duke.edu> 0.9.3-1
 - Now using autoconf to do the building.
 - Added qmail support in mail module.
 - Split perl module into a separate package.
 
-* Tue Apr 29 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.9.2-1
+* Tue Apr 29 2003 Konstantin Ryabitsev <icon@linux.duke.edu> 0.9.2-1
 - Notices module reworked to support custom notifications.
 - Weeder module now supports 'ALL' for enable
 - Some changes to epylog core to return matched regex as part of linemap.
 
-* Fri Apr 25 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.9.1-1
+* Fri Apr 25 2003 Konstantin Ryabitsev <icon@linux.duke.edu> 0.9.1-1
 - Some bugfixes after running pychecker
 - Added doc/INSTALL for people not running RPM.
 
-* Thu Apr 18 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.9.0-1
+* Thu Apr 18 2003 Konstantin Ryabitsev <icon@linux.duke.edu> 0.9.0-1
 - A significant rewrite of module handlers.
 
-* Wed Mar 13 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.8.14-1
+* Wed Mar 13 2003 Konstantin Ryabitsev <icon@linux.duke.edu> 0.8.14-1
 - Fixes for html email sending
 - Option to send via sendmail vs. smtplib
 - Multiple mailto addresses now handled correctly
 - Small bugfixes.
 
-* Mon Mar 03 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.8.13-1
+* Mon Mar 03 2003 Konstantin Ryabitsev <icon@linux.duke.edu> 0.8.13-1
 - Two new features for module configs: you can now specify the priority
   and extra options for modules.
 
-* Fri Feb 28 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.8.12-1
+* Fri Feb 28 2003 Konstantin Ryabitsev <icon@linux.duke.edu> 0.8.12-1
 - Two small bugfixes which prevented some modules from ever being 
   executed when the last log was 0 length.
 
-* Thu Feb 27 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.8.11-1
+* Thu Feb 27 2003 Konstantin Ryabitsev <icon@linux.duke.edu> 0.8.11-1
 - Small changes to logrotation modules, allowing them to specify
   a full path to a rotated file.
 
-* Wed Feb 26 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.8.10-1
+* Wed Feb 26 2003 Konstantin Ryabitsev <icon@linux.duke.edu> 0.8.10-1
 - Ported some modules from DULog.
 
-* Mon Feb 10 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.8.9-1
+* Mon Feb 10 2003 Konstantin Ryabitsev <icon@linux.duke.edu> 0.8.9-1
 - Several fixes in fine_locate routines causing it not to break
   on logs with non-consecutive entries and live logs.
 
-* Fri Feb 07 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.8.7-1
+* Fri Feb 07 2003 Konstantin Ryabitsev <icon@linux.duke.edu> 0.8.7-1
 - More fixes for the memory-friendly grep.
 
-* Tue Jan 28 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.8.6-1
+* Tue Jan 28 2003 Konstantin Ryabitsev <icon@linux.duke.edu> 0.8.6-1
 - Lots and lots of memory optimizations (chunked reads throughout)
 - Entities replaced in get_html_report
 - memory-friendly fgrep calls
 
-* Mon Jan 27 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.8.5-1
+* Mon Jan 27 2003 Konstantin Ryabitsev <icon@linux.duke.edu> 0.8.5-1
 - Big rewrite of logfile handling routines. This works much-much-much
   better!
 - A useful usage().
 - Lots of bugfixes.
 
-* Sat Jan 18 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.8-1
+* Sat Jan 18 2003 Konstantin Ryabitsev <icon@linux.duke.edu> 0.8-1
 - First attempt at building a semi-usable epylog. It even works.
   Sometimes. :)
 - Removed DULog-related changelogs.

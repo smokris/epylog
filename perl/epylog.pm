@@ -21,7 +21,7 @@
 #
 # $Id$
 #
-# @Author Konstantin Riabitsev <icon@phy.duke.edu>
+# @Author Konstantin Ryabitsev <icon@linux.duke.edu>
 #          Michael Stenner <mstenner@phy.duke.edu>
 # @version $Date$
 #
@@ -412,7 +412,7 @@ epylog - Perl5 module for writing perl modules for epylog.
 
 =head1 AUTHORS
 
- Konstantin Riabitsev <icon@phy.duke.edu>
+ Konstantin Ryabitsev <icon@linux.duke.edu>
  Michael Stenner <mstenner@phy.duke.edu>
 
  Duke University Physics

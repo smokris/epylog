@@ -23,7 +23,7 @@ without having to invoke them as part of Epylog.
 #
 # $Id$
 #
-# @Author Konstantin Riabitsev <icon@phy.duke.edu>
+# @Author Konstantin Ryabitsev <icon@linux.duke.edu>
 # @version $Date$
 #
 

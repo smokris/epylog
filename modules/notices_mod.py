@@ -22,7 +22,7 @@ Description will eventually go here.
 #
 # $Id$
 #
-# @Author Konstantin Riabitsev <icon@phy.duke.edu>
+# @Author Konstantin Ryabitsev <icon@linux.duke.edu>
 # @version $Date$
 #
 

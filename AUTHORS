@@ -1,10 +1,10 @@
 epylog
 -----
-Konstantin ("Icon") Riabitsev -- icon@phy.duke.edu
+Konstantin ("Icon") Ryabitsev -- icon@linux.duke.edu
 
 Modules
 --------
-Konstantin ("Icon") Riabitsev (icon@phy.duke.edu):
+Konstantin ("Icon") Ryabitsev (icon@linux.duke.edu):
 		- notices_mod.py
 		- logins_mod.py
 		- mail_mod.py
@@ -15,5 +15,6 @@ Konstantin ("Icon") Riabitsev (icon@phy.duke.edu):
 Special thanks to:
         - Michael Stenner for many of the original modules, plus
           contributions in both code and ideas
-        - Heather Sarik for IMP3 support
-        - Chris Geddings for ipfilter support
+        - Various contributors including, but not limited to:
+            Will Newton, Sean Dilda, Sean O'Connell, Heather Sarik,
+            Chris Geddings, Josko Plazonic, Seth Vidal

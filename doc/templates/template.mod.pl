@@ -28,7 +28,7 @@
 # $Id$
 #
 # @Author  Michael D. Stenner <mstenner@phy.duke.edu>
-#          Konstantin Riabitsev <icon@phy.duke.edu>
+#          Konstantin Ryabitsev <icon@linux.duke.edu>
 # @version $Date$
 #
 
