@@ -1,3 +1,7 @@
+Epylog-1.0.2
+    * Small modification to collapse login reports
+    * Fix monthmap on python-2.4
+
 Epylog-1.0.1
 	* Tiny fixes with Cyrus handling routines in logins, which made them
 	  not work.
