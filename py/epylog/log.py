@@ -4,6 +4,34 @@ import re
 import string
 import time
 
+def mkmonthmap():
+    pad = 2
+    months = []
+    for i in range(0, 12):
+        months.append(time.strftime("%b", (0, i+1, 0, 0,
+                                           0, 0, 0, 0, 0)))
+    basetime = time.localtime(time.time())
+    now_year = basetime[0]
+    now_month = basetime[1]
+    pad_month = now_month + pad
+    monthmap = {}
+    for m in range(pad_month - 12, pad_month):
+        monthname = months[m % 12]
+        year = now_year + (m / 12) 
+        monthmap[monthname] = year
+    return monthmap
+
+def mkstamp_from_syslog_datestr(datestr, monthmap):
+    try:
+        (m, d, t) = datestr.split()[:3]
+        y = str(monthmap[m])
+        datestr = string.join([y, m, d, t], ' ')
+        timestamp = time.mktime(time.strptime(datestr, '%Y %b %d %H:%M:%S'))
+    except:
+        timestamp = -1
+    return timestamp
+
+
 class LogTracker:
     def __init__(self, config, logger):
         self.logger = logger
@@ -11,7 +39,7 @@ class LogTracker:
         self.tmpprefix = config.tmpprefix
         self.entries = []
         self.logs = []
-        self.__mkmonthmap()
+        self.monthmap = mkmonthmap()
         logger.put(5, 'Exiting LogTracker.__init__')
 
     def getlog(self, entry):
@@ -143,26 +171,6 @@ class LogTracker:
                 return log
         logger.put(5, 'No such log file! Returning None. How did this happen?')
         return None
-
-    def __mkmonthmap(self):
-        logger = self.logger
-        logger.put(5, '>LogTracker.__mkmonthmap')
-        pad = 2
-        months = []
-        for i in range(0, 12):
-            months.append(time.strftime("%b", (0, i+1, 0, 0,
-                                               0, 0, 0, 0, 0)))
-        basetime = time.localtime(time.time())
-        now_year = basetime[0]
-        now_month = basetime[1]
-        pad_month = now_month + pad
-        monthmap = {}
-        for m in range(pad_month - 12, pad_month):
-            monthname = months[m % 12]
-            year = now_year + (m / 12) 
-            monthmap[monthname] = year
-        self.monthmap = monthmap
-        logger.put(5, '<LogTracker.__mkmonthmap')
 
 class OffsetRange:
     def __init__(self, startix, start_offset, endix, end_offset, logger):
@@ -846,22 +854,15 @@ class LogFile:
     
     def __mkstamp_from_syslog_datestr(self, datestr):
         logger = self.logger
-        logger.put(5, 'Entering LogFile.__mk_stamp_from_syslog_datestr')
+        logger.put(5, '>LogFile.__mk_stamp_from_syslog_datestr')
         logger.put(5, 'datestr=%s' % datestr)
         logger.put(2, 'Trying to figure out the date from the string passed')
-        try:
-            (m, d, t) = datestr.split()[:3]
-            y = str(self.monthmap[m])
-            logger.put(5, 'y=%s' % y)
-            datestr = string.join([y, m, d, t], ' ')
-            logger.put(5, 'datestr=%s' % datestr)
-            timestamp = time.mktime(time.strptime(datestr,
-                                                  '%Y %b %d %H:%M:%S'))
-        except:
+        timestamp = mkstamp_from_syslog_datestr(datestr, self.monthmap)
+        if timestamp == -1:
             raise epylog.FormatError('Cannot grok the date format in "%s"'
-                                    % datestr, logger)
+                                     % datestr, logger)
         logger.put(2, 'Timestamp is "%d"' % timestamp)
-        logger.put(5, 'Exiting LogFile.__mkstamp_from_syslog_datestr')
+        logger.put(5, '<LogFile.__mkstamp_from_syslog_datestr')
         return timestamp
         
     def __accesscheck(self):

@@ -11,9 +11,12 @@ from report import Report
 from module import Module
 from log import LogTracker
 
-VERSION = 'Epylog-0.8.14'
+VERSION = 'Epylog-0.9.0'
 CHUNK_SIZE = 8192
 GREP_LINES = 10000
+TOTAL_THREAD_LIMIT = 100
+LOG_SPLIT_RE = re.compile(r'(.{15,15}) (\S+) (.*)$')
+SYSLOG_NG_STRIP = re.compile(r'.*[@/]')
 
 class FormatError(exceptions.Exception):
     def __init__(self, message, logger):
@@ -187,20 +190,14 @@ class Epylog:
         logger.put(2, 'Iterating through the modules')
         for module in self.modules:
             logger.puthang(1, 'Processing module "%s"' % module.name)
-            if module.is_python():
+            try:
+                module.invoke_module(self.tmpprefix, self.cfgdir)
+            except ModuleExecError, e:
                 ##
-                # TODO: Code for python modules
+                # Module execution error!
+                # Do not die, but provide a visible warning.
                 #
-                pass
-            else:
-                try:
-                    module.invoke_external_module(self.tmpprefix, self.cfgdir)
-                except ModuleExecError, e:
-                    ##
-                    # Module execution error!
-                    # Do not die, but provide a visible warning.
-                    #
-                    logger.put(0, str(e))
+                logger.put(0, str(e))
             logger.endhang(1, 'done')
         logger.put(5, '<Epylog.process_modules')
 
