@@ -22,7 +22,7 @@ class mail_mod(InternalModule):
             rc('postfix/smtpd\[\d+\]:\s\S*:'): self.postfix_smtpd,
             rc('postfix/nqmgr\[\d+\]:\s\S*:'): self.postfix_nqmgr,
             rc('postfix/local\[\d+\]:\s\S*:'): self.postfix_local,
-            rc('postfix/smtp\[\d+\]:\s\S*:'): self.postfix_smtp
+            rc('postfix/smtp\[\d+\]:\s\S*:\sto='): self.postfix_smtp
             }
         
         self.toplim = int(opts.get('top_report_limit', '5'))

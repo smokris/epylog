@@ -52,7 +52,13 @@ class notices_mod(InternalModule):
             ##
             # Generic CD-ROM errors
             #
-            rc('kernel: cdrom: This disc doesn'): self.cdrom_misc
+            rc('kernel: cdrom: This disc doesn'): self.cdrom_misc,
+            ##
+            # Most indicative of dirty floppy mounts
+            #
+            rc('attempt to access beyond end of device'): self.dirty_mount,
+            rc('rw=\d+, want=\d+, limit=\d+'): self.dirty_mount,
+            rc('Directory sread .* failed'): self.dirty_mount
         }
 
         self.normal   = 0
@@ -88,6 +94,12 @@ class notices_mod(InternalModule):
         urg = self.normal
         sys, msg, mult = self.get_smm(linemap)
         msg = 'SFTP activity'
+        return {(urg, sys, msg): mult}
+
+    def dirty_mount(self, linemap):
+        urg = self.normal
+        sys, msg, mult = self.get_smm(linemap)
+        msg = 'dirty floppy mount [non-indicative]'
         return {(urg, sys, msg): mult}
 
     def floppy_misc(self, linemap):

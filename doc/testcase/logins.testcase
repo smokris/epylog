@@ -16,3 +16,7 @@ Apr 10 12:59:39 login1/login1 gdm(pam_unix)[13050]: session opened for user judy
 Apr 10 13:18:17 hagrid/hagrid xscreensaver(pam_unix)[1903]: authentication failure; logname= uid=1567 euid=1567 tty=:0.0 ruser= rhost=  user=icon
 Apr 10 15:07:18 public0/public0 gdm(pam_unix)[1466]: authentication failure; logname= uid=0 euid=0 tty=:0 ruser= rhost=
 Apr 11 17:11:21 mail/mail imapd[23246]: Login user=matveev host=tonatiu.phy.duke.edu [152.3.183.16]
+Apr 16 00:45:26 src@monserv sshd(pam_unix)[13904]: authentication failure; logname= uid=0 euid=0 tty=NODEVssh ruser= rhost=fleur.adsl.duke.edu  user=root
+Apr 16 00:45:29 src@monserv sshd[13904]: Failed password for root from 152.16.65.208 port 43410 ssh2
+Apr 16 00:45:31 src@monserv sshd[13904]: Accepted password for root from 152.16.65.208 port 43410 ssh2
+Apr 16 00:45:31 src@monserv sshd(pam_unix)[13904]: session opened for user root by (uid=0)

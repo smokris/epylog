@@ -92,7 +92,7 @@ class logins_mod(InternalModule):
         self.xinetd_start_re = rc('START:\s*(\S*)\s')
         self.sshd_open_ruser_re = rc('Accepted\s(\S*)\sfor\s(\S*)\sfrom\s(\S*)\sport\s\d*\sruser\s(\S*)\s*(\S*)')
         self.sshd_open_re = rc('Accepted\s(\S*)\sfor\s(\S*)\sfrom\s(\S*)\sport\s\d+\s*(\S*)')
-        self.sshd_fail_re = rc('Failed\s(\S*)\sfor\s[illegal\suser]*\s*(\S*)\sfrom\s(\S*)\sport\s\d*\s*(\S*)')
+        self.sshd_fail_re = rc('Failed\s(\S*)\sfor.*\s(\S+)\sfrom\s(\S*)\sport\s\d*\s*(\S*)')
         self.uw_imap_fail_re = rc('auth=(.*)\shost=.*\[(\S*)\]')
         self.uw_imap_open_re = rc('user=(.*)\shost=.*\[(\S*)\]')
         self.uw_imap_service_re = rc('^(\S*)\[\d*\]:')

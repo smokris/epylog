@@ -5,6 +5,10 @@
 # See weed_local.cf for instructions on how to add or delete rules.
 #
 
+[pam]
+\(pam_unix\).*: session closed for
+\(pam_unix\).*: check pass;
+
 [dhcpd]
 dhcpd: DHCPREQUEST for
 dhcpd: DHCPACK on
@@ -22,17 +26,17 @@ rpc.statd.*: Caught signal 15, un-registering and exiting
 [automount]
 automount.*: expired
 automount.*: attempting to mount entry
-automount.*: lookup(file): .* failed
+automount.*: lookup\(file\): .* failed
 automount.*: starting automounter
 automount.*: using kernel protocol
 automount.*: shutting down
 automount.*: .* No such key in map
 
 [crond]
-CROND.*: (mailman) CMD (/usr/bin/python
-CROND.*: (root) CMD (.*/sbin/rmmod -as)
-CROND.*: (root) CMD (/usr/lib/sa/sa1
-CROND.*: (root) CMD (run-parts
+CROND.*: \(mailman\) CMD \(/usr/bin/python
+CROND.*: \(root\) CMD \(.*/sbin/rmmod -as\)
+CROND.*: \(root\) CMD \(/usr/lib/sa/sa\d
+CROND.*: \(root\) CMD \(run-parts
 
 [bind]
 named.*: lame server resolving
@@ -57,13 +61,43 @@ gconfd.*: GConf server is not in use
 gconfd.*: Exiting
 gconfd.*: starting
 gconfd.*: .* shutting down cleanly
+gdm.*: Couldn't authenticate user
+xscreensaver.*: FAILED LOGIN
 
 [sshd]
 sshd.*: Generating new .* key.
 sshd.*: .* key generation complete
+sshd.*: Connection closed
+sshd.*: Could not reverse map address
 
 [xinetd]
 xinetd.*: .* Transport endpoint is not connected
+xinetd.*: EXIT:
+
+[uw-imap]
+imapd.*: AUTHENTICATE
+imapd.*: Logout
+imapd.*: Killed
+imapd.*: imap.*service init
+imapd.*: Command stream end of file
+imapd.*: Autologout
+imapd.*: Connection reset by peer
+ipop3d.*: AUTHENTICATE
+ipop3d.*: Logout
+ipop3d.*: Killed
+ipop3d.*: Autologout
+ipop3d.*: pop3.*service init
+
+[postfix]
+postfix/smtp\[\d+\]: connect to
+postfix/smtp\[\d+\]: warning: no MX host
+postfix/smtp\[\d+\]: warning: numeric domain name in resource data
+postfix/smtpd.*: connect from
+postfix/smtpd.*: disconnect from
+postfix/smtpd.*: TLS connection established
+postfix/smtpd.*: lost connection
+postfix/cleanup
+postfix/pickup
 
 [printer]
 printer: ready to print
@@ -85,5 +119,8 @@ ntpd.*: kernel time discipline status change
 [misc]
 modprobe: Can't locate module
 logger: punching nameserver .* through the firewall
+HORDE\[\S*\s*\[imp\] Logout
+LOGIN ON tty.
+usb-uhci.c: interrupt, status
 
 ## $Revision$ ##
