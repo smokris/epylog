@@ -122,6 +122,7 @@ pumpd.*: configured interface
 [afpd]
 afpd.*: ASIP session:
 afpd.*: afp_flushfork:
+afpd.*: .*B read,.*B written
 
 [ntpd]
 ntpd.*: kernel time discipline status change

@@ -35,7 +35,7 @@ class Report:
         try:
             title = config.get(sec, 'title')
         except:
-            title = '%HOSTNAME% system events: %LOCALTIME%'
+            title = '@@HOSTNAME@@ system events: @@LOCALTIME@@'
         try:
             self.template = config.get(sec, 'template').strip()
         except:
@@ -151,6 +151,7 @@ class Report:
     def mk_unparsed_from_raw(self, rawfh):
         logger = self.logger
         logger.put(5, '>Report.mk_unparsed_from_raw')
+        if self.filt_fh is None: return None
         unparsed = ''
         self.filt_fh.seek(0, 2)
         if self.filt_fh.tell():
@@ -170,7 +171,9 @@ class Report:
     def publish(self, rawfh, unparsed):
         logger = self.logger
         logger.put(5, '>Report.publish')
-        if unparsed is None: unparsed = self.mk_unparsed_from_raw(rawfh)
+        if self.filt_fh is not None:
+            if unparsed is None: unparsed = self.mk_unparsed_from_raw(rawfh)
+        else: unparsed = ''
         logger.puthang(3, 'Reading in the template file "%s"' % self.template)
         fh = open(self.template)
         template = fh.read()

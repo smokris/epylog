@@ -21,6 +21,7 @@ class spamd_mod(InternalModule):
         }
 
         self.top = int(opts.get('report_top', '10'))
+        self.thold = int(opts.get('spam_threshold', '5'))
         sort_by = opts.get('sort_by', 'most spammed')
         if sort_by == 'most spammed': self.sort = 'spammed'
         else: self.sort = 'messages'
@@ -31,7 +32,7 @@ class spamd_mod(InternalModule):
         self.subreport_wrap = '<tr><th colspan="4" align="left"><h3>%s</h3></th></tr>\n'
         self.total_title = '<font color="blue">Total stats</font>'
         self.users_title = '<font color="blue">Top %d ranking users</font>' % self.top
-        
+        self.score_rep = '%.1f (%d/%d)'
         self.report_line = '<tr%s><td valign="top">%s</td><td valign="top">%s</td><td valign="top">%s</td><td valign="top">%s</td></tr>\n'
         self.flip = ' bgcolor="#dddddd"'
 
@@ -51,9 +52,9 @@ class spamd_mod(InternalModule):
         size = int(size)
         return {(user, score, sec, size): mult}
 
-    def _mk_score(self, msgs, score, score1, score2, score3):
+    def _mk_score(self, msgs, score, score1, score2):
         avg_score = float(score/msgs)
-        ret = '%.1f (%d/%d/%d)' % (avg_score, score1, score2, score3)
+        ret = self.score_rep % (avg_score, score1, score2)
         return ret
 
     def _mk_time_unit(self, secs):
@@ -72,9 +73,8 @@ class spamd_mod(InternalModule):
         users = rs.get_distinct(())
         t_msgs = 0
         t_score_t = 0
-        t_score_lt5 = 0
-        t_score_510 = 0
-        t_score_gt10 = 0
+        t_thold_lt = 0
+        t_thold_gt = 0
         t_secs = 0
         t_size = 0
         urs = Result()
@@ -82,9 +82,8 @@ class spamd_mod(InternalModule):
             submap = rs.get_submap((user,))
             msgs = 0
             score_t = 0
-            score_lt5 = 0 # from <0 till 5
-            score_510 = 0 # from 5 till 10
-            score_gt10 = 0 # 10 and more
+            thold_lt = 0
+            thold_gt = 0
             secs = 0
             size = 0
             while 1:
@@ -93,28 +92,25 @@ class spamd_mod(InternalModule):
                 msgs += mult
                 score, sec, bytes = entry
                 score_t += score * mult
-                if score < 5: score_lt5 += mult
-                elif score >= 5 and score <= 10: score_510 += mult
-                else: score_gt10 += mult
+                if score < self.thold: thold_lt += mult
+                else: thold_gt += mult
                 secs += sec * mult
                 size += bytes * mult
             if msgs == 0: continue
             t_msgs += msgs
             t_score_t += score_t
-            t_score_lt5 += score_lt5
-            t_score_510 += score_510
-            t_score_gt10 += score_gt10
+            t_thold_lt += thold_lt
+            t_thold_gt += thold_gt
             t_secs += secs
             t_size += size
             if self.sort == 'spammed': ctr = float(score/msgs)
             else: ctr = msgs
-            urs.add_result({(user, msgs, score_t, score_lt5, score_510,
-                            score_gt10, secs, size): ctr})
+            urs.add_result({(user, msgs, score_t, thold_lt, thold_gt,
+                             secs, size): ctr})
 
         report = ''
         report += self.subreport_wrap % self.total_title
-        score = self._mk_score(t_msgs, t_score_t, t_score_lt5, t_score_510,
-                               t_score_gt10)
+        score = self._mk_score(t_msgs, t_score_t, t_thold_lt, t_thold_gt)
         time = '%d %s' % self._mk_time_unit(t_secs)
         size = '%d %s' % self.mk_size_unit(t_size)
         user = '%d&nbsp;users/%d&nbsp;msgs' % (len(users), t_msgs)
@@ -124,8 +120,8 @@ class spamd_mod(InternalModule):
         for avg, entry in urs.get_top(self.top):
             if flipper: flipper = ''
             else: flipper = self.flip
-            user, msgs, score_t, score1, score2, score3, secs, size = entry
-            score = self._mk_score(msgs, score_t, score1, score2, score3)
+            user, msgs, score_t, thold_lt, thold_gt, secs, size = entry
+            score = self._mk_score(msgs, score_t, thold_lt, thold_gt)
             time = '%d %s' % self._mk_time_unit(secs)
             size = '%d %s' % self.mk_size_unit(size)
             report += self.report_line % (flipper, user, size, time, score)
