@@ -2,6 +2,7 @@ import ConfigParser
 import epylog
 import os
 import mytempfile as tempfile
+import string
 
 class Module:
     """epylog Module class"""
@@ -15,44 +16,43 @@ class Module:
         config = ConfigParser.ConfigParser()
         logger.put(2, 'Reading in the cfgfile %s' % cfgfile)
         config.read(cfgfile)
-        try:
-            self.name = config.get('module', 'desc')
-        except:
-            self.name = 'Unnamed Module'
-        try:
-            self.enabled = config.getboolean('module', 'enabled')
-        except:
-            self.enabled = 0
+        try: self.name = config.get('module', 'desc')
+        except: self.name = 'Unnamed Module'
+        try: self.enabled = config.getboolean('module', 'enabled')
+        except: self.enabled = 0
         if not self.enabled:
             logger.put(2, 'This module is not enabled. Skipping init.')
             return
-        try:
-            self.executable = config.get('module', 'exec')
+        try: self.executable = config.get('module', 'exec')
         except:
             raise epylog.ConfigError('Did not find executable name in %s'
                                      % cfgfile, logger)
-        try:
-            self.python = config.getboolean('module', 'python')
-        except:
-            self.python = 0
-        try:
-            logentries = config.get('logs', 'files')
+        try: self.python = config.getboolean('module', 'python')
+        except: self.python = 0
+        try: self.priority = config.getint('module', 'priority')
+        except: self.priority = 10
+        
+        try: logentries = config.get('logs', 'files')
         except:
             raise epylog.ConfigError(('Cannot find log definitions in ' +
                                       'module config "%s"') % cfgfile)
-        try:
-            rotdir = config.get('logs', 'rotdir')
-        except:
-            rotdir = None
-        try:
-            self.outhtml = config.getboolean('output', 'html')
-        except:
-            self.outhtml = 0
+        try: self.outhtml = config.getboolean('output', 'html')
+        except: self.outhtml = 0
+
+        self.extraopts = {}
+        if config.has_section('conf'):
+            logger.put(5, 'Found extra options')
+            for option in config.options('conf'):
+                value = config.get('conf', option)
+                logger.put(5, '%s=%s' % (option, value))
+                self.extraopts[option] = value
+            logger.put(5, 'Done with extra options')
 
         logger.put(5, 'name=%s' % self.name)
         logger.put(5, 'executable=%s' % self.executable)
         logger.put(5, 'enabled=%d' % self.enabled)
         logger.put(5, 'python=%d' % self.python)
+        logger.put(5, 'priority=%d' % self.priority)
         logger.put(5, 'logentries=%s' % logentries)
         logger.put(2, 'outhtml=%d' % self.outhtml)
         
@@ -114,6 +114,13 @@ class Module:
         logger.put(2, 'Setting LOGFILTER to "%s"' % logfilter)
         os.putenv('LOGREPORT', logreport)
         os.putenv('LOGFILTER', logfilter)
+        if len(self.extraopts):
+            logger.put(3, 'Setting extra options')
+            for extraopt in self.extraopts.keys():
+                optname = string.upper(extraopt)
+                optval = self.extraopts[extraopt]
+                logger.put(2, 'Setting %s to "%s"' % (optname, optval))
+                os.putenv(optname, optval)
         logger.put(2, 'Invoking "%s"' % self.executable)
         exitcode = os.system(self.executable)
         logger.put(2, 'External module finished with code "%d"' % exitcode)

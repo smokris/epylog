@@ -11,7 +11,7 @@ from report import Report
 from module import Module
 from log import LogTracker
 
-VERSION = 'Epylog-0.8.12'
+VERSION = 'Epylog-0.8.13'
 CHUNK_SIZE = 8192
 GREP_LINES = 10000
 
@@ -123,6 +123,7 @@ class Epylog:
         # Process module configurations
         #
         self.modules = []
+        priorities = []
         modcfgdir = os.path.join(self.cfgdir, 'modules.d')
         logger.put(3, 'Checking if module config dir "%s" exists' % modcfgdir)
         if not os.path.isdir(modcfgdir):
@@ -147,6 +148,7 @@ class Epylog:
                     module.sanity_check()
                     logger.put(3, 'Sanity checks passed. Remembering module')
                     self.modules.append(module)
+                    priorities.append(module.priority)
                 else:
                     logger.put(2, 'Module "%s" is not enabled, ignoring'
                                % module.name)
@@ -155,6 +157,28 @@ class Epylog:
         logger.put(3, 'Total of %d modules initialized' % len(self.modules))
         if len(self.modules) == 0:
             raise ConfigError('No modules are enabled. Exiting.', logger)
+        ##
+        # Sort modules by priority
+        #
+        logger.put(5, 'sorting modules by priority')
+        priorities.sort()
+        for module in self.modules:
+            logger.put(5, 'analyzing module: %s' % module.name)
+            for i in range(0, len(priorities)):
+                try:
+                    logger.put(5, 'module.priority=%d, priorities[i]=%d'
+                               % (module.priority, priorities[i]))
+                except:
+                    logger.put(5, 'priorities[i] is module: %s'
+                               % priorities[i].name)
+                if module.priority == priorities[i]:
+                    priorities[i] = module
+                    logger.put(5, 'priorities[i] is now: %s' % module.name)
+                    break
+        self.modules = priorities
+        for module in self.modules:
+            logger.put(5, 'module: %s, priority: %d'
+                       % (module.name, module.priority))
         logger.put(5, '<Epylog.__init__')
 
     def process_modules(self):

@@ -23,17 +23,12 @@ def make_html_page(template, starttime, endtime, title, module_reports,
     valumap['hostname'] = socket.gethostname()
     
     logger.put(4, 'Concatenating the module reports together')
-    iter = module_reports.iteritems()
     allrep = ''
-    while 1:
-        try:
-            (module_name, report) = iter.next()
-            logger.puthang(4, 'Processing report for "%s"' % module_name)
-            allrep = '%s\n<h2>%s</h2>\n%s' % (allrep, module_name, report)
-            logger.endhang(4)
-        except StopIteration:
-            logger.put(4, 'Iteration finished')
-            break
+    for modrep in module_reports:
+        logger.puthang(4, 'Processing report for "%s"' % modrep.name)
+        allrep = '%s\n<h2>%s</h2>\n%s' % (allrep, modrep.name,
+                                          modrep.htmlreport)
+        logger.endhang(4)
     if allrep == '':
         allrep = 'No module reports'
     valumap['allrep'] = allrep

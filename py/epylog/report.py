@@ -7,6 +7,12 @@ import epylog.mytempfile as tempfile
 
 from publishers import *
 
+class ModuleReport:
+    def __init__(self, name, htmlreport):
+        self.name = name
+        self.htmlreport = htmlreport
+        
+
 class Report:
     def __init__(self, config, logger):
         logger.put(5, 'Entering Report.__init__')
@@ -21,7 +27,7 @@ class Report:
         self.publishers = []
         self.filt_fh = None
         self.useful = 0
-        self.module_reports = {}
+        self.module_reports = []
         
         self.tmpprefix = config.tmpprefix
         self.runtime = time.localtime()
@@ -99,10 +105,11 @@ class Report:
 
     def append_module_report(self, module_name, module_report):
         if len(module_report) > 0:
-            self.logger.put(2, 'Appending report for "%s" to the dict'
+            modrep = ModuleReport(module_name, module_report)
+            self.logger.put(2, 'Appending report for "%s" to the list'
                             % module_name)
             self.logger.put(5, module_report)
-            self.module_reports[module_name] = module_report
+            self.module_reports.append(modrep)
             self.useful = 1
         else:
             logger.put(2, 'Module report is empty, ignoring')
