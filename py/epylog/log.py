@@ -116,14 +116,17 @@ class LogFile:
 
     def get_start_offset(self):
         self.logger.put(5, 'Enter/Exit LogFile.get_start_offset')
+        self.initfile()
         return self.start_offset
 
     def get_end_offset(self):
         self.logger.put(5, 'Enter/Exit LogFile.get_end_offset')
+        self.initfile()
         return self.end_offset
 
     def get_offset_start_stamp(self):
         self.logger.put(5, 'Enter/Exit LogFile.get_offset_start_stamp')
+        self.initfile()
         if self.start_offset is None:
             return self.get_log_start_stamp()
         else:
@@ -131,6 +134,7 @@ class LogFile:
         
     def get_offset_end_stamp(self):
         self.logger.put(5, 'Enter/Exit LogFile.get_offset_end_stamp')
+        self.initfile()
         if self.end_offset is None:
             return self.get_log_end_stamp()
         else:
@@ -139,6 +143,7 @@ class LogFile:
     def find_offset_by_timestamp(self, searchstamp):
         logger = self.logger
         logger.put(5, 'Entering LogFile.find_offset_by_timestamp')
+        self.initfile()
         if (self.get_log_start_stamp() is None
             or self.get_log_end_stamp() is None):
             logger.put(2, 'Does not seem like anything useful is in this file')
@@ -276,6 +281,7 @@ class LogFile:
         self.logger.put(5, 'offset=%d' % offset)
         stamp = None
         if offset >= 0:
+            self.initfile()
             self.fh.seek(offset)
             self.__set_at_line_start()
             curline = self.fh.readline()
@@ -308,6 +314,7 @@ class LogFile:
     
     def get_log_start_stamp(self):
         self.logger.put(5, 'Entering LogFile.get_log_start_stamp')
+        self.initfile()
         if self.log_start_stamp is None:
             self.fh.seek(0)
             try:
@@ -324,6 +331,7 @@ class LogFile:
     def get_log_end_stamp(self):
         logger = self.logger
         logger.put(5, 'Entering LogFile.get_log_end_stamp')
+        self.initfile()
         if self.log_end_stamp is None:
             self.fh.seek(self.log_end_offset)
             self.__rel_position(-2)
