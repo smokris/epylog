@@ -72,7 +72,7 @@ sshd.*: .* key generation complete
 sshd.*: Connection closed
 sshd.*: Could not reverse map address
 sshd.*: Received disconnect from
-sshd.*: error: Could not get shadow information for NOUSER
+sshd.*: error: Could not get shadow information for
 sshd.*: Invalid user .* from
 
 [xinetd]
@@ -154,10 +154,14 @@ ntpd.*: kernel time discipline status change
 [kernel]
 kernel: application .* uses obsolete OSS audio interface
 kernel: SELinux: initialized
+kernel: device .* left promiscuous mode
+kernel: .*: disabled promiscuous mode
 usb-uhci.c: interrupt, status
 PCI: Found IRQ
 PCI: Sharing IRQ
 PCI: Setting latency timer
+kernel: agpgart: Found
+kernel: agpgart: Putting
 
 [misc]
 modprobe: Can't locate module
@@ -169,6 +173,7 @@ dhclient: DHCPACK
 dhclient: DHCPDISCOVER
 dhclient: bound to
 dbus: avc: .* buckets used
+
 
 
 ## $Revision$ ##
