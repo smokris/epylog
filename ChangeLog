@@ -1,3 +1,9 @@
+Epylog-0.9.3
+	* Autoconf now used to configure and build epylog.
+	* Mail module now supports qmail.
+	* Additions to weed_dist rules
+	* Perl module removed into a separate RPM package.
+
 Epylog-0.9.2
 	* Notices module reworked to support custom notifications.
 	* Weeder module now supports 'ALL' for enable
