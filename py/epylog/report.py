@@ -141,13 +141,14 @@ class Report:
                 # and takes forever. Suggestions are welcome.
                 #
                 logger.puthang(2, 'Making a system call to fgrep')
-                fgrep_com = ('/bin/fgrep -q -v -f %s %s > %s' %
+                fgrep_com = ('/bin/fgrep -v -f %s %s > %s' %
                              (self.filt_fh.name, rawstr_file, weeded_file))
                 logger.put(3, 'Calling fgrep with command "%s"' % fgrep_com)
                 exitcode = os.system(fgrep_com)
                 ##
                 # TODO: Find out wtf is exit code 256!
                 #
+                logger.put(5, 'exitcode=%d' % exitcode)
                 if exitcode and exitcode != 256:
                     raise epylog.SysCallError(('Call to fgrep for weed failed'
                                               + ' with exit code %d')
