@@ -1,0 +1,13 @@
+Apr  6 12:00:00 hagrid sshd[30260]: Accepted rhosts-rsa for jcd from 152.3.182.36 port 32901 ruser jcd
+Apr  6 12:00:00 hagrid sshd[28091]: Accepted publickey for icon from 152.16.65.208 port 36269 ssh2
+Apr  6 12:00:00 hagrid sshd[316]: Accepted password for shwetket from 152.3.25.84 port 47030
+Apr  6 12:00:00 hagrid sshd[7136]: Failed password for boyd from 63.214.104.191 port 565
+Apr  6 12:00:00 hagrid sshd[31221]: Failed none for illegal user Mike from 152.3.183.188 port 32982 ssh2
+Apr  6 12:00:00 hagrid imapd[16091]: Authenticated user=djcecile host=login2.phy.duke.edu [152.3.182.75]
+Apr  6 12:00:00 hagrid imapd[16035]: Login failed user=AryaBhatta auth=AryaBhatta host=login1.phy.duke.edu [152.3.182.74]
+Apr  6 12:00:00 hagrid ipop3d[5613]: Login user=shke host=momentum.chem.duke.edu [152.3.169.5] nmsgs=144/144
+Apr  6 12:00:00 hagrid ipop3d[804]: Login failed user=leluo auth=leluo host=res-152-16-222-235.dorm.duke.edu [152.16.222.235]
+Apr  6 12:00:00 hagrid IMP[15435]: Login 152.3.182.140 to mail.phy.duke.edu:993 as kinast
+Apr  6 12:00:00 hagrid IMP[15398]: FAILED 152.3.182.140 to mail.phy.duke.edu:993 as kinast
+Apr  6 12:00:00 hagrid HORDE[27127]: [imp] Login success for wjs [208.61.133.234] to {mail-wj.acpub.duke.edu:993} [on line 64 of "/usr/share/horde/imp/redirect.php"]
+Apr  6 12:00:00 hagrid HORDE[27126]: [imp] FAILED LOGIN 208.61.133.234 to mail.cs.duke.edu:993[imap/ssl/novalidate-cert] as wjs [on line 270 of "/usr/share/horde/imp/lib/IMP.php"]
