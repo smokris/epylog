@@ -35,16 +35,6 @@ from epylog import *
 DEFAULT_EPYLOG_CONFIG = '%%pkgconfdir%%/epylog.conf'
 EPYLOG_PIDFILE = '%%localstatedir%%/run/epylog.pid'
 
-def mkstamp(hours=0, days=0):
-    """
-    Make a timestamp out of now minus that many days/hours. Used when
-    invoked with --last.
-    """
-    now = int(time.time())
-    hours = hours + (days * 24)
-    then = now - (hours * 60 * 60)
-    return then
-
 def unxmlify_offsets(ofile, logger):
     """
     Take the XML file with offsets and return them as a dictionary.
@@ -179,6 +169,27 @@ def epyunlock():
     """
     os.unlink(EPYLOG_PIDFILE)
 
+def parselast(last):
+    """
+    Make sense of the --last value
+    """
+    msg = "Unknown setting for --last: %s. See --help" % last
+    if last == 'hour': last = '1h'
+    elif last == 'day': last = '1d'
+    elif last == 'week': last = '1w'
+    elif last == 'month': last = '1m'
+    cat = last[-1:].lower()
+    try: num = int(last[:-1])
+    except: sys.exit(msg)
+    if cat == 'h': mult = 1
+    elif cat == 'd': mult = 24
+    elif cat == 'w': mult = 24*7
+    elif cat == 'm': mult = 24*30
+    else: sys.exit(msg)
+    now = int(time.time())
+    then = now - (num * mult * 60 * 60)
+    return then
+
 def usage():
     print """
     Usage: epylog [--quiet] [--store-offsets] [--last] [-c] [-d]
@@ -204,7 +215,7 @@ def usage():
             lock file that will not allow more than one cron instance of
             epylog to run.
 
-        --last [hour|day|week|month]
+        --last [hour|day|week|month|Nh|Nd|Nw|Nm]
             will analyze strings from the past [time period] specified.
 
         If no command-line options are provided, then the logs will be
@@ -233,12 +244,7 @@ def main(args):
             elif o == '--quiet': debuglvl = 0
             elif o == '--store-offsets': o_stor = 1
             elif o == '--cron': o_cron = 1
-            elif o == '--last':
-                if a == 'hour': o_stamp = mkstamp(hours=1)
-                elif a == 'day': o_stamp = mkstamp(days=1)
-                elif a == 'week': o_stamp = mkstamp(days=7)
-                elif a == 'month': o_stamp = mkstamp(days=31)
-                else: usage()
+            elif o == '--last': o_stamp = parselast(o)
             elif o == '-c': config_file = a
             elif o == '-h' or o == '--help': usage()                
     except getopt.error, e:

@@ -217,6 +217,7 @@ class Module:
         for regex in self.epymod.regex_map.keys():
             if regex.search(message):
                 logger.put(5, 'match: %s' % message)
+                logger.put(5, 'matching module: %s' % self.name)
                 match_regex = regex
                 handler = self.epymod.regex_map[regex]
                 break
