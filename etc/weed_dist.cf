@@ -160,6 +160,7 @@ PCI: Sharing IRQ
 PCI: Setting latency timer
 dhclient: DHCPREQUEST
 dhclient: DHCPACK
+dhclient: DHCPDISCOVER
 dhclient: bound to
 kernel: application .* uses obsolete OSS audio interface
 

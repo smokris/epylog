@@ -27,4 +27,4 @@ weed_local = %%pkgconfdir%%/weed_local.cf
 #
 # You can use 'ALL' to enable all sections.
 #
-enable = pam, rpc, automount, crond, gnome, sshd, xinetd, misc
+enable = ALL

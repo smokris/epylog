@@ -83,5 +83,15 @@
     <report>insmod errors</report>
   </notice>
 
+  <notice id="selinux-denied">
+    <regex>audit\S+:\s+avc:\s+denied\s+\{\s([^\}]+)\s\}.*exe=(\S+).*scontext=(\S+)</regex>
+    <report>SELinux: denied "%s" for "%s" (scontext=%s)</report>
+  </notice>
+
+  <notice id="crond">
+    <regex>CROND\S+: \((\S+)\) CMD \(([^\)]+)\)</regex>
+    <report>Cron: user '%s' (%s)</report>
+  </notice>
+
 </notices>
 
