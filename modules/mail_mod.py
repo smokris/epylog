@@ -288,8 +288,12 @@ class mail_mod(InternalModule):
         ##
         # Go through the results and make sense out of them
         #
-        print rs
         msgdict = {}
+        ##
+        # The problem with qmail is that it logs things inconsistently.
+        # Well, at least not consistently with how epylog expects things
+        # to be. These are hacks to make it work with qmail.
+        #
         delids = {}
         delivs = {}
         while 1:
@@ -298,6 +302,9 @@ class mail_mod(InternalModule):
             extra = None
             system, id, client, sender, rcpt, size, status, extralst = msgtup
             if system is None or (id is None or id is 'unknown'): continue
+            ##
+            # Accommodate qmail hacks (except procmail, that's for everyone)
+            #
             if extralst is not None:
                 if extralst[0] == self.procmail: extra = self.procmail
                 elif extralst[0] == self.delidref:
@@ -316,13 +323,16 @@ class mail_mod(InternalModule):
             if status is not None: msglist[4].append(status)
             if extra is not None: msglist[5].append(extra)
             msgdict[key] = msglist
-        print msgdict
+        ##
+        # More qmail hacks.
+        #
         if delids:
             while 1:
                 try: delid, key = delids.popitem()
                 except: break
                 if key in msgdict:
-                    msglist[key][4].append(delivs[delid])
+                    print key
+                    msgdict[key][4].append(delivs[delid])
                     
         ##
         # Do some real calculations now that we have the results collapsed.
