@@ -356,6 +356,7 @@ class Epylog:
                 if len(threads) > self.threads: break
             for entry in logmap.keys():
                 log = self.logtracker.getlog(entry)
+                if log.is_range_empty(): continue
                 matched = 0
                 lines = 0
                 while 1:
