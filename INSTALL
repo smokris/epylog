@@ -1,51 +1,24 @@
-INSTALL
---------
-Currently there is no build system outside of RPM. It doesn't really
-require one, as far as I am concerned. To install Epylog on a non-RPM
-system (or if you don't want to use RPM), follow these steps:
+RPM
+---
+Easiest is to get an RPM and to install it. The RPM distributed on the
+Epylog site is known to work on Red Hat Linux 7.3, 8.0, 9, and Yellow
+Dog Linux 3.0.
 
-Copy etc into /etc/epylog:
-    cp -r etc /etc/epylog
+MANUAL BUILD
+------------
+./configure
+make
+make install
 
-Copy py/epylog into your python site-packages directory. E.g.:
-    cp -r py/epylog /usr/lib/python/site-packages/
-    (make sure this is site-packages for python-2.2. On some systems
-     both python-1.5 and python-2-2 will be installed, in which case
-     the location for site-packages would be:
-     /usr/lib/python2.2/site-packages)
+Check out the options that ./configure takes by running 
+./configure --help.
 
-Copy modules into /usr/share/epylog:
-    mkdir -p /usr/share/epylog
-    cp -r modules /usr/share/epylog/
-
-Copy perl/epylog.pm into /usr/lib/perl5/site-perl:
-    cp perl/epylog.pm /usr/lib/perl5/site-perl/
-    (NOTE: epylog.pm is only useful if you are planning on
-     using/writing external perl modules for epylog. There are none
-     shipping with epylog by default, so there is no need to install
-     epylog.pm if you are not going to use it)
-
-Copy manpages in place:
-    cd man
-    gzip *.*
-    cp *.8.gz /usr/share/man/man8/
-    cp *.5.gz /usr/share/man/man5/
-    (the man directory may be elsewhere on your system, so pay
-     attention to your setup)
-
-Install the cron file:
-    cp cron/epylog-cron.daily /etc/cron.daily/epylog.cron
-    chmod 755 /etc/cron.daily/epylog.cron
-    (you may want to run it hourly if you have lots of logs, or weekly, 
-    if you don't really care. Use /etc/cron.hourly and /etc/cron.weekly in 
-    this case)
-
-Install the executable:
-    cp epylog /usr/sbin/
-    chmod 755 /usr/sbin/epylog
-
+EDIT CONFIGS
+------------
 Edit the files in /etc/epylog to reflect your environment. This should
 be it.
 
+BUGS
+----
 If there are any problems, please file a bug report, or contact the
 mailing list.
