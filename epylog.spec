@@ -50,6 +50,9 @@ loghost using syslog or syslog-ng.
 # Gzip up manpages
 #
 find %{buildroot}/share/man -type f --exec %{__gzip} {} \;
+##
+# Move docs to doc
+mv AUTHORS ChangeLog INSTALL LICENSE README doc/
 
 %clean
 %{__rm} -rf %{buildroot}
