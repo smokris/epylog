@@ -11,13 +11,15 @@ class Report:
         logger.put(2, 'Starting Report object intialization')
         self.logger = logger
         ##
-        # publishers:  a tuple of publisher objects
-        # filt_fh:     where the filtered strings from modules will go
-        # useful:      tells epylog if the report is of any use or not.
+        # publishers:     a tuple of publisher objects
+        # filt_fh:        where the filtered strings from modules will go
+        # useful:         tells epylog if the report is of any use or not.
+        # module_reports: module reports will be put here eventually
         #
         self.publishers = []
         self.filt_fh = None
         self.useful = 0
+        self.module_reports = {}
         
         self.tmpprefix = config.tmpprefix
         self.runtime = time.localtime()
@@ -118,6 +120,14 @@ class Report:
             self.useful = 1
         else:
             logger.put(2, 'Filtered Strings are empty, ignoring')
+
+    def set_stamps(self, stamps):
+        logger = self.logger
+        logger.put(5, '>Publisher.set_stamps')
+        [self.start_stamp, self.end_stamp] = stamps
+        logger.put(5, 'start_stamp=%d' % self.start_stamp)
+        logger.put(5, 'end_stamp=%d' % self.end_stamp)
+        logger.put(5, '<Publisher.set_stamps')
         
     def publish(self, rawstr_file, weeded_file):
         logger = self.logger

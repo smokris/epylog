@@ -1,7 +1,9 @@
 #!/usr/bin/python2 -tt
 
+import os
 import sys
 import getopt
+import time
 
 sys.path.insert(0, './py/')
 from epylog import *
@@ -52,7 +54,120 @@ class Logger:
     def __getindent(self):
         indent = self.indent * len(self.hangmsg)
         return indent
+
+
+def mkstamp(hours=0, days=0):
+    now = int(time.time())
+    hours = hours + (days * 24)
+    then = now - (hours * 60 * 60)
+    return then
+
+def getTextVal(node):
+    """
+    getTextVal(node):
+        The node is an element node containing text nodes. This function
+        will concatenate the text nodes together and return them as one
+        string. Any non-text nodes will be ignored.
+    """
+    val = ''
+    for childnode in node.childNodes:
+        if childnode.nodeType == childnode.TEXT_NODE:
+            val = val + childnode.data
+    return val
+
+def unxmlify_offsets(ofile, logger):
+    logger.put(5, '>epylog.unxmlify_offsets')
+    logger.put(3, 'Checking if we can read "%s"' % ofile)
+    if not os.access(ofile, os.R_OK):
+        logger.put(3, 'Could not read offsets file "%s"' % ofile)
+        logger.put(3, 'Returning blank tuple')
+        logger.put(5, '<epylog.unxmlify_offsets')
+        return []
+    from xml.dom.minidom import parse
+    try:
+        doc = parse(ofile)
+    except:
+        logger.put(3, 'Could not parse offsets file "%s"' % ofile)
+        logger.put(3, 'Returning blank tuple')
+        logger.put(5, '<epylog.unxmlify_offsets')
+        return []
     
+    omap = []
+    for node in doc.getElementsByTagName('entry'):
+        if node.nodeType == node.ELEMENT_NODE:
+            for cnode in node.childNodes:
+                val = getTextVal(cnode)
+                if cnode.nodeName == 'log':
+                    entry = val
+                elif cnode.nodeName == 'inode':
+                    inode = int(val)
+                elif cnode.nodeName == 'offset':
+                    offset = int(val)
+            omap.append([entry, inode, offset])
+    logger.put(5, omap)
+    logger.put(5, '<epylog.unxmlify_offsets')
+    return omap
+
+def xmlify_offsets(omap, ofile, logger):
+    logger.put(5, '>epylog.xmlify_offsets')
+    try:
+        logger.put(3, 'Trying to open "%s" for writing.' % ofile)
+        fh = open(ofile, 'w')
+    except IOError:
+        logger.put(0, 'Could not open "%s" for writing! Offsets not saved!')
+        return
+    from xml.dom.minidom import Document
+    logger.puthang(3, 'Making XML out of offset map')
+    doc = Document()
+    epyel = doc.createElement('epylog-offsets')
+    for entry in omap:
+        entryel = doc.createElement('entry')
+        logel = doc.createElement('log')
+        logtx = doc.createTextNode(str(entry[0]))
+        logel.appendChild(logtx)
+        entryel.appendChild(logel)
+        inodeel = doc.createElement('inode')
+        inodetx = doc.createTextNode(str(entry[1]))
+        inodeel.appendChild(inodetx)
+        entryel.appendChild(inodeel)
+        offsetel = doc.createElement('offset')
+        offsettx = doc.createTextNode(str(entry[2]))
+        offsetel.appendChild(offsettx)
+        entryel.appendChild(offsetel)
+        epyel.appendChild(entryel)
+    doc.appendChild(epyel)
+    logger.endhang(3)
+    logger.put(5, doc.toprettyxml())
+    import fcntl
+    logger.put(3, 'Locking the offsets file')
+    fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
+    logger.puthang(3, 'Writing the offsets into "%s"' % ofile)
+    doc.writexml(fh)
+    logger.endhang(3)
+    logger.put(3, 'Unlocking the offsets file')
+    fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+    fh.close()
+    logger.put(5, '<epylog.xmlify_offsets')
+
+def restore_offsets(epylog):
+    logger = epylog.logger
+    logger.put(5, '>epylog.restore_offsets')
+    ofile = os.path.join(epylog.vardir, 'offsets.xml')
+    omap = unxmlify_offsets(ofile, logger)
+    for o in omap:
+        try:
+            epylog.logtracker.set_start_offset_by_entry(o[0], o[1], o[2])
+        except epylog.NoSuchLogError:
+            logger.put(0, 'No such log in tracker: %s' % o[0])
+    logger.put(5, '<epylog.restore_offsets')
+    
+def store_offsets(epylog):
+    logger = epylog.logger
+    logger.put(5, '>epylog.store_offsets')
+    ofile = os.path.join(epylog.vardir, 'offsets.xml')
+    omap = epylog.logtracker.get_offset_map()
+    xmlify_offsets(omap, ofile, logger)
+    logger.put(5, '<epylog.store_offsets')
 
 def usage():
     print 'YOU know what to do, dumbass'
@@ -60,19 +175,31 @@ def usage():
 
 def main(args):
     debuglvl = 1
-    store_offsets = 0
+    o_stor = 0
+    o_stamp = 0
     config_file = '/etc/epylog/epylog.conf'
     cmdargs = args[1:]
     try:
         gopts, cmds = getopt.getopt(cmdargs, 'd:c:',
-                                    ['quiet', 'store-offsets'])
+                                    ['quiet', 'store-offsets', 'last='])
         for o,a in gopts:
             if o == '-d':
                 debuglvl = int(a)
             elif o == '--quiet':
                 debuglvl = 0
             elif o == '--store-offsets':
-                store_offsets = 1
+                o_stor = 1
+            elif o == '--last':
+                if a == 'hour':
+                    o_stamp = mkstamp(hours=1)
+                elif a == 'day':
+                    o_stamp = mkstamp(days=1)
+                elif a == 'week':
+                    o_stamp = mkstamp(days=7)
+                elif a == 'month':
+                    o_stamp = mkstamp(days=31)
+                else:
+                    usage()
             elif o == '-c':
                 config_file = a
                 
@@ -86,23 +213,27 @@ def main(args):
         logger.put(0, "Error returned: %s" % e)
         sys.exit(1)
     logger.endhang(1, 'done')
-    logger.puthang(1, 'Restoring log offsets')
-    epylog.restore_log_offsets()
-    logger.endhang(1, 'done')
-    sys.exit(1)
+    if o_stamp == 0:
+        logger.puthang(1, 'Restoring log offsets')
+        restore_offsets(epylog)
+        logger.endhang(1, 'done')
+    else:
+        logger.puthang(1, 'Setting the offsets by timestamp')
+        epylog.logtracker.set_range_by_timestamps(o_stamp, int(time.time()))
+        logger.endhang(1)
     logger.put(1, 'Invoking the module execution routines:')
     epylog.process_modules()
     logger.put(1, 'Finished processing modules')
     logger.puthang(1, 'Making the report')
-    epylog.make_report()
+    useful = epylog.make_report()
     logger.endhang(1, 'done')
-    if epylog.something_to_report():
+    if useful:
         logger.puthang(1, 'Publishing the report')
         epylog.publish_report()
         logger.endhang(1, 'done')
-        if store_offsets:
+        if o_stor:
             logger.puthang(1, 'Storing the offsets')
-            epylog.store_log_offsets()
+            store_offsets(epylog)
             logger.endhang(1, 'done')
         
     else:

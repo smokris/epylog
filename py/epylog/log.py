@@ -11,6 +11,7 @@ class LogTracker:
         self.tmpprefix = config.tmpprefix
         self.entries = []
         self.logs = []
+        self.__mkmonthmap()
         logger.put(5, 'Exiting LogTracker.__init__')
 
     def getlog(self, entry):
@@ -29,15 +30,15 @@ class LogTracker:
     def get_offset_map(self):
         logger = self.logger
         logger.put(5, 'Entering LogTracker.get_offset_map')
-        omap = {}
+        omap = []
         for log in self.logs:
-            key = log.entry
+            entry = log.entry
             inode = log.getinode()
             if log.orange.endix != 0:
                 offset = 0
             else:
                 offset = log.orange.end_offset
-            omap[key] = [inode, offset]
+            omap.append([entry, inode, offset])
         logger.put(5, 'omap follows')
         logger.put(5, omap)
         logger.put(5, 'Exiting LogTracker.get_offset_map')
@@ -66,11 +67,66 @@ class LogTracker:
             raise epylog.NoSuchLogError(msg, logger)
         logger.put(5, '<LogTracker.set_offset_by_entry')
 
+    def dump_all_strings(self, fh):
+        logger = self.logger
+        logger.put(5, '>LogTracker.dump_all_strings')
+        len = 0
+        for log in self.logs:
+            logger.put(5, 'Dumping strings for log entry "%s"' % log.entry)
+            len = len + log.dump_strings(fh)
+        logger.put(5, 'Total of %d bytes dumped into "%s"' % (len, fh.name))
+        logger.put(5, '<LogTracker.dump_all_strings')
+        return len
+
+    def get_stamps(self):
+        ##
+        # Returns a tuple with the earliest and the latest time stamp
+        # from all the logs.
+        #
+        logger = self.logger
+        logger.put(5, '>LogTracker.get_stamps')
+        start_stamps = []
+        end_stamps = []
+        for log in self.logs:
+            if log.is_range_empty():
+                logger.put(5, 'The range for this log is empty')
+                continue
+            [start_stamp, end_stamp] = log.get_stamps()
+            if start_stamp != 0:
+                start_stamps.append(start_stamp)
+            if end_stamp != 0:
+                end_stamps.append(end_stamp)
+        if len(start_stamps):
+            start_stamps.sort()
+            start_stamp = start_stamps.pop(0)
+        else:
+            start_stamp = 0
+        if len(end_stamps):
+            end_stamps.sort()
+            end_stamp = end_stamps.pop(-1)
+        else:
+            end_stamp = 0
+        logger.put(5, 'start_stamp=%d' % start_stamp)
+        logger.put(5, 'end_stamp=%d' % end_stamp)
+        return [start_stamp, end_stamp]
+        logger.put(5, '<LogTracker.get_stamps')
+
+    def set_range_by_timestamps(self, start_stamp, end_stamp):
+        logger = self.logger
+        logger.put(5, '>LogTracker.set_offsets_by_timestamp')
+        for log in self.logs:
+            try:
+                log.set_range_by_timestamps(start_stamp, end_stamp)
+            except epylog.OutOfRangeError:
+                msg = 'Timestamps not found for log entry "%s"' % log.entry
+                logger.put(0, msg)
+        logger.put(5, '<LogTracker.set_offsets_by_timestamp')
+        
     def __init_log_by_entry(self, entry):
         logger = self.logger
         logger.put(5, 'Entering LogTracker.__init_log_by_entry')
         logger.puthang(5, 'Initializing log object for entry "%s"' % entry)
-        log = Log(entry, self.tmpprefix, self.logger)
+        log = Log(entry, self.tmpprefix, self.monthmap, self.logger)
         logger.endhang(5)
         self.entries.append(entry)
         self.logs.append(log)
@@ -87,12 +143,31 @@ class LogTracker:
                 return log
         logger.put(5, 'No such log file! Returning None. How did this happen?')
         return None
-            
+
+    def __mkmonthmap(self):
+        logger = self.logger
+        logger.put(5, '>LogTracker.__mkmonthmap')
+        pad = 2
+        months = []
+        for i in range(0, 12):
+            months.append(time.strftime("%b", (0, i+1, 0, 0,
+                                               0, 0, 0, 0, 0)))
+        basetime = time.localtime(time.time())
+        now_year = basetime[0]
+        now_month = basetime[1]
+        pad_month = now_month + pad
+        monthmap = {}
+        for m in range(pad_month - 12, pad_month):
+            monthname = months[m % 12]
+            year = now_year + (m / 12) 
+            monthmap[monthname] = year
+        self.monthmap = monthmap
+        logger.put(5, '<LogTracker.__mkmonthmap')
 
 class OffsetRange:
     def __init__(self, startix, start_offset, endix, end_offset, logger):
         self.logger = logger
-        logger.put(5, 'Entering OffsetRange.__init__')
+        logger.put(5, '>OffsetRange.__init__')
         self.startix = startix
         self.endix = endix
         self.start_offset = start_offset
@@ -101,36 +176,48 @@ class OffsetRange:
         logger.put(5, 'start_offset=%d' % self.start_offset)
         logger.put(5, 'endix=%d' % self.endix)
         logger.put(5, 'end_offset=%d' % self.end_offset)
-        logger.put(5, 'Exiting OffsetRange.__init__')
+        logger.put(5, '<OffsetRange.__init__')
 
     def setstart(self, ix, offset):
         logger = self.logger
-        logger.put(5, 'Entering OffsetRange.setstart')
+        logger.put(5, '>OffsetRange.setstart')
         self.startix = ix
         self.start_offset = offset
         logger.put(5, 'new startix=%d' % self.startix)
         logger.put(5, 'new start_offset=%d' % self.start_offset)
-        logger.put(5, 'Exiting OffsetRange.setstart')
+        logger.put(5, '<OffsetRange.setstart')
 
     def setend(self, ix, offset):
         logger = self.logger
-        logger.put(5, 'Entering OffsetRange.setend')
+        logger.put(5, '<OffsetRange.setend')
         self.endix = ix
         self.end_offset = offset
         logger.put(5, 'new endix=%d' % self.endix)
         logger.put(5, 'new end_offset=%d' % self.end_offset)
-        logger.put(5, 'Exiting OffsetRange.setend')
+        logger.put(5, '>OffsetRange.setend')
+
+    def start_is_end(self):
+        logger = self.logger
+        logger.put(5, '>OffsetRange.start_is_end')
+        empty = 0
+        if self.startix == self.endix:
+            if self.start_offset == self.end_offset:
+                empty = 1
+                logger.put(5, 'This range points to same location')
+        logger.put(5, '<OffsetRange.start_is_end')
+        return empty
 
 class Log:
-    def __init__(self, entry, tmpprefix, logger):
+    def __init__(self, entry, tmpprefix, monthmap, logger):
         logger.put(5, 'Entering Log.__init__')
         logger.puthang(3, 'Initializing Log object for entry "%s"' % entry)
         self.logger = logger
         self.tmpprefix = tmpprefix
+        self.monthmap = monthmap
         self.entry = entry
         filename = self.__get_filename()
         logger.puthang(4, 'Initializing the logfile "%s"' % filename)
-        logfile = LogFile(filename, tmpprefix, logger)
+        logfile = LogFile(filename, tmpprefix, monthmap, logger)
         logger.endhang(4)
         logger.put(3, 'Appending logfile to the loglist')
         self.loglist = [logfile]
@@ -158,15 +245,197 @@ class Log:
             self.orange.setstart(ix, offset)
         logger.put(5, 'Exiting Log.set_range_param')
 
+    def getinode(self):
+        logger = self.logger
+        logger.put(5, 'Entering Log.getinode')
+        logfile = self.loglist[0]
+        inode = logfile.getinode()
+        logger.put(5, 'inode=%d' % inode)
+        logger.put(5, 'Exiting Log.getinode')
+        return inode
+
+    def dump_strings(self, fh):
+        logger = self.logger
+        logger.put(5, '>Log.dump_strings')
+        logger.put(4, 'Dumping strings for log entry "%s"' % self.entry)
+        ologs = self.__get_orange_logs()
+        if len(ologs) == 1:
+            ##
+            # All strings in the same file. Easy.
+            #
+            starto = self.orange.start_offset
+            endo = self.orange.end_offset
+            log = ologs[0]
+            log.set_offset_range(starto, endo)
+            buflen = log.dump_strings(fh)
+            logger.put(3, '%d bytes dumped from %s into %s' %
+                       (buflen, log.filename, fh.name))
+        else:
+            ##
+            # Strings are in different rotfiles. Hard.
+            #
+            buflen = 0
+            flog = ologs.pop(0)
+            elog = ologs.pop(-1)
+            logger.put(5, 'Processing the earliest logfile')
+            starto = self.orange.start_offset
+            endo = flog.end_offset
+            flog.set_offset_range(starto, endo)
+            buflen = buflen + flog.dump_strings(fh)
+            if len(ologs):
+                logger.put(5, 'There are logfiles between the first and last')
+                for mlog in ologs:
+                    mlog.set_offset_range(0, mlog.end_offset)
+                    buflen = buflen + mlog.dump_strings(fh)
+            logger.put(5, 'Processing the latest logfile')
+            starto = 0
+            endo = self.orange.end_offset
+            elog.set_offset_range(starto, endo)
+            buflen = buflen + elog.dump_strings(fh)
+            logger.put(3, '%d bytes dumped from multiple rotfiles into "%s"'
+                       % (buflen, fh.name))
+        logger.put(5, '<Log.dump_strings')
+        return buflen
+
+    def get_stamps(self):
+        ##
+        # Returns a tuple with the earliest and the latest stamp in the
+        # current log range.
+        #
+        logger = self.logger
+        logger.put(5, '>Log.get_stamps')
+        logs = self.__get_orange_logs()
+        flog = logs.pop(0)
+        [start_stamp, end_stamp] = flog.get_range_stamps()
+        if len(logs):
+            elog = logs.pop(-1)
+            [junk, end_stamp] = elog.get_range_stamps()
+        logger.put(5, 'start_stamp=%d' % start_stamp)
+        logger.put(5, 'end_stamp=%d' % end_stamp)
+        logger.put(5, '<Log.get_stamps')
+        return [start_stamp, end_stamp]
+
+    def set_range_by_timestamps(self, start_stamp, end_stamp):
+        logger = self.logger
+        logger.put(5, '>Log.set_range_by_timestamps')
+        if start_stamp > end_stamp:
+            msg = 'Start stamp must be before end stamp'
+            raise epylog.OutOfRangeError(msg, logger)
+        logger.put(5, 'looking for start_stamp=%d' % start_stamp)
+        logger.put(5, 'looking for end_stamp=%d' % end_stamp)
+        ix = 0
+        start_offset = None
+        end_offset = None
+        while 1:
+            logger.put(5, 'ix=%d' % ix)
+            try:
+                curlog = self.loglist[ix]
+            except IndexError:
+                logger.put(5, 'This log is not yet initialized')
+                try:
+                    curlog = self.__init_next_rotfile()
+                except epylog.NoSuchLogError:
+                    logger.put(5, 'No more rotated files present')
+                    if end_offset is not None:
+                        logger.put(5, 'setting start_offset to 0, last ix')
+                        start_offset = 0
+                        start_ix = len(self.loglist) - 1
+                        break
+                    else:
+                        msg = 'Range not found when searching for timestamps'
+                        raise epylog.OutOfRangeError(msg, logger)
+            logger.put(5, 'Analyzing log file "%s"' % curlog.filename)
+            try:
+                pos_start = curlog.stamp_in_log(start_stamp)
+                pos_end = curlog.stamp_in_log(end_stamp)
+            except epylog.OutOfRangeError:
+                logger.put(5, 'No useful entries in this log, ignoring')
+                ix = ix + 1
+                continue
+            if pos_start == 0:
+                ##
+                # In this log
+                #
+                logger.put(5, 'start_stamp is in "%s"' % curlog.filename)
+                start_ix = ix
+                start_offset = curlog.find_offset_by_timestamp(start_stamp)
+            elif pos_start > 0:
+                ##
+                # Past this log. This means that we have missed the start
+                # of this stamp. Set by the end_offset of the current log.
+                #
+                logger.put(5, 'start_stamp is past "%s"' % curlog.filename)
+                logger.put(5, 'setting to end_offset of this log')
+                start_ix = ix
+                start_offset = curlog.end_offset
+            if pos_end == 0:
+                ##
+                # In this log
+                #
+                logger.put(5, 'end_stamp is in "%s"' % curlog.filename)
+                end_ix = ix
+                end_offset = curlog.find_offset_by_timestamp(end_stamp)
+            elif pos_end > 0 and end_offset is None:
+                ##
+                # Means that end of the search is past the end of the last
+                # log.
+                #
+                logger.put(5, 'end_stamp is past the most current entry')
+                logger.put(5, 'setting to end_offset of this ix')
+                end_ix = ix
+                end_offset = curlog.end_offset
+            if start_offset is not None and end_offset is not None:
+                logger.put(5, 'Found both the start and the end')
+                break
+            ix = ix + 1
+        logger.put(5, 'start_ix=%d' % start_ix)
+        logger.put(5, 'start_offset=%d' % start_offset)
+        logger.put(5, 'end_ix=%d' % end_ix)
+        logger.put(5, 'end_offset=%d' % end_offset)
+        self.orange.setstart(start_ix, start_offset)
+        self.orange.setend(end_ix, end_offset)
+        logger.put(5, '<Log.set_range_by_timestamps')
+
+    def is_range_empty(self):
+        logger = self.logger
+        logger.put(5, '>Log.is_range_empty')
+        empty = 0
+        if self.orange.start_is_end():
+            empty = 1
+            logger.put(5, 'Yes, range is empty')
+        else:
+            startlog = self.loglist[self.orange.startix]
+            endlog = self.loglist[self.orange.endix]
+            if (startlog.end_offset == self.orange.end_offset and
+                self.orange.endix == self.orange.startix + 1 and
+                self.orange.end_offset == 0):
+                ##
+                # This means that start is at the end of the last rotlog
+                # and end is at the start of next rotlog, meaning that the
+                # range is really empty.
+                empty = 1
+        logger.put(5, '<Log.is_range_empty')
+        return empty
+
+    def __get_orange_logs(self):
+        logger = self.logger
+        logger.put(5, '>Log.__get_orange_logs')
+        ologs = []
+        for ix in range(self.orange.startix, self.orange.endix - 1, -1):
+            logger.put(5, 'appending "%s"' % self.loglist[ix].filename)
+            ologs.append(self.loglist[ix])
+        logger.put(5, '<Log.__get_orange_logs')
+        return ologs
+
     def __is_valid_ix(self, ix):
         logger = self.logger
-        logger.put(5, 'Entering Log.__is_valid_ix')
+        logger.put(5, '>Log.__is_valid_ix')
         ixlen = len(self.loglist) - 1
         isvalid = 1
         if ix > ixlen:
             logger.put(5, 'index %d is not valid' % ix)
             isvalid = 0
-        logger.put(5, 'Exiting Log.__is_valid_ix')
+        logger.put(5, '<Log.__is_valid_ix')
         return isvalid
 
     def __init_next_rotfile(self):
@@ -176,12 +445,13 @@ class Log:
         rotname = self.__get_rotname_by_ix(ix)
         try:
             logger.put(5, 'Initializing log for rotated file "%s"' % rotname)
-            rotlog = LogFile(rotname, self.tmpprefix, logger)
+            rotlog = LogFile(rotname, self.tmpprefix, self.monthmap, logger)
         except epylog.AccessError:
             msg = 'No further rotated files for entry "%s"' % self.entry
             raise epylog.NoSuchLogError(msg, logger)
         self.loglist.append(rotlog)
         logger.put(5, '<Log.__init_next_rotfile')
+        return rotlog
 
     def __get_rotname_by_ix(self, ix):
         logger = self.logger
@@ -201,31 +471,29 @@ class Log:
         logger.put(5, 'filename=%s' % filename)
         logger.put(5, '<Log.__get_filename')
         return filename
-    
-    def getinode(self):
-        logger = self.logger
-        logger.put(5, 'Entering Log.getinode')
-        logfile = self.loglist[0]
-        inode = logfile.getinode()
-        logger.put(5, 'inode=%d' % inode)
-        logger.put(5, 'Exiting Log.getinode')
-        return inode
-        
+            
 class LogFile:
-    def __init__(self, filename, tmpprefix, logger):
+    def __init__(self, filename, tmpprefix, monthmap, logger):
         self.logger = logger
         logger.put(5, 'Entering LogFile.__init__')
         self.tmpprefix = tmpprefix
         self.filename = filename
+        self.monthmap = monthmap
         ##
-        # start_stamp: the timestamp at the start of the log
-        # end_stamp:   the timestamp at the end of the log
-        # end_offset:  this is where the end of the log is
+        # start_stamp:  the timestamp at the start of the log
+        # end_stamp:    the timestamp at the end of the log
+        # end_offset:   this is where the end of the log is
         #
         self.start_stamp = None
         self.end_stamp = None
         self.end_offset = None
-
+        ##
+        # range_start: the start offset of the range
+        # range_end:   the end offset of the range
+        #
+        self.range_start = 0
+        self.range_end = None
+        
         logger.put(3, 'Running sanity checks on the logfile')
         self.__accesscheck()
         logger.put(3, 'All checks passed')
@@ -266,69 +534,41 @@ class LogFile:
             logger.put(5, 'Does not end in .gz, assuming plain text')
             logger.put(5, 'Opening logfile "%s"' % self.filename)
             self.fh = open(self.filename)
+        logger.put(5, 'Finding the start_stamp')
+        self.fh.seek(0)
+        self.start_stamp = self.__get_stamp()
+        logger.put(5, 'start_stamp=%d' % self.start_stamp)
         logger.put(5, 'Finding the end offset')
         self.fh.seek(0, 2)
         self.__set_at_line_start()
         self.end_offset = self.fh.tell()
+        self.range_end = self.fh.tell()
+        logger.put(5, 'Finding the end_stamp')
+        self.end_stamp = self.__get_stamp()
+        logger.put(5, 'end_stamp=%d' % self.end_stamp)
         logger.put(5, 'Exiting LogFile.__initfile')
 
-    def set_init_offset(self):
+    def set_offset_range(self, start, end):
         logger = self.logger
-        logger.put(5, 'Entering LogFile.set_init_offset')
-        logger.put(2, 'Setting to last 12 hours since last entry')
-        endstamp = self.get_log_end_stamp()
-        if endstamp is None:
-            logger.put(3, 'Could not find endstamp in the logfile.')
-            logger.put(3, 'Is it in the rotated file?')
-            if self.rotated is not None:
-                logger.put(3, 'Looking into the rotated file')
-                self.rotated.initfile()
-                endstamp = self.rotated.get_log_end_stamp()
-        if endstamp is None:
-            logger.put(2, 'No useful entries for this log.')
-            self.start_offset = 0
-            self.end_offset = 0
-        else:
-            logger.put(5, 'Calculating the stamp of 12 hours ago')
-            dayago = int('%d' % endstamp) - 43200
-            logger.put(3, 'dayago=%d' % dayago)
-            try:
-                offset = self.find_offset_by_timestamp(dayago)
-                logger.put(2, 'Offset found and set to pos "%d"' % offset)
-            except epylog.OutOfRangeError:
-                offset = 0
-                logger.put(2, 'Offset NOT found, setting to the start of file')
-                self.start_offset = offset
-                self.end_offset = self.log_end_offset
-        logger.put(3, 'start_offset=%d' % self.start_offset)
-        logger.put(3, 'end_offset=%d' % self.end_offset)
-        logger.put(5, 'Exiting LogFile.set_init_offset')
-
-    def get_start_offset(self):
-        self.logger.put(5, 'Enter/Exit LogFile.get_start_offset')
-        self.initfile()
-        return self.start_offset
-
-    def get_end_offset(self):
-        self.logger.put(5, 'Enter/Exit LogFile.get_end_offset')
-        self.initfile()
-        return self.end_offset
-
-    def get_offset_start_stamp(self):
-        self.logger.put(5, 'Enter/Exit LogFile.get_offset_start_stamp')
-        self.initfile()
-        if self.start_offset is None:
-            return self.get_log_start_stamp()
-        else:
-            return self.get_stamp_at_offset(self.start_offset)
-        
-    def get_offset_end_stamp(self):
-        self.logger.put(5, 'Enter/Exit LogFile.get_offset_end_stamp')
-        self.initfile()
-        if self.end_offset is None:
-            return self.get_log_end_stamp()
-        else:
-            return self.get_stamp_at_offset(self.end_offset)
+        logger.put(5, '>LogFile.set_offset_range')
+        logger.put(5, 'start=%d' % start)
+        logger.put(5, 'end=%d' % end)
+        if start < 0:
+            msg = 'Start of range cannot be less than zero'
+            raise epylog.OutOfRangeError(msg, logger)
+        if end > self.end_offset:
+            msg = 'End of range "%d" is past the end of log' % end
+            raise epylog.OutOfRangeError(msg, logger)
+        if start > end:
+            msg = 'Start of range cannot be greater than end'
+            raise epylog.OutOfRangeError(msg, logger)
+        self.fh.seek(start)
+        self.__set_at_line_start()
+        self.range_start = self.fh.tell()
+        self.fh.seek(end)
+        self.__set_at_line_start()
+        self.range_end = self.fh.tell()
+        logger.put(5, '<LogFile.set_offset_range')
 
     def getinode(self):
         self.logger.put(5, 'Entering LogFile.getinode')
@@ -336,52 +576,39 @@ class LogFile:
         self.logger.put(5, 'inode=%d' % inode)
         self.logger.put(5, 'Exiting LogFile.getinode')
         return inode
+
+    def stamp_in_log(self, searchstamp):
+        logger = self.logger
+        logger.put(5, '>LogFile.stamp_in_log')
+        logger.put(5, 'searchstamp=%d' % searchstamp)
+        logger.put(5, 'start_stamp=%d' % self.start_stamp)
+        logger.put(5, 'end_stamp=%d' % self.end_stamp)
+        if self.start_stamp == 0 or self.end_stamp == 0:
+            msg = 'No stampable entries in this log'
+            raise epylog.OutOfRangeError(msg, logger)
+        if searchstamp > self.end_stamp:
+            logger.put(5, 'past the end of this log')
+            ret = 1
+        elif searchstamp < self.start_stamp:
+            logger.put(5, 'before the start of this log')
+            ret = -1
+        elif searchstamp >= self.start_stamp and searchstamp <= self.end_stamp:
+            logger.put(5, 'IN this log')
+            ret = 0
+        logger.put(5, '<LogFile.stamp_in_log')
+        return ret
         
     def find_offset_by_timestamp(self, searchstamp):
         logger = self.logger
-        logger.put(5, 'Entering LogFile.find_offset_by_timestamp')
-        self.initfile()
-        if (self.get_log_start_stamp() is None
-            or self.get_log_end_stamp() is None):
+        logger.put(5, '>LogFile.find_offset_by_timestamp')
+        if self.start_stamp == 0 or self.end_stamp == 0:
             logger.put(2, 'Does not seem like anything useful is in this file')
             raise epylog.OutOfRangeError('Nothing useful in this log', logger)
-        logger.put(2, 'Checking if searchstamp is before the start of log')
-        startstamp = self.get_log_start_stamp()
-        logger.put(5, 'startstamp=%d' % startstamp)
-        logger.put(5, 'searchstamp=%d' % searchstamp)
-        if searchstamp < startstamp:
-            logger.put(2, 'Yes, looking into the rotated log')
-            if self.rotated is None:
-                logger.put(2, 'No rotated log for "%s"' % self.filename)
-                raise epylog.OutOfRangeError(('Requested timestamp is before '
-                                              + 'the start of the log "%s"')
-                                             % self.filename, logger)
-            try:
-                self.rotated.initfile()
-                offset = self.rotated.find_offset_by_timestamp(searchstamp)
-                logger.put(2, 'Found timestamp in the rotated log at pos "%d"'
-                           % offset)
-                logger.put(2, 'Flipping it about so we know it is rotated')
-                offset = -offset
-                return offset
-            except epylog.OutOfRangeError:
-                logger.put(2, 'Not found in the rotated log either')
-                raise epylog.OutOfRangeError(('Requested timestamp is before '
-                                              + 'the start of the log "%s"')
-                                             % self.filename, logger)
-        logger.put(2, 'Searchstamp is not before the start of log')
-        logger.put(2, 'Checking if searchstamp is after the end of log')
-        endstamp = self.get_log_end_stamp()
-        logger.put(5, 'endstamp=%d' % endstamp)
-        logger.put(5, 'searchstamp=%d' % searchstamp)
-        if searchstamp > endstamp:
-            logger.put(2, 'Searchstamp is PAST the end of log stamp')
-            raise epylog.OutOfRangeError(('Requested timestamp is past the ' +
-                                          'end of the log "%s"')
-                                         % self.filename, logger)
-        logger.put(2, 'Searchstamp is not past the end of log')
+        if self.stamp_in_log(searchstamp) != 0:
+            msg = 'This stamp does not appear to be in this log'
+            raise epylog.OutOfRangeError(msg, logger)
         logger.put(2, 'Starting the binary location routines')
-        increment = int(self.log_end_offset/2)
+        increment = int(self.end_offset/2)
         relative = increment
         logger.put(5, 'rewinding the logfile')
         self.fh.seek(0)
@@ -429,120 +656,54 @@ class LogFile:
         logger.put(5, 'Line matching searchstamp is: %s' % line)
         logger.put(2, 'Offset found at %d' % offset)
         logger.put(2, 'Done with the binary location routines')
-        logger.put(5, 'Exiting LogFile.find_offset_by_timestamp')
+        logger.put(5, '<LogFile.find_offset_by_timestamp')
         return offset
 
     def dump_strings(self, fh):
         logger = self.logger
-        logger.put(5, 'Entering LogFile.dump_strings')
-        logger.put(2, 'Invoking the dump_strings routine of logobj "%s"'
-                   % self.filename)
-        logger.put(5, 'start_offset=%d' % self.start_offset)
-        logger.put(5, 'end_offset=%d' % self.end_offset)
-        logger.put(3, 'Doing the rotated logfile workarounds')
-        if self.start_offset < 0 and self.end_offset <= 0:
-            logger.put(2, 'Both offsets are negative')
-            logger.put(2, 'Getting the strings from the rotated file')
-            starto = -self.start_offset
-            if self.end_offset == 0:
-                logger.put(3, 'What a dumb situation, end_offset=0!')
-                endo = self.rotated.log_end_offset
-            else:
-                endo = -self.end_offset
-            chunk = self.rotated.get_strings_by_offsets(starto, endo)
+        logger.put(5, '>LogFile.dump_strings')
+        if self.range_end is None:
+            msg = 'No range defined for logfile "%s"' % self.filename
+            raise epylog.OutOfRangeError(msg, logger)
+        chunklen = self.range_end - self.range_start
+        logger.put(5, 'range_start=%d' % self.range_start)
+        logger.put(5, 'range_end=%d' % self.range_end)
+        logger.put(5, 'chunklen=%d' % chunklen)
+        if chunklen > 0:
+            self.fh.seek(self.range_start)
+            chunk = self.fh.read(chunklen)
             fh.write(chunk)
-        elif self.start_offset < 0 and self.end_offset > 0:
-            logger.put(2, 'start_offset is negative, end_offset is positive')
-            logger.put(2, 'Getting strings from both rotated and common files')
-            starto = -self.start_offset
-            endo = self.rotated.log_end_offset
-            chunk = self.rotated.get_strings_by_offsets(starto, endo)
-            fh.write(chunk)
-            starto = 0
-            endo = self.end_offset
-            chunk = self.get_strings_by_offsets(starto, endo)
-            fh.write(chunk)
-        else:
-            logger.put(2, 'Offsets are in this file. Getting strings')
-            starto = self.start_offset
-            endo = self.end_offset
-            chunk = self.get_strings_by_offsets(starto, endo)
-            fh.write(chunk)
-        logsize = fh.tell()
-        logger.put(5, 'logsize=%d' % logsize)
-        logger.put(5, 'Exiting LogFile.dump_strings')
-        return logsize
+        return chunklen
 
-    def get_stamp_at_offset(self, offset):
-        self.logger.put(5, 'Entering LogFile.get_stamp_at_offset')
-        self.logger.put(5, 'offset=%d' % offset)
-        stamp = None
-        if offset >= 0:
-            self.initfile()
-            self.fh.seek(offset)
-            self.__set_at_line_start()
-            curline = self.fh.readline()
+    def get_range_stamps(self):
+        logger = self.logger
+        logger.put(5, '>LogFile.get_range_stamps')
+        self.fh.seek(self.range_start)
+        start_stamp = self.__get_stamp()
+        self.fh.seek(self.range_end)
+        end_stamp = self.__get_stamp()
+        logger.put(5, 'start_stamp=%d' % start_stamp)
+        logger.put(5, 'end_stamp=%d' % end_stamp)
+        logger.put(5, '<LogFile.get_range_stamps')
+        return [start_stamp, end_stamp]
+
+    def __get_stamp(self):
+        logger = self.logger
+        logger.put(5, '>LogFile.__get_stamp')
+        self.__set_at_line_start()
+        curline = self.fh.readline()
+        if len(curline):
             try:
                 stamp = self.__mkstamp_from_syslog_datestr(curline)
-            except epylog.FormatError, e:
-                self.logger.put(5, 'Could not figure out the date format')
+            except epylog.FormatError:
+                logger.put(5, 'Could not figure out the format of this string')
+                logger.put(5, 'Making it 0')
+                stamp = 0
         else:
-            offset = -offset
-            stamp = self.rotated.get_stamp_at_offset(offset)
-        self.logger.put(5, 'Exiting LogFile.get_stamp_at_offset')
+            logger.put(5, 'Nothing in the range')
+            stamp = 0
+        logger.put(5, '<LogFile.__get_stamp')
         return stamp
-
-    def get_strings_by_offsets(self, start_offset, end_offset):
-        logger = self.logger
-        logger.put(5, 'Entering LogFile.get_strings_by_offsets')
-        logger.put(4, 'Getting strings from log file "%s"' % self.filename)
-        logger.put(5, 'start_offset=%d' % start_offset)
-        logger.put(5, 'end_offset=%d' % end_offset)
-        self.fh.seek(start_offset)
-        readlen = end_offset - start_offset
-        if readlen < 0:
-            raise epylog.OutOfRangeError('End_offset greater than start_offset!'
-                                        ,logger)
-        logger.put(2, 'Reading %d bytes from "%s" starting at offset %d'
-                   % (readlen, self.filename, start_offset))
-        chunk = self.fh.read(readlen)
-        logger.put(5, 'Exiting LogFile.get_strings_by_offsets')
-        return chunk
-    
-    def get_log_start_stamp(self):
-        self.logger.put(5, 'Entering LogFile.get_log_start_stamp')
-        self.initfile()
-        if self.log_start_stamp is None:
-            self.fh.seek(0)
-            try:
-                startline = self.fh.readline()
-                startstamp = self.__mkstamp_from_syslog_datestr(startline)
-                self.log_start_stamp = startstamp
-                self.logger.put(5, 'log_start_stamp=%d' % startstamp)
-            except epylog.FormatError, e:
-                self.logger.put(5, 'Could not figure out the date format')
-                self.logger.put(5, 'Setting log_start_stamp to None')
-                self.log_start_stamp = None
-        return self.log_start_stamp
-
-    def get_log_end_stamp(self):
-        logger = self.logger
-        logger.put(5, 'Entering LogFile.get_log_end_stamp')
-        self.initfile()
-        if self.log_end_stamp is None:
-            self.fh.seek(self.log_end_offset)
-            self.__rel_position(-2)
-            try:
-                endline = self.fh.readline()
-                endstamp = self.__mkstamp_from_syslog_datestr(endline)
-                self.log_end_stamp = endstamp
-                logger.put(5, 'log_end_stamp=%d' % self.log_end_stamp)
-            except epylog.FormatError, e:
-                logger.put(3, 'Hmm... Could not figure out the stamp.')
-                logger.put(3, 'Setting to None')
-                self.log_end_stamp = None
-        logger.put(5, 'Exiting LogFile.get_log_end_stamp')
-        return self.log_end_stamp
 
     def __rel_position(self, relative):
         logger = self.logger
@@ -560,34 +721,10 @@ class LogFile:
         logger.put(5, 'offset after __set_at_line_start: %d' % self.fh.tell())
         logger.put(5, 'Exiting LogFile.__rel_position')
     
-    def __mkmonthmap(self):
-        logger = self.logger
-        logger.put(5, 'Entering LogFile.__mkmonthmap')
-        pad = 2
-        months = []
-        for i in range(0, 12):
-            months.append(time.strftime("%b", (0, i+1, 0, 0,
-                                               0, 0, 0, 0, 0)))
-        basetime = time.localtime(time.time())
-        now_year = basetime[0]
-        now_month = basetime[1]
-        pad_month = now_month + pad
-        monthmap = {}
-        for m in range(pad_month - 12, pad_month):
-            monthname = months[m % 12]
-            year = now_year + (m / 12) 
-            monthmap[monthname] = year
-        logger.put(2, 'Sticking monthmap into the object')
-        self.monthmap = monthmap
-        logger.put(5, 'Exiting LogFile.__mkmonthmap')
-
     def __mkstamp_from_syslog_datestr(self, datestr):
         logger = self.logger
         logger.put(5, 'Entering LogFile.__mk_stamp_from_syslog_datestr')
         logger.put(5, 'datestr=%s' % datestr)
-        if self.monthmap is None:
-            logger.put(2, 'Making the month map')
-            self.__mkmonthmap()
         logger.put(2, 'Trying to figure out the date from the string passed')
         try:
             (m, d, t) = datestr.split()[:3]
@@ -625,8 +762,9 @@ class LogFile:
 
     def __set_at_line_start(self):
         logger = self.logger
-        logger.put(5, 'Entering LogFile.__set_at_line_start')
-        if self.fh.tell() == 0:
+        logger.put(5, '>LogFile.__set_at_line_start')
+        orig_offset = self.fh.tell()
+        if orig_offset == 0:
             logger.put(5, 'Already at file start')
             return
         logger.put(5, 'starting the backstepping loop')
@@ -644,6 +782,10 @@ class LogFile:
             offset = offset - 1
             self.fh.seek(offset)
         logger.put(5, 'Exited the backstepping loop')
-        logger.put(5, 'Line start found at offset "%d"' % self.fh.tell())
-        logger.put(5, 'Exiting LogFile.__set_at_line_start')
+        now_offset = self.fh.tell()
+        rewound = orig_offset - now_offset
+        logger.put(5, 'Line start found at offset "%d"' % now_offset)
+        logger.put(5, 'rewound by %d characters' % rewound)
+        logger.put(5, '<LogFile.__set_at_line_start')
+        return rewound
         

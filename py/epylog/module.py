@@ -8,7 +8,7 @@ class Module:
     
     def __init__(self, cfgfile, logtracker, logger):
         self.logger = logger
-        logger.put(5, 'Entering Module.__init__')
+        logger.put(5, '>Module.__init__')
         self.logreport = None
         self.logfilter = None
         logger.put(2, 'Initializing module for cfgfile %s' % cfgfile)
@@ -75,7 +75,7 @@ class Module:
                 return
             logger.put(5, 'Appending the log object to self.logs[]')
             self.logs.append(log)
-        logger.put(5, 'Exiting Module.__init__')
+        logger.put(5, '<Module.__init__')
 
     def is_python(self):
         if self.python:
@@ -87,9 +87,9 @@ class Module:
                 
     def invoke_external_module(self, tmpprefix, cfgdir):
         logger = self.logger
-        logger.put(2, 'Setting env vars and dumping the log strings')
+        logger.put(5, '>Module.invoke_external_module')
+        tempfile.tempdir = tmpprefix
         logcat = tempfile.mktemp()
-        logger.put(2, 'Dumping log strings into "%s"' % logcat)
         totallen = self.__dump_log_strings(logcat)
         if totallen == 0:
             logger.put(2, 'Nothing in the logs for this module. Passing exec')
@@ -97,8 +97,6 @@ class Module:
         logger.put(2, 'Setting LOGCAT to "%s"' % logcat)
         os.putenv('LOGCAT', logcat)
 
-        logger.put(2, 'Setting tempdir to "%s"' % tmpprefix)
-        tempfile.tempdir = tmpprefix
         modtmpprefix = os.path.join(tmpprefix, 'EPYLOG')
         logger.put(2, 'Setting TMPPREFIX env var to "%s"' % modtmpprefix)
         os.putenv('TMPPREFIX', modtmpprefix)
@@ -210,15 +208,11 @@ class Module:
            
     def __dump_log_strings(self, filename):
         logger = self.logger
-        logger.put(2, 'Invoking module.dump_log_strings()')
-        logger.put(3, 'filename=%s' % filename)
-        logger.put(2, 'Opening the "%s" for writing' % filename)
+        logger.put(5, '>Module.__dump_log_strings()')
+        logger.put(5, 'filename=%s' % filename)
+        logger.put(4, 'Opening the "%s" for writing' % filename)
         fh = open(filename, 'w')
-        logger.put(3, self.logs)
-        totallen = 0
-        for logobj in self.logs:
-            logger.put(2, 'Processing log object "%s"' % logobj.filename)
-            length = logobj.dump_strings(fh)
-            totallen = totallen + length
-        logger.put(3, 'Total length of the log is "%d"' % totallen)
-        return totallen
+        for log in self.logs:
+            len = log.dump_strings(fh)
+        logger.put(3, 'Total length of the log is "%d"' % len)
+        return len

@@ -11,7 +11,7 @@ from report import Report
 from module import Module
 from log import LogTracker
 
-VERSION = 'Epylog-0.8'
+VERSION = 'Epylog-0.8.5'
 
 class FormatError(exceptions.Exception):
     def __init__(self, message, logger):
@@ -56,7 +56,7 @@ class NoSuchLogError(exceptions.Exception):
 class Epylog:
     def __init__(self, cfgfile, logger):
         self.logger = logger
-        logger.put(5, 'Entering Epylog.__init__')
+        logger.put(5, '>Epylog.__init__')
 
         config = ConfigParser.ConfigParser()
         logger.puthang(3, 'Reading the config file "%s"' % cfgfile)
@@ -153,11 +153,11 @@ class Epylog:
         logger.put(3, 'Total of %d modules initialized' % len(self.modules))
         if len(self.modules) == 0:
             raise ConfigError('No modules are enabled. Exiting.', logger)
-        logger.put(5, 'Exiting Epylog.__init__')
+        logger.put(5, '<Epylog.__init__')
 
     def process_modules(self):
         logger = self.logger
-        logger.put(2, 'Invoking the process_modules routine')
+        logger.put(5, '>Epylog.process_modules')
         logger.put(2, 'Iterating through the modules')
         for module in self.modules:
             logger.puthang(1, 'Processing module "%s"' % module.name)
@@ -176,11 +176,11 @@ class Epylog:
                     #
                     logger.put(0, str(e))
             logger.endhang(1, 'done')
-        logger.put(2, 'Done with the process_modules routine')
+        logger.put(5, '<Epylog.process_modules')
 
     def make_report(self):
         logger = self.logger
-        logger.put(2, 'Invoking the make_report routine')
+        logger.put(5, '>Epylog.make_report')
         for module in self.modules:
             if module.logreport is None and module.logfilter is None:
                 logger.put(2, 'No output from module "%s"' % module.name)
@@ -194,16 +194,13 @@ class Epylog:
             if module_strings is not None:
                 self.report.append_filtered_strings(module.name,
                                                     module_strings)
-
-    def something_to_report(self):
+        self.report.set_stamps(self.logtracker.get_stamps())
+        logger.put(5, '<Epylog.make_report')
         return self.report.is_report_useful()
-    
+
     def publish_report(self):
         logger = self.logger
-        if not self.something_to_report():
-            logger.put(1, 'All reports are empty. Nothing to do.')
-            return
-        
+        logger.put(5, '>Epylog.publish_report')
         if self.report.unparsed:
             logger.put(2, 'Dumping all log strings into a temp file')
             tempfile.tempdir = self.tmpprefix
@@ -211,106 +208,11 @@ class Epylog:
             weeded_file = tempfile.mktemp('WEED')
             fh = open(rawstr_file, 'w')
             logger.put(2, 'RAW strings file created in "%s"' % rawstr_file)
-            iter = self.logmap.iteritems()
-            while 1:
-                try:
-                    (logname, logobj) = iter.next()
-                    logger.put(3, 'Dumping strings for log "%s"' % logname)
-                    logobj.dump_strings(fh)
-                except StopIteration:
-                    logger.put(2, 'Iteration finished')
-                    break
+            self.logtracker.dump_all_strings(fh)
             fh.close()
         self.report.publish(rawstr_file, weeded_file)
-            
-    def __unpickle_offsets(self):
-        logger = self.logger
-        logger.put(2, 'Invoking the __unpickle_offsets routine')
-        ofile = os.path.join(self.vardir, 'offsets.p')
-        logger.put(2, 'Checking if we have "%s" in the first place'
-                   % ofile)
-        if os.path.exists(ofile):
-            logger.put(2, 'Opening "%s" with unpickler' % ofile)
-            try:
-                offsets = pickle.load(open(ofile))
-                logger.put(5, 'offset data:')
-                logger.put(5, offsets)
-            except UnpicklingError:
-                ##
-                # Question: Should I throw an exception here instead?
-                #
-                logger.put(1, 'Error restoring offsets from "%s"' % ofile)
-                logger.put(1, 'Using default values instead')
-                offsets = {}
-        else:
-            logger.put(2, 'No offsets file in place. Using default values')
-            offsets = {}
-        self.offsets = offsets
-
-    def __pickle_offsets(self):
-        logger = self.logger
-        logger.put(2, 'Checking if we have the offsets in the first place')
-        if self.offsets is None:
-            logger.put(1, 'No offsets found when attempting to pickle!')
-            return
-        logger.puthang(2, 'Pickling the offsets')
-        ofile = os.path.join(self.vardir, 'offsets.p')
-        logger.put(3, 'Storing pickles in file "%s"' % ofile)
-        import fcntl
-        fh = open(ofile, 'w')
-        logger.put(3, 'Locking the offsets file')
-        fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
-        try:
-            pickle.dump(self.offsets, fh)
-            logger.put(3, 'Pickles dumped. Mmmm... Pickle juice...')
-
-        except:
-            logger.put(0, 'Error trying to save offsets! Offsets not saved!')
-        logger.put(3, 'Unlocking the offsets file')
-        fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
-        fh.close()
-        logger.endhang(2)
+        logger.put(5, '<Epylog.publish_report')
         
-    def __restore_log_offset(self, logobj):
-        logger = self.logger
-        logger.put(2, 'Invoking the __restore_log_offset routine for "%s"'
-                   % logobj.filename)
-        if self.offsets is None:
-            self.__unpickle_offsets()
-        offsets = self.offsets
-        logger.put(2, 'Checking if this logfile has defined offset info')
-        if offsets.has_key(logobj.filename):
-            logger.put(2, 'Comparing the inode information')
-            st_inode = offsets[logobj.filename]['inode']
-            if logobj.inode != st_inode:
-                logger.put(2, 'The logfile seems to have been rotated')
-                logger.put(3, 'Flipping the offset so we know')
-                offset = -offsets[logobj.filename]['offset']
-            else:
-                logger.put(3, 'Inodes match. Same file, we presume')
-                offset = offsets[logobj.filename]['offset']
-            logobj.start_offset = offset
-        else:
-            logobj.set_init_offset()
-
-    def __store_log_offset(self, logobj):
-        logger = self.logger
-        logger.put(3, 'Invoking the __store_log_offset routine for "%s"'
-                   % logobj.filename)
-        if self.offsets is None:
-            ##
-            # Hey, this can happen!
-            #
-            self.__unpickle_offsets()
-        offsets = self.offsets
-        logger.put(3, 'Storing the offset in the offsets map')
-        logger.put(3, 'offset for log "%s" is "%d"'
-                   % (logobj.filename, logobj.end_offset))
-        offsets[logobj.filename] = {
-            'offset': logobj.end_offset,
-            'inode' : logobj.inode
-            }
-    
     def cleanup(self):
         logger = self.logger
         logger.put(2, 'Cleanup routine called')
