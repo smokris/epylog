@@ -28,78 +28,53 @@ Description will eventually go here.
 
 import sys
 import re
+from xml.dom.minidom import parse
+import os
 
 sys.path.insert(0, '../py/')
-from epylog import Result, InternalModule
+from epylog import InternalModule
+
+def getTextVal(node):
+    """
+    getTextVal(node):
+        The node is an element node containing text nodes. This function
+        will concatenate the text nodes together and return them as one
+        string. Any non-text nodes will be ignored.
+    """
+    val = ''
+    for childnode in node.childNodes:
+        if childnode.nodeType == childnode.TEXT_NODE:
+            val = val + childnode.data
+    return val
 
 class notices_mod(InternalModule):
     def __init__(self, opts, logger):
         InternalModule.__init__(self)
         self.logger = logger
-        rc = re.compile
-        self.regex_map = {
-            ##
-            # GConf, the bane of all existence
-            #
-            rc('gconfd.*: Failed to get lock.*Failed to create'): self.gconf,
-            rc('gconfd.*: Error releasing lockfile'): self.gconf,
-            rc('gconfd.*: .* Could not lock temporary file'): self.gconf,
-            rc('gconfd.*: .* another process has the lock'): self.gconf,
-            ##
-            # Look for fatal X errors. These usually occur when
-            # someone logs out, but if they repeat a lot, then it's
-            # something that should be looked at.
-            #
-            rc('Fatal X error'): self.fatalx,
-            ##
-            # Look for sftp activity.
-            #
-            rc('sftp-server.*:'): self.sftp,
-            rc('subsystem request for sftp'): self.sftp,
-            ##
-            # Look for misc floppy errors (vmware likes to leave those).
-            #
-            rc('floppy0:|\(floppy\)'): self.floppy_misc,
-            ##
-            # Look for ypserv errors
-            #
-            rc('ypserv.*: refused connect'): self.ypserv,
-            ##
-            # Reboots
-            #
-            rc('kernel: Linux version'): self.linux_reboot,
-            ##
-            # SSHD notices
-            #
-            rc('sshd\[\S*: Did not receive identification'): self.sshd_scan,
-            ##
-            # VFS Errors left by cd-roms
-            #
-            rc('VFS: busy inodes on changed media'): self.busy_inodes,
-            ##
-            # Generic CD-ROM errors
-            #
-            rc('kernel: cdrom: This disc doesn'): self.cdrom_misc,
-            ##
-            # Most indicative of dirty floppy mounts
-            #
-            rc('attempt to access beyond end of device'): self.dirty_mount,
-            rc('rw=\d+, want=\d+, limit=\d+'): self.dirty_mount,
-            rc('Directory sread .* failed'): self.dirty_mount,
-            rc('kernel: bread in fat_access failed'): self.dirty_mount,
-            ##
-            # Insmod errors
-            #
-            rc('insmod: Hint: insmod errors'): self.insmod
-        }
-
-        self.normal   = 0
         self.critical = 1
+        self.normal = 0
+        self.regex_map = {}
+        self.regex_dict = {}
+        n_dist = opts.get('notice_dist', '/etc/epylog/notice_dist.xml')
+        n_loc = opts.get('notice_local', '/etc/epylog/notice_local.xml')
+
+        self.entities = {
+            re.compile('&lt;'): '<',
+            re.compile('&gt;'): '>',
+            re.compile('&quot;'): '"',
+            re.compile('&amp;'): '&'}
+
+        enables = opts.get('enable', 'ALL')
+        if not enables: return
+        enlist = []
+        for en in enables.split(','): enlist.append(en.strip())
         
-        self.ypserv_re = rc('from\s(.*):\d+\sto\sprocedure\s(\S+)')
-        self.kernel_re = rc('Linux\sversion\s(\S*)')
-        self.sshd_scan_re = rc('from\s(\S*)')
-        
+        notice_dict = self._parse_notices(n_dist, n_loc, enlist)
+        if not notice_dict: return
+        self._digest_notice_dict(notice_dict)
+
+        self.ip_re = re.compile('\d+.\d+.\d+.\d+')
+
         self.report_wrap = '<table border="0" width="100%%" rules="cols" cellpadding="2">%s</table>\n'
         self.subreport_wrap = '<tr><th colspan="2" align="left"><h3>%s</h3></th></tr>\n'
         self.critical_title = '<font color="red">CRITICAL Notices</font>'
@@ -110,82 +85,88 @@ class notices_mod(InternalModule):
     ##
     # Line matching routines
     #
-    def gconf(self, linemap):
-        urg = self.normal
+    def handle_notice(self, linemap):
         sys, msg, mult = self.get_smm(linemap)
-        msg = 'Gconf locking errors'
-        return {(urg, sys, msg): mult}
-
-    def fatalx(self, linemap):
-        urg = self.critical
-        sys, msg, mult = self.get_smm(linemap)
-        msg = 'Fatal X errors'
-        return {(urg, sys, msg): mult}
-
-    def sftp(self, linemap):
-        urg = self.normal
-        sys, msg, mult = self.get_smm(linemap)
-        msg = 'SFTP activity'
-        return {(urg, sys, msg): mult}
-
-    def dirty_mount(self, linemap):
-        urg = self.normal
-        sys, msg, mult = self.get_smm(linemap)
-        msg = 'dirty floppy mount [non-indicative]'
-        return {(urg, sys, msg): mult}
-
-    def floppy_misc(self, linemap):
-        urg = self.normal
-        sys, msg, mult = self.get_smm(linemap)
-        msg = 'misc floppy errors'
-        return {(urg, sys, msg): mult}
-
-    def cdrom_misc(self, linemap):
-        urg = self.normal
-        sys, msg, mult = self.get_smm(linemap)
-        msg = 'misc CDROM errors'
-        return {(urg, sys, msg): mult}
+        regex = linemap['regex']
+        crit, report = self.regex_dict[regex]
+        mo = regex.search(msg)
+        groups = mo.groups()
+        if groups:
+            groups = self._resolver(groups)
+            try: report = report % groups
+            except: pass
+        return {(crit, sys, report): mult}
     
-    def ypserv(self, linemap):
-        urg = self.normal
-        sys, msg, mult = self.get_smm(linemap)
-        mo = self.ypserv_re.search(msg)
-        if not mo: return None
-        fromip, proc = mo.groups()
-        ypclient = self.gethost(fromip)
-        msg = '%s denied from %s' % (proc, ypclient)
-        return {(urg, sys, msg): mult}
+    ##
+    # Helper methods
+    #
+    def _resolver(self, groups):
+        ret = []
+        for member in groups:
+            if self.ip_re.search(member): member = self.gethost(member)
+            ret.append(member)
+        return tuple(ret)
 
-    def linux_reboot(self, linemap):
-        urg = self.critical
-        sys, msg, mult = self.get_smm(linemap)
-        mo = self.kernel_re.search(msg)
-        if not mo: return None
-        kernel = mo.group(1)
-        msg = 'rebooted with kernel %s' % kernel
-        return {(urg, sys, msg): mult}
+    def _deent(self, str):
+        for regex in self.entities.keys():
+            str = re.sub(regex, self.entities[regex], str)
+        return str
+    
+    def _parse_notices(self, dist, loc, enlist):
+        logger = self.logger
+        notice_dict = {}
+        try:
+            doc = parse(dist)
+            temp_dict = self._get_notice_dict(doc)
+            if enlist[0] == 'ALL': notice_dict = temp_dict
+            else:
+                for en in enlist:
+                    if en in temp_dict: notice_dict[en] = temp_dict[en]
+            del doc
+        except Exception, e:
+            logger.put(0, 'Could not read/parse notices file %s: %s' %
+                       (dist, e))
+            return
+        if os.access(loc, os.R_OK):
+            try:
+                doc = parse(loc)
+                local_dict = self._get_notice_dict(doc)
+                if local_dict: notice_dict.update(local_dict)
+                del doc
+            except Exception, e:
+                logger.put(0, 'Exception while parsing %s: %s' % (loc, e))
+                pass
+        return notice_dict
 
-    def sshd_scan(self, linemap):
-        urg = self.critical
-        sys, msg, mult = self.get_smm(linemap)
-        mo = self.sshd_scan_re.search(msg)
-        if not mo: return None
-        rhost = mo.group(1)
-        rhost = self.gethost(rhost)
-        msg = 'sshd scan from %s' % rhost
-        return {(urg, sys, msg): mult}
-
-    def busy_inodes(self, linemap):
-        urg = self.normal
-        sys, msg, mult = self.get_smm(linemap)
-        msg = 'dirty CDROM mount'
-        return {(urg, sys, msg): mult}
-
-    def insmod(self, linemap):
-        urg = self.normal
-        sys, msg, mult = self.get_smm(linemap)
-        msg = 'insmod errors'
-        return {(urg, sys, msg): mult}
+    def _digest_notice_dict(self, notice_dict):
+        for regexes, crit, report in notice_dict.values():
+            for regex in regexes:
+                self.regex_dict[regex] = (crit, report)
+                self.regex_map[regex] = self.handle_notice
+    
+    def _get_notice_dict(self, doc):
+        logger = self.logger
+        notice_dict = {}
+        for node in doc.getElementsByTagName('notice'):
+            id = node.getAttribute('id')
+            crit = self.normal
+            try:
+                if node.getAttribute('critical') == 'yes': crit = self.critical
+            except: pass
+            regexes = []
+            for cnode in node.childNodes:
+                val = getTextVal(cnode)
+                val = self._deent(val)
+                if cnode.nodeName == 'regex':
+                    try:
+                        regex = re.compile(val)
+                        regexes.append(regex)
+                    except:
+                        logger.put(0, 'Bad regex for "%s": %s' % (id, val))
+                elif cnode.nodeName == 'report':
+                    report = val
+            notice_dict[id] = (regexes, crit, report)
+        return notice_dict
 
     ##
     # FINALIZE!
@@ -195,7 +176,6 @@ class notices_mod(InternalModule):
         reports = {}
         for urg in [self.critical, self.normal]:
             reports[urg] = ''
-            flipr = ''
             for system in rs.get_distinct((urg,)):
                 mymap = rs.get_submap((urg, system,))
                 messages = []
