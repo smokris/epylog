@@ -133,6 +133,7 @@ popd
 %{_perldir}/%{name}.pm
 %{_mandir}/man*/*
 %config(noreplace) %{_sysconfdir}/%{name}
+%ghost %{_sysconfdir}/%{name}/notice_local.xml
 %doc doc/*
 
 %changelog
