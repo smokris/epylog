@@ -13,6 +13,7 @@ priority = 5
 #
 enable_sendmail = 1
 enable_postfix = 0
+enable_qmail = 0
 ##
 # Report at most this many "top things"
 #
