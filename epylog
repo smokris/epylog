@@ -61,9 +61,10 @@ def usage():
 def main(args):
     debuglvl = 1
     store_offsets = 0
+    config_file = '/etc/epylog/epylog.conf'
     cmdargs = args[1:]
     try:
-        gopts, cmds = getopt.getopt(cmdargs, 'd:',
+        gopts, cmds = getopt.getopt(cmdargs, 'd:c:',
                                     ['quiet', 'store-offsets'])
         for o,a in gopts:
             if o == '-d':
@@ -72,13 +73,15 @@ def main(args):
                 debuglvl = 0
             elif o == '--store-offsets':
                 store_offsets = 1
+            elif o == '-c':
+                config_file = a
                 
     except getopt.error, e:
         print 'Error: %s' % e
     logger = Logger(debuglvl)
     logger.puthang(1, 'Initializing epylog')
     try:
-        epylog = Epylog('etc/epylog.conf', logger)
+        epylog = Epylog(config_file, logger)
     except (ConfigError, ModuleSanityError), e:
         logger.put(0, "Error returned: %s" % e)
         sys.exit(1)
