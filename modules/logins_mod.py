@@ -3,9 +3,8 @@ import sys
 sys.path.insert(0, '../py/epylog/')
 sys.path.insert(0, './py/')
 import re
-import string
 
-from epylog import Result, ResultSet, InternalModule
+from epylog import Result, InternalModule
 
 class logins_mod(InternalModule):
     def __init__(self, opts, logger):
@@ -47,6 +46,7 @@ class logins_mod(InternalModule):
             rc('imapd\[\S*: Authenticated\suser'): self.imap_pop_open,
             rc('imapd\[\S*: AUTHENTICATE'): self.general_ignore,
             rc('imapd\[\S*: Logout'): self.general_ignore,
+            rc('imapd\[\S*: Killed'): self.general_ignore,
             rc('ipop3d\[\S*: Login\sfail'): self.imap_pop_failure,
             rc('ipop3d\[\S*: Login\suser'): self.imap_pop_open,
             rc('ipop3d\[\S*: Auth\suser'): self.imap_pop_open,
@@ -71,8 +71,9 @@ class logins_mod(InternalModule):
         self.pam_baduser_re = rc('\sbad\susername\s\[(.*)\]')
         self.pam_chelper_re = rc('password\sfor\s\[(.*)\]')
         self.xinetd_start_re = rc('START:\s*(\S*)\s')
-        self.sshd_open_re = rc('Accepted\s(\S*)\sfor\s(\S*)\sfrom\s(\S*)\sport\s\d*\s*[ruser]*\s*(\S*)\s*(\S*)$')
-        self.sshd_fail_re = rc('Failed\s(\S*)\sfor.*\s(\S*)\sfrom\s(\S*)\sport\s\d*\s*(\S*)')
+        self.sshd_open_ruser_re = rc('Accepted\s(\S*)\sfor\s(\S*)\sfrom\s(\S*)\sport\s\d*\sruser\s(\S*)\s*(\S*)')
+        self.sshd_open_re = rc('Accepted\s(\S*)\sfor\s(\S*)\sfrom\s(\S*)\sport\s\d+\s*(\S*)')
+        self.sshd_fail_re = rc('Failed\s(\S*)\sfor\s[illegal\suser]*\s*(\S*)\sfrom\s(\S*)\sport\s\d*\s*(\S*)')
         self.imap_pop_fail_re = rc('auth=(.*)\shost=.*\[(\S*)\]')
         self.imap_pop_open_re = rc('user=(.*)\shost=.*\[(\S*)\]')
         self.imap_pop_service_re = rc('^(\S*)\[\d*\]:')
@@ -188,16 +189,20 @@ class logins_mod(InternalModule):
     def sshd_open(self, linemap):
         action = self.open
         system, message, mult = self.get_smm(linemap)
-        mo = self.sshd_open_re.search(message)
-        if not mo:
+        ruser = ''
+        mo1 = self.sshd_open_ruser_re.search(message)
+        mo2 = self.sshd_open_re.search(message)
+        if mo1: method, user, rhost, ruser, service = mo1.groups()
+        elif mo2: method, user, rhost, service = mo2.groups()
+        else:
             self.logger.put(3, 'Odd sshd open string: %s' % message)
             return None
-        method, user, rhost, ruser, service = mo.groups()
         method = self.sshd_methods.get(method, '??')
         rhost = self.gethost(rhost)
         if not service: service = 'ssh1'
         service = '%s(%s)' % (service, method)
-        restuple = self._mk_restuple(action, system, service, user, '', rhost)
+        restuple = self._mk_restuple(action, system, service, user,
+                                     ruser, rhost)
         return Result(restuple, mult)
 
     def sshd_failure(self, linemap):
@@ -207,7 +212,7 @@ class logins_mod(InternalModule):
         if not mo:
             self.logger.put(3, 'Odd sshd FAILURE string: %s' % message)
             return None
-        method, user, rhost, ruser, service = mo.groups()
+        method, user, rhost, service = mo.groups()
         method = self.sshd_methods.get(method, '??')
         rhost = self.gethost(rhost)
         if not service: service = 'ssh1'
@@ -340,11 +345,9 @@ class logins_mod(InternalModule):
         for action in [self.root_failure, self.root_open,
                        self.failure, self.open]:
             logger.put(5, 'Processing action %d' % action)
-            keys = rs.get_distinct((action,))
-            keys.sort()
             rep[action] = ''
             flipper = ''
-            for key in keys:
+            for key in rs.get_distinct((action,)):
                 logger.put(5, 'key=%s' % key)
                 service_rep = []
                 for service in rs.get_distinct((action, key)):
@@ -354,7 +357,7 @@ class logins_mod(InternalModule):
                     for key2 in mymap.keys():
                         logger.put(5, 'key2=%s' % key2)
                         key2s.append('%s(%d)' % (key2[0], mymap[key2]))
-                    service_rep.append([service, string.join(key2s, ', ')])
+                    service_rep.append([service, ', '.join(key2s)])
                 blank = 0
                 for svcrep in service_rep:
                     if blank: key = '&nbsp;'
@@ -395,7 +398,10 @@ if __name__ == '__main__':
     epymod = logins_mod(opts, logger)
     testlines = [
         ['ruser open', 'sshd[30260]: Accepted rhosts-rsa for jcd from 152.3.182.36 port 32901 ruser jcd'],
+        ['ssh2 open', 'sshd[28091]: Accepted publickey for icon from 152.16.65.208 port 36269 ssh2'],
         ['simple open', 'sshd[316]: Accepted password for shwetket from 152.3.25.84 port 47030'],
+        ['sshd failure', 'sshd[7136]: Failed password for boyd from 63.214.104.191 port 565'],
+        ['sshd illegal user failure', 'sshd[31221]: Failed none for illegal user Mike from 152.3.183.188 port 32982 ssh2'],
         ['imap login', 'imapd[16091]: Authenticated user=djcecile host=login2.phy.duke.edu [152.3.182.75]'],
         ['imap failure', 'imapd[16035]: Login failed user=AryaBhatta auth=AryaBhatta host=login1.phy.duke.edu [152.3.182.74]'],
         ['pop3 login', 'ipop3d[5613]: Login user=shke host=momentum.chem.duke.edu [152.3.169.5] nmsgs=144/144'],

@@ -432,19 +432,23 @@ class ResultSet:
         try: self.resultset[result] += multiplier
         except KeyError: self.resultset[result] = multiplier
 
-    def get_distinct(self, matchtup):
+    def get_distinct(self, matchtup, sort=1):
         lim = len(matchtup)
         matches = []
-        for key in self.resultset.keys():
+        reskeys = self.resultset.keys()
+        if sort: reskeys.sort()
+        for key in reskeys:
             if matchtup == key[0:lim]:
                 if key[lim] not in matches:
                     matches.append(key[lim])
         return matches
 
-    def get_submap(self, matchtup):
+    def get_submap(self, matchtup, sort=1):
         lim = len(matchtup)
         matchmap = {}
-        for key in self.resultset.keys():
+        reskeys = self.resultset.keys()
+        reskeys.sort()
+        for key in reskeys:
             if matchtup == key[0:lim]:
                 subtup = key[lim:]
                 try: matchmap[subtup] += self.resultset[key]
