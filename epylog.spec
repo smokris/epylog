@@ -8,7 +8,7 @@
 
 Summary: New logs analyzer and parser.
 Name: epylog
-Version: 0.9.0
+Version: 0.9.1
 Release: 1
 License: GPL
 Group: Applications/System
@@ -136,6 +136,10 @@ popd
 %doc doc/*
 
 %changelog
+* Fri Apr 25 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.9.1-1
+- Some bugfixes after running pychecker
+- Added doc/INSTALL for people not running RPM.
+
 * Thu Apr 18 2003 Konstantin Riabitsev <icon@phy.duke.edu> 0.9.0-1
 - A significant rewrite of module handlers.
 
