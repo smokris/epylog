@@ -6,87 +6,93 @@ import time
 from publishers import *
 
 class Report:
-    section = 'report'
-    
     def __init__(self, config, logger):
+        logger.put(5, 'Entering Report.__init__')
         logger.put(2, 'Starting Report object intialization')
-        logger.put(3, 'Storing logger in object')
         self.logger = logger
-        
-        logger.put(3, 'Setting some defaults')
+        ##
+        # publishers:  a tuple of publisher objects
+        # filt_fh:     where the filtered strings from modules will go
+        # useful:      tells epylog if the report is of any use or not.
+        #
         self.publishers = []
-        self.module_reports = {}
         self.filt_fh = None
-        self.start_stamp = None
-        self.end_stamp = None
         self.useful = 0
         
         self.tmpprefix = config.tmpprefix
-        sec = self.section
-        logger.put(2, 'Section name is %s' % sec)
         self.runtime = time.localtime()
-        logger.put(2, 'Timestamp is "%s"' % time.strftime('%c', self.runtime))
+        sec = 'report'
         try:
             title = config.get(sec, 'title')
         except:
             title = '%HOSTNAME% system events: %LOCALTIME%'
-        logger.put(2, 'Title as defined in config is: "%s"' % title)
-        
-        import socket
-        title = re.sub(re.compile('%HOSTNAME%', re.M),
-                       socket.gethostname(), title)
-        title = re.sub(re.compile('%LOCALTIME%', re.M),
-                       time.strftime('%c', self.runtime), title)
-        self.title = title
-        logger.put(2, 'Title regexed into: "%s"' % self.title)
-
         try:
-            template = config.get(sec, 'template').strip()
+            self.template = config.get(sec, 'template').strip()
         except:
             raise epylog.ConfigError('Report template not specified', logger)
-        if not os.access(template, os.R_OK):
-            raise epylog.AccessError(('Report template "%s" does not exist or'
-                                     + ' is not readable') % template, logger)
-        self.template = template
-        logger.put(3, 'template=%s' % self.template)
-        
+        if not os.access(self.template, os.R_OK):
+            msg = 'Report template "%s" is not readable' % self.template
+            raise epylog.AccessError(msg, logger)
         try:
             self.unparsed = config.getboolean(sec, 'include_unparsed')
         except:
             self.unparsed = 1
-        logger.put(3, 'unparsed=%d' % self.unparsed)
-
-        logger.put(2, 'Looking at defined publishers')
         try:
             publishers = config.get(sec, 'publishers')
         except:
-            raise epylog.ConfigError('No publishers defined in the "%s" section'
-                                    % sec, logger)
+            msg = 'No publishers defined in "%s"' % sec
+            raise epylog.ConfigError(msg, logger)
 
-        logger.put(2, 'Publishers: "%s"' % publishers)
-        logger.put(2, 'Initializing publishers')
+        logger.put(3, 'Title as defined in config is: "%s"' % title)
+        hregex = re.compile('@@HOSTNAME@@')
+        tregex = re.compile('@@LOCALTIME@@')
+        if hregex.search(title):
+            import socket
+            hostname = socket.gethostname()
+            logger.put(3, 'Regexing @@HOSTNAME@@ into "%s"' % hostname)
+            title = re.sub(hregex, hostname, title)
+        if tregex.search(title):
+            timestr = time.strftime('%c', self.runtime)
+            logger.put(3, 'Regexing @@LOCALTIME@@ into "%s"' % timestr)
+            title = re.sub(tregex, timestr, title)
+        self.title = title
+        logger.put(3, 'Final title is: "%s"' % self.title)
+        
+        logger.put(3, 'template=%s' % self.template)
+        logger.put(3, 'unparsed=%d' % self.unparsed)
+        if self.unparsed:
+            logger.put(3, 'Creating a temporary file for filtered strings')
+            import epylog.mytempfile as tempfile
+            tempfile.tmpdir = self.tmpprefix
+            filen = tempfile.mktemp('FILT')
+            self.filt_fh = open(filen, 'w+')
+            logger.put(3, 'Filtered strings file created in "%s"' % filen)
+
+        logger.put(3, 'Publishers: "%s"' % publishers)
+        logger.put(3, 'Initializing publishers')
         for sec in publishers.split(','):
             sec = sec.strip()
-            logger.put(2, 'Looking for section definition "%s"' % sec)
+            logger.put(3, 'Looking for section definition "%s"' % sec)
             if sec not in config.sections():
-                raise epylog.ConfigError('Could not find publisher section "%s"'
-                                        % sec, logger)
-            logger.put(2, 'Looking for method declaration')
+                message = 'Required publisher section "%s" not found' % sec
+                raise epylog.ConfigError(message, logger)
+            logger.put(3, 'Looking for method declaration')
             try:
                 method = config.get(sec, 'method')
             except:
-                raise epylog.ConfigError('Publishing method not found in "%s"'
-                                        % sec, logger)
-            logger.put(2, 'Found method "%s"' % method)
+                msg = 'Publishing method not found in "%s"' % sec
+                raise epylog.ConfigError(msg, logger)
+            logger.put(3, 'Found method "%s"' % method)
             if method == 'file':
                 publisher = FilePublisher(sec, config, logger)
             elif method == 'mail':
                 publisher = MailPublisher(sec, config, logger)
             else:
-                raise epylog.ConfigError('Publishing method "%s" not supported'
-                                        % method, logger)
+                msg = 'Publishing method "%s" not supported' % method
+                raise epylog.ConfigError(msg, logger)
             self.publishers.append(publisher)            
-        logger.put(2, 'Finished with Report object initialization')
+        logger.put(3, 'Finished with Report object initialization')
+        logger.put(5, 'Exiting Report.__init__')
 
     def append_module_report(self, module_name, module_report):
         if len(module_report) > 0:

@@ -4,83 +4,273 @@ import re
 import string
 import time
 
-class LogFile:
-    
-    def __init__(self, logfile, tmpprefix, logger):
-        logger.put(5, 'Entering LogFile.__init__')
-        logger.put(2, 'Starting LogFile object initialization for logfile "%s"'
-                   % logfile)
-        logger.put(3, 'Sticking logger into object')
+class LogTracker:
+    def __init__(self, config, logger):
         self.logger = logger
+        logger.put(5, 'Entering LogTracker.__init__')
+        self.tmpprefix = config.tmpprefix
+        self.entries = []
+        self.logs = []
+        logger.put(5, 'Exiting LogTracker.__init__')
 
+    def getlog(self, entry):
+        logger = self.logger
+        logger.put(5, 'Entering LogTracker.getlog')
+        logger.put(5, 'Checking if we have a log for entry "%s"' % entry)
+        if entry in self.entries:
+            logger.put(5, 'Yes, returning that log')
+            log = self.__get_log_by_entry(entry)
+        else:
+            logger.put(5, 'Logfile for "%s" not yet initialized' % entry)
+            log = self.__init_log_by_entry(entry)
+        logger.put(5, 'Exiting LogTracker.getlog')
+        return log
+
+    def get_offset_map(self):
+        logger = self.logger
+        logger.put(5, 'Entering LogTracker.get_offset_map')
+        omap = {}
+        for log in self.logs:
+            key = log.entry
+            inode = log.getinode()
+            if log.orange.endix != 0:
+                offset = 0
+            else:
+                offset = log.orange.end_offset
+            omap[key] = [inode, offset]
+        logger.put(5, 'omap follows')
+        logger.put(5, omap)
+        logger.put(5, 'Exiting LogTracker.get_offset_map')
+        return omap
+
+    def set_start_offset_by_entry(self, entry, inode, offset):
+        logger = self.logger
+        logger.put(5, '>LogTracker.set_offset_by_entry')
+        logger.put(5, 'entry=%s' % entry)
+        logger.put(5, 'inode=%d' % inode)
+        logger.put(5, 'offset=%d' % offset)
+        if entry in self.entries:
+            log = self.__get_log_by_entry(entry)
+            if log.getinode() != inode:
+                logger.put(5, 'Inodes do not match. Assuming logrotation')
+                try:
+                    log.set_range_param(1, offset, 0)
+                except epylog.OutOfRangeError:
+                    logger.put(5, 'No rotated file in place. Set offset to 0')
+                    log.set_range_param(0, 0, 0)
+            else:
+                logger.put(5, 'Inodes match, setting offset to "%d"' % offset)
+                log.set_range_param(0, offset, 0)
+        else:
+            msg = 'No such log entry "%s"' % entry
+            raise epylog.NoSuchLogError(msg, logger)
+        logger.put(5, '<LogTracker.set_offset_by_entry')
+
+    def __init_log_by_entry(self, entry):
+        logger = self.logger
+        logger.put(5, 'Entering LogTracker.__init_log_by_entry')
+        logger.puthang(5, 'Initializing log object for entry "%s"' % entry)
+        log = Log(entry, self.tmpprefix, self.logger)
+        logger.endhang(5)
+        self.entries.append(entry)
+        self.logs.append(log)
+        logger.put(5, 'Exiting LogTracker.__init_log_by_entry')
+        return log
+
+    def __get_log_by_entry(self, entry):
+        logger = self.logger
+        logger.put(5, 'Entering LogTracker.__get_log_by_entry')
+        for log in self.logs:
+            if log.entry == entry:
+                logger.put(5, 'Found log object "%s"' % entry)
+                logger.put(5, 'Exiting LogTracker.__get_log_by_entry')
+                return log
+        logger.put(5, 'No such log file! Returning None. How did this happen?')
+        return None
+            
+
+class OffsetRange:
+    def __init__(self, startix, start_offset, endix, end_offset, logger):
+        self.logger = logger
+        logger.put(5, 'Entering OffsetRange.__init__')
+        self.startix = startix
+        self.endix = endix
+        self.start_offset = start_offset
+        self.end_offset = end_offset
+        logger.put(5, 'startix=%d' % self.startix)
+        logger.put(5, 'start_offset=%d' % self.start_offset)
+        logger.put(5, 'endix=%d' % self.endix)
+        logger.put(5, 'end_offset=%d' % self.end_offset)
+        logger.put(5, 'Exiting OffsetRange.__init__')
+
+    def setstart(self, ix, offset):
+        logger = self.logger
+        logger.put(5, 'Entering OffsetRange.setstart')
+        self.startix = ix
+        self.start_offset = offset
+        logger.put(5, 'new startix=%d' % self.startix)
+        logger.put(5, 'new start_offset=%d' % self.start_offset)
+        logger.put(5, 'Exiting OffsetRange.setstart')
+
+    def setend(self, ix, offset):
+        logger = self.logger
+        logger.put(5, 'Entering OffsetRange.setend')
+        self.endix = ix
+        self.end_offset = offset
+        logger.put(5, 'new endix=%d' % self.endix)
+        logger.put(5, 'new end_offset=%d' % self.end_offset)
+        logger.put(5, 'Exiting OffsetRange.setend')
+
+class Log:
+    def __init__(self, entry, tmpprefix, logger):
+        logger.put(5, 'Entering Log.__init__')
+        logger.puthang(3, 'Initializing Log object for entry "%s"' % entry)
+        self.logger = logger
         self.tmpprefix = tmpprefix
-        logger.put(3, 'Setting some defaults')
-        self.fh = None
-        self.rotated = None
-        self.monthmap = None
-        self.log_start_stamp = None
-        self.log_end_stamp = None
-        self.start_offset = 0
-        self.end_offset = None
-        self.log_end_offset = None
+        self.entry = entry
+        filename = self.__get_filename()
+        logger.puthang(4, 'Initializing the logfile "%s"' % filename)
+        logfile = LogFile(filename, tmpprefix, logger)
+        logger.endhang(4)
+        logger.put(3, 'Appending logfile to the loglist')
+        self.loglist = [logfile]
+        self.orange = OffsetRange(0, 0, 0, logfile.end_offset, logger)
+        logger.endhang(3)
+        logger.put(5, 'Exiting Log.__init__')
+
+    def set_range_param(self, ix, offset, whence=0):
+        logger = self.logger
+        logger.put(5, 'Entering Log.set_range_param')
+        logger.put(5, 'ix=%d' % ix)
+        logger.put(5, 'offset=%d' % offset)
+        logger.put(5, 'whence=%d' % whence)
+        try:
+            while not self.__is_valid_ix(ix):
+                self.__init_next_logfile()
+        except epylog.NoSuchLogError:
+            msg = 'Invalid index "%d" for log entry "%s"' % (ix, self.entry)
+            raise epylog.OutOfRangeError(msg, logger)
+        if whence:
+            logger.put(5, 'Setting range END for entry "%s"' % self.entry)
+            self.orange.setend(ix, offset)
+        else:
+            logger.put(5, 'Setting range START for entry "%s"' % self.entry)
+            self.orange.setstart(ix, offset)
+        logger.put(5, 'Exiting Log.set_range_param')
+
+    def __is_valid_ix(self, ix):
+        logger = self.logger
+        logger.put(5, 'Entering Log.__is_valid_ix')
+        ixlen = len(self.loglist) - 1
+        isvalid = 1
+        if ix > ixlen:
+            logger.put(5, 'index %d is not valid' % ix)
+            isvalid = 0
+        logger.put(5, 'Exiting Log.__is_valid_ix')
+        return isvalid
+
+    def __init_next_rotfile(self):
+        logger = self.logger
+        logger.put(5, '>Log.__init_next_rotfile')
+        ix = len(self.loglist)
+        rotname = self.__get_rotname_by_ix(ix)
+        try:
+            logger.put(5, 'Initializing log for rotated file "%s"' % rotname)
+            rotlog = LogFile(rotname, self.tmpprefix, logger)
+        except epylog.AccessError:
+            msg = 'No further rotated files for entry "%s"' % self.entry
+            raise epylog.NoSuchLogError(msg, logger)
+        self.loglist.append(rotlog)
+        logger.put(5, '<Log.__init_next_rotfile')
+
+    def __get_rotname_by_ix(self, ix):
+        logger = self.logger
+        logger.put(5, '>Log.__get_rotname_by_ix')
+        logger.put(5, 'ix=%d' % ix)
+        rotname = re.sub(re.compile('\[|\]'), '', self.entry)
+        rotname = re.sub(re.compile('#'), str(ix), rotname)
+        logger.put(5, 'rotname=%s' % rotname)
+        logger.put(5, '<Log.__get_rotname_by_ix')
+        return rotname
+
+    def __get_filename(self):
+        logger = self.logger
+        logger.put(5, '>Log.__get_filename')
+        logger.put(5, 'entry=%s' % self.entry)
+        filename = re.sub(re.compile('\[.*?\]'), '', self.entry)
+        logger.put(5, 'filename=%s' % filename)
+        logger.put(5, '<Log.__get_filename')
+        return filename
+    
+    def getinode(self):
+        logger = self.logger
+        logger.put(5, 'Entering Log.getinode')
+        logfile = self.loglist[0]
+        inode = logfile.getinode()
+        logger.put(5, 'inode=%d' % inode)
+        logger.put(5, 'Exiting Log.getinode')
+        return inode
         
-        self.filename = logfile
+class LogFile:
+    def __init__(self, filename, tmpprefix, logger):
+        self.logger = logger
+        logger.put(5, 'Entering LogFile.__init__')
+        self.tmpprefix = tmpprefix
+        self.filename = filename
+        ##
+        # start_stamp: the timestamp at the start of the log
+        # end_stamp:   the timestamp at the end of the log
+        # end_offset:  this is where the end of the log is
+        #
+        self.start_stamp = None
+        self.end_stamp = None
+        self.end_offset = None
+
+        logger.put(3, 'Running sanity checks on the logfile')
         self.__accesscheck()
-        logger.put(2, 'All checks passed')
-        self.inode = os.stat(logfile).st_ino
-        logger.put(3, 'inode=%d' % self.inode)
-        logger.put(2, 'Finished LogFile object initialization for "%s"'
-                   % logfile)
+        logger.put(3, 'All checks passed')
+        logger.put(5, 'Initializing the file')
+        self.__initfile()
         logger.put(5, 'Exiting LogFile.__init__')
 
-    def initfile(self):
+    def __initfile(self):
         logger = self.logger
-        logger.put(5, 'Entering LogFile.initfile')
-        logger.put(2, 'Checking if we are already initialized')
-        if self.fh is None:
-            logger.put(2, 'Not inited yet, initing')
-            logger.put(2, 'Checking if we are gzipped (ends in .gz)')
-            if re.compile('\.gz$').search(self.filename, 1):
-                logger.put(2, 'Ends in .gz. Using GzipFile to open')
-                import gzip
-                import epylog.mytempfile as tempfile
-                tempfile.tmpdir = self.tmpprefix
-                ungzfile = tempfile.mktemp('UNGZ')
-                logger.put(3, 'Creating a tempfile in "%s"' % ungzfile)
-                ungzfh = open(tempfile.mktemp('UNGZ'), 'w+')
-                try:
-                    gzfh = gzip.open(self.filename)
-                except:
-                    raise epylog.ConfigError(('Could not open file "%s" with'
-                                             + ' gzip handler. Not gzipped?')
-                                            % self.filename, logger)
-                logger.put(2, 'Putting the contents of the gzlog into ungzlog')
-                while 1:
-                    chunk = gzfh.read(1024)
-                    if chunk:
-                        ungzfh.write(chunk)
-                        logger.put(5, 'Read "%s" bytes from gzfh' % len(chunk))
-                    else:
-                        logger.put(5, 'Reached EOF')
-                        break
-                gzfh.close()
-                self.fh = ungzfh
-            else:
-                logger.put(2, 'Does not end in .gz, assuming plain text')
-                logger.put(2, 'Opening logfile "%s"' % self.filename)
-                self.fh = open(self.filename)
-            logger.put(2, 'Finding the end offset')
-            self.fh.seek(0, 2)
-            self.__set_at_line_start()
-            self.end_offset = self.fh.tell()
-            self.log_end_offset = self.fh.tell()
-            if self.end_offset == 0:
-                logger.put(2, 'This logfile is empty!')
-            logger.put(2, 'log_end_offset=%d' % self.log_end_offset)
+        logger.put(5, 'Entering LogFile.__initfile')
+        logger.put(5, 'Checking if we are gzipped (ends in .gz)')
+        if re.compile('\.gz$').search(self.filename, 1):
+            logger.put(5, 'Ends in .gz. Using GzipFile to open')
+            import gzip
+            import epylog.mytempfile as tempfile
+            tempfile.tmpdir = self.tmpprefix
+            ungzfile = tempfile.mktemp('UNGZ')
+            logger.put(5, 'Creating a tempfile in "%s"' % ungzfile)
+            ungzfh = open(tempfile.mktemp('UNGZ'), 'w+')
+            try:
+                gzfh = gzip.open(self.filename)
+            except:
+                raise epylog.ConfigError(('Could not open file "%s" with'
+                                          + ' gzip handler. Not gzipped?')
+                                         % self.filename, logger)
+            logger.put(5, 'Putting the contents of the gzlog into ungzlog')
+            while 1:
+                chunk = gzfh.read(1024)
+                if chunk:
+                    ungzfh.write(chunk)
+                    logger.put(5, 'Read "%s" bytes from gzfh' % len(chunk))
+                else:
+                    logger.put(5, 'Reached EOF')
+                    break
+            gzfh.close()
+            self.fh = ungzfh
         else:
-            logger.put(2, 'Already initialized, ignoring')
-            pass
-        logger.put(5, 'Exiting LogFile.initfile')
+            logger.put(5, 'Does not end in .gz, assuming plain text')
+            logger.put(5, 'Opening logfile "%s"' % self.filename)
+            self.fh = open(self.filename)
+        logger.put(5, 'Finding the end offset')
+        self.fh.seek(0, 2)
+        self.__set_at_line_start()
+        self.end_offset = self.fh.tell()
+        logger.put(5, 'Exiting LogFile.__initfile')
 
     def set_init_offset(self):
         logger = self.logger
@@ -139,6 +329,13 @@ class LogFile:
             return self.get_log_end_stamp()
         else:
             return self.get_stamp_at_offset(self.end_offset)
+
+    def getinode(self):
+        self.logger.put(5, 'Entering LogFile.getinode')
+        inode = os.stat(self.filename).st_ino
+        self.logger.put(5, 'inode=%d' % inode)
+        self.logger.put(5, 'Exiting LogFile.getinode')
+        return inode
         
     def find_offset_by_timestamp(self, searchstamp):
         logger = self.logger
@@ -417,13 +614,13 @@ class LogFile:
         else:
             logger.put(2, 'Path "%s" does not exist' % logfile)
             raise epylog.AccessError('Log file "%s" does not exist'
-                                    % logfile, logger)
+                                     % logfile, logger)
         if os.access(logfile, os.R_OK):
             logger.put(2, 'File "%s" is readable' % logfile)
         else:
             logger.put(2, 'Logfile "%s" is not readable' % logfile)
             raise epylog.AccessError('Logfile "%s" is not readable'
-                                    % logfile, logger)
+                                     % logfile, logger)
         logger.put(5, 'Exiting LogFile.__accesscheck')
 
     def __set_at_line_start(self):

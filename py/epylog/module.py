@@ -1,93 +1,88 @@
 import ConfigParser
 import epylog
 import os
-import os.path
 import mytempfile as tempfile
 
 class Module:
     """epylog Module class"""
     
-    def __init__(self, cfgfile, logger):
-        self.lognames = []
-        self.logs = []
+    def __init__(self, cfgfile, logtracker, logger):
+        self.logger = logger
+        logger.put(5, 'Entering Module.__init__')
         self.logreport = None
         self.logfilter = None
         logger.put(2, 'Initializing module for cfgfile %s' % cfgfile)
-        logger.put(3, 'Sticking logger into object')
-        self.logger = logger
         config = ConfigParser.ConfigParser()
         logger.put(2, 'Reading in the cfgfile %s' % cfgfile)
         config.read(cfgfile)
         try:
-            self.name = config.get('module', 'name')
+            self.name = config.get('module', 'desc')
         except:
             self.name = 'Unnamed Module'
-        logger.put(2, 'name=%s' % self.name)
-        try:
-            self.executable = config.get('module', 'exec')
-        except:
-            raise epylog.ConfigError('Did not find executable name in %s'
-                                    % cfgfile, logger)
-        logger.put(2, 'executable=%s' % self.executable)
         try:
             self.enabled = config.getboolean('module', 'enabled')
         except:
             self.enabled = 0
-        logger.put(2, 'enabled=%d' % self.enabled)
+        if not self.enabled:
+            logger.put(2, 'This module is not enabled. Skipping init.')
+            return
+        try:
+            self.executable = config.get('module', 'exec')
+        except:
+            raise epylog.ConfigError('Did not find executable name in %s'
+                                     % cfgfile, logger)
         try:
             self.python = config.getboolean('module', 'python')
         except:
             self.python = 0
-        logger.put(2, 'python=%d' % self.python)
         try:
-            logs = config.get('logs', 'files')
+            logentries = config.get('logs', 'files')
         except:
             raise epylog.ConfigError(('Cannot find log definitions in ' +
-                                     'module config "%s"') % cfgfile)
+                                      'module config "%s"') % cfgfile)
         try:
-            rots = config.get('logs', 'rotated')
+            rotdir = config.get('logs', 'rotdir')
         except:
-            rots = 0
-        logger.put(3, 'logs=%s' % logs)
-        logger.put(3, 'rots=%s' % rots)
-        loglist = logs.split(',')
-        if rots:
-            rotlist = rots.split(',')
-        if rots and len(loglist) is not len(rotlist):
-            raise epylog.ConfigError(('%d logs specified, but %d rotated logs' +
-                                     ' specifications found in module config' +
-                                     ' "%s"')
-                                    % (len(loglist), len(rotlist), cfgfile),
-                                    logger)
-        logger.put(5, 'Loglist follows')
-        logger.put(5, loglist)
-        logger.put(5, 'self.lognames before the loop')
-        logger.put(5, self.lognames)
-        for log in loglist:
-            log = log.strip()
-            if rots:
-                rot = rotlist.pop(0)
-                rot = rot.strip()
-            else:
-                rot = None
-            logger.put(2, 'tuple: [%s, %s]' % (log, str(rot)))
-            self.lognames.append([log, rot])
-        logger.put(5, 'self.lognames:')
-        logger.put(5, self.lognames)
-
+            rotdir = None
         try:
             self.outhtml = config.getboolean('output', 'html')
         except:
             self.outhtml = 0
+
+        logger.put(5, 'name=%s' % self.name)
+        logger.put(5, 'executable=%s' % self.executable)
+        logger.put(5, 'enabled=%d' % self.enabled)
+        logger.put(5, 'python=%d' % self.python)
+        logger.put(5, 'logentries=%s' % logentries)
         logger.put(2, 'outhtml=%d' % self.outhtml)
-        logger.put(2, 'Finished with Module object initialization')
+        
+        logger.put(3, 'Figuring out the logfiles from the log list')
+        entrylist = logentries.split(',')
+        self.logs = []
+        for entry in entrylist:
+            entry = entry.strip()
+            logger.put(5, 'entry=%s' % entry)
+            logger.put(3, 'Getting a log object from entry "%s"' % entry)
+            try:
+                log = logtracker.getlog(entry)
+            except epylog.AccessError, e:
+                ##
+                # Do not die, but disable this module and complain loudly
+                #
+                logger.put(0, 'Could not init logfile for entry "%s"' % entry)
+                self.enabled = 0
+                logger.put(0, 'Module "%s" disabled' % self.name)
+                return
+            logger.put(5, 'Appending the log object to self.logs[]')
+            self.logs.append(log)
+        logger.put(5, 'Exiting Module.__init__')
 
     def is_python(self):
         if self.python:
-            self.logger.put(2, 'This module is python')
+            self.logger.put(5, 'This module is python')
             return 1
         else:
-            self.logger.put(2, 'This module is not python')
+            self.logger.put(5, 'This module is not python')
             return 0
                 
     def invoke_external_module(self, tmpprefix, cfgdir):
@@ -142,14 +137,17 @@ class Module:
         logger.put(2, 'Checking if executable "%s" is sane' % self.executable)
         if not os.access(self.executable, os.F_OK):
             raise epylog.ModuleSanityError(('Executable "%s" for module "%s" '
-                                           + 'does not exist')
-                                          % (self.executable, self.name),
-                                          logger)
+                                            + 'does not exist')
+                                           % (self.executable, self.name),
+                                           logger)
+        if self.is_python():
+            logger.put(5, 'Module is python, not checking for exec bit')
+            return
         if not os.access(self.executable, os.X_OK):
             raise epylog.ModuleSanityError(('Executable "%s" for module "%s" '
-                                           + 'is not set to execute')
-                                          % (self.executable, self.name),
-                                          logger)
+                                            + 'is not set to execute')
+                                           % (self.executable, self.name),
+                                           logger)
         
     def get_html_report(self):
         logger = self.logger

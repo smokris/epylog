@@ -89,6 +89,7 @@ def main(args):
     logger.puthang(1, 'Restoring log offsets')
     epylog.restore_log_offsets()
     logger.endhang(1, 'done')
+    sys.exit(1)
     logger.put(1, 'Invoking the module execution routines:')
     epylog.process_modules()
     logger.put(1, 'Finished processing modules')

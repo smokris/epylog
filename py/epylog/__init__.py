@@ -9,7 +9,7 @@ import time
 
 from report import Report
 from module import Module
-from log import LogFile
+from log import LogTracker
 
 VERSION = 'Epylog-0.8'
 
@@ -48,16 +48,15 @@ class SysCallError(exceptions.Exception):
         logger.put(2, 'Raising SysCallError with message: %s' % message)
         self.args = message
 
+class NoSuchLogError(exceptions.Exception):
+    def __init__(self, message, logger):
+        logger.put(2, 'Raising NoSuchLogError with message: %s' % message)
+        self.args = message
+
 class Epylog:
     def __init__(self, cfgfile, logger):
-        logger.puthang(2, 'Starting the epylog object initialization')
-        logger.put(5, 'Sticking logger into the object')
         self.logger = logger
-        
-        logger.put(3, 'Setting some defaults')
-        self.report = None
-        self.modules = []
-        self.offsets = None
+        logger.put(5, 'Entering Epylog.__init__')
 
         config = ConfigParser.ConfigParser()
         logger.puthang(3, 'Reading the config file "%s"' % cfgfile)
@@ -71,17 +70,20 @@ class Epylog:
             self.cfgdir = config.get('main', 'cfgdir')
             self.vardir = config.get('main', 'vardir')
         except:
-            raise ConfigError(('Could not parse the main config file "%s"'
-                              % cfgfile), logger)
+            msg = 'Could not parse the main config file "%s"' % cfgfile
+            raise ConfigError(msg, logger)
         logger.put(4, 'cfgdir=%s' % self.cfgdir)
         logger.put(4, 'vardir=%s' % self.vardir)
         logger.endhang(3)
         
         logger.put(3, 'Checking if we can write to vardir')
         if not os.access(self.vardir, os.W_OK):
-            raise ConfigError('Write access required for vardir "%s"'
-                              % self.vardir, logger)
+            msg = 'Write access required for vardir "%s"' % self.vardir
+            raise ConfigError(msg, logger)
 
+        ##
+        # Set up a safe temp dir
+        #
         logger.put(3, 'Setting up a temporary directory')
         try:
             tmpdir = config.get('main', 'tmpdir')
@@ -92,23 +94,38 @@ class Epylog:
         try:
             tmpprefix = tempfile.mkdtemp('EPYLOG')
         except:
-            raise ConfigError('Could not create a temp directory in "%s"'
-                              % tmpprefix, logger)
+            msg = 'Could not create a safe temp directory in "%s"' % tmpprefix
+            raise ConfigError(msg, logger)
         self.tmpprefix = tmpprefix
         tempfile.tempdir = tmpprefix
         logger.put(3, 'Temporary directory created in "%s"' % tmpprefix)
         logger.put(3, 'Sticking tmpprefix into config to pass to other objs')
         config.tmpprefix = self.tmpprefix
 
+        ##
+        # Initialize the Report object
+        #
         logger.puthang(3, 'Initializing the Report')
         self.report = Report(config, logger)
         logger.endhang(3)
 
+        ##
+        # Initialize the LogTracker object
+        #
+        logger.puthang(3, 'Initializing the log tracker object')
+        logtracker = LogTracker(config, logger)
+        self.logtracker = logtracker
+        logger.endhang(3)
+
+        ##
+        # Process module configurations
+        #
+        self.modules = []
         modcfgdir = os.path.join(self.cfgdir, 'modules.d')
         logger.put(3, 'Checking if module config dir "%s" exists' % modcfgdir)
         if not os.path.isdir(modcfgdir):
-            raise ConfigError('Module configuration directory "%s" not found'
-                              % modcfgdir, logger)
+            msg = 'Module configuration directory "%s" not found' % modcfgdir
+            raise ConfigError(msg, logger)
         logger.put(3, 'Looking for module configs in %s' % modcfgdir)
         for file in os.listdir(modcfgdir):
             cfgfile = os.path.join(modcfgdir, file)
@@ -120,116 +137,23 @@ class Epylog:
                     continue
                 logger.put(3, 'Ends in .conf all right.')
                 logger.puthang(3, 'Calling the Module init routines')
-                module = Module(cfgfile, logger)
+                module = Module(cfgfile, logtracker, logger)
                 logger.endhang(3)
                 if module.enabled:
-                    logger.put(3, 'Module "%s" is enabled' % module.name)
+                    logger.put(2, 'Module "%s" is enabled' % module.name)
                     logger.put(3, 'Checking "%s" for sanity' % module.name)
                     module.sanity_check()
                     logger.put(3, 'Sanity checks passed. Remembering module')
                     self.modules.append(module)
                 else:
-                    logger.put(3, 'Module "%s" is not enabled, ignoring'
+                    logger.put(2, 'Module "%s" is not enabled, ignoring'
                                % module.name)
             else:
                 logger.put(3, '%s is not a regular file, ignoring' % cfgfile)
         logger.put(3, 'Total of %d modules initialized' % len(self.modules))
-        logger.put(3, 'Looking at what logfiles to initialize')
-        logmap = {}
-        for module in self.modules:
-            logger.put(3, 'Looking in module "%s"' % module.name)
-            logger.put(5, module.lognames)
-            for logname in module.lognames:
-                logger.put(3, 'Found logfile declaration "%s"' % logname[0])
-                if logmap.has_key(logname[0]):
-                    logger.put(3, 'Log file "%s" already initialized'
-                               % logname[0])
-                    logger.put(3, 'Sticking it into the module')
-                    module.logs.append(logmap[logname[0]])
-                else:
-                    logger.put(3, '%s is not yet initialized. Initializing.'
-                               % logname[0])
-                    try:
-                        logger.puthang(3, 'Calling LogFile init routines')
-                        logobj = LogFile(logname[0], self.tmpprefix, logger)
-                        logger.endhang(3)
-                    except AccessError:
-                        raise ConfigError(('Log file "%s" does not exist or ' +
-                                           'is not accessible for reading')
-                                          % logname[0], logger)
-                    logger.put(3, 'Opening the logfile "%s"' % logname[0])
-                    logobj.initfile()
-                    if logname[1] is not None:
-                        logger.put(3, 'Initializing the rotated logfile "%s"'
-                                   % logname[1])
-                        try:
-                            rotobj = LogFile(logname[1], self.tmpprefix,
-                                             logger)
-                            logger.put(3, ('Sticking rotated logfile object' +
-                                           ' into the log object'))
-                            logobj.rotated = rotobj
-                        except AccessError:
-                            logger.put(3, 'Error opening. Hmm... Oh well.')
-                            logger.put(3, 'Ignoring rotated logfile "%s"'
-                                       % logname[1])
-                    logger.put(3, 'Sticking the log object into the module')
-                    module.logs.append(logobj)
-                    logger.put(3, 'Copying object into the logs map')
-                    logmap[logname[0]] = logobj
-
-        self.logmap = logmap
-        if self.report.unparsed:
-            logger.put(3, 'Creating a temporary file for filtered strings')
-            filt_fh = open(tempfile.mktemp('FILT'), 'w')
-            logger.put(3, 'Filtered strings file created in "%s"'
-                       % filt_fh.name)
-            logger.put(3, 'Sticking filt_fh into the report object')
-            self.report.filt_fh = filt_fh
-        logger.endhang(2)
-
-    def restore_log_offsets(self):
-        logger = self.logger
-        logger.put(2, 'Invoking the restore_log_offsets routine')
-        logger.put(2, 'Setting up the iterator')
-        iter = self.logmap.iteritems()
-        earliest_stamp = None
-        latest_stamp = None
-        while 1:
-            try:
-                (logname, logobj) = iter.next()
-                logger.put(2, 'Processing logname "%s"' % logname)
-                self.__restore_log_offset(logobj)
-                start_stamp = logobj.get_offset_start_stamp()
-                end_stamp = logobj.get_offset_end_stamp()
-                if earliest_stamp is None:
-                    earliest_stamp = start_stamp
-                if latest_stamp is None:
-                    latest_stamp = end_stamp
-                if start_stamp < earliest_stamp:
-                    earliest_stamp = start_stamp
-                if end_stamp > latest_stamp:
-                    latest_stamp = end_stamp
-            except StopIteration:
-                logger.put(2, 'Iteration finished')
-                break
-        self.report.start_stamp = earliest_stamp
-        self.report.end_stamp = latest_stamp
-
-    def store_log_offsets(self):
-        logger = self.logger
-        logger.put(2, 'Invoking the store_log_offsets routine')
-        logger.put(2, 'Setting up the iterator')
-        iter = self.logmap.iteritems()
-        while 1:
-            try:
-                (logname, logobj) = iter.next()
-                logger.put(2, 'Processing logname "%s"' % logname)
-                self.__store_log_offset(logobj)
-            except StopIteration:
-                logger.put(2, 'Iteration finished')
-                break
-        logger.put(2, 'Calling the pickling routine')
-        self.__pickle_offsets()
+        if len(self.modules) == 0:
+            raise ConfigError('No modules are enabled. Exiting.', logger)
+        logger.put(5, 'Exiting Epylog.__init__')
 
     def process_modules(self):
         logger = self.logger
