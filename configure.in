@@ -69,7 +69,8 @@ fi
 # check for libxml2
 AC_MSG_CHECKING(for libxml2)
 if ! $PYTHON_BIN -c 'import libxml2' 2>/dev/null; then
-   AC_MSG_ERROR([This version of epylog requires libxml2-python. 
+   AC_MSG_ERROR([
+This version of epylog requires libxml2-python. 
 See http://xmlsoft.org/ or install libxml2-python rpm.])
 fi
 AC_MSG_RESULT(yes)
