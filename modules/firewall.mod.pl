@@ -13,8 +13,8 @@
 
 =head1 NAME
 
- firewall.mod.pl     firewall module for epylog
- Version             0.12  2002-11-14
+ firewall.mod.pl     firewall module for dulog
+ Version             0.13  2002-12-28
  Author              Michael D. Stenner <mstenner@phy.duke.edu>
 
 =head1 DESCRIPTION
@@ -26,7 +26,7 @@ currently recognizes ipchains, iptables and ipfilter.
 =cut
 # the rest of the documentation is at the end of the file
 
-use epylog;
+use DULog;
 use strict;
 
 # Copyright (C) 2001-2002 Michael D. Stenner <mstenner@phy.duke.edu>
@@ -49,10 +49,10 @@ use strict;
 
 ##############################################################################
 
-my $du = new epylog();
+my $du = new DULog();
 $du->init("firewall");
 
-### general epylog options
+### general dulog options
 my $confdir   =  $du->option("CONFDIR",          ".");   # where to find config
 
 # $ip?_pattern is a regex that marks a hit - first captured string is
@@ -242,7 +242,7 @@ sub process_packet {
     $offrep{$or} = exists($offrep{$or}) ? $offrep{$or} + $num : $num;
     
     # now that we have successfully processed this line, print it to
-    # FILTER so epylog knows we caught it.
+    # FILTER so dulog knows we caught it.
     $du->pushfilt($line);
     
     undef $host;
@@ -250,21 +250,22 @@ sub process_packet {
 
 sub verify {
     my ($host, $proto, $port, $shost, $num) = @_;
-
+    foreach (@_) { return() unless defined($_); }
     # returns nothing if the log is somehow not legit.  This basically means
     # we don't know how to parse the log.
     
     # host must be of nonzero length.
-    return() unless length($host);
+    return() unless $host;
     # I know there are more than these three protocols - but this is probably
     # a pretty good policy :)
-    return() unless $proto =~ /^(tcp|udp|icmp)$/;
+    return() unless (defined($proto) and $proto =~ /^(tcp|udp|icmp)$/);
     # must be a legal port number
-    return() unless ($port >= 0 and $port <=65535);
+    return() unless (defined($port) and $port =~ /^\s*\d+\s*$/
+		     and $port >= 0 and $port <=65535);
     # must be a legal ip
-    return() unless $shost =~ /^\d+\.\d+\.\d+\.\d+$/;
+    return() unless (defined($shost) and $shost =~ /^\d+\.\d+\.\d+\.\d+$/);
     # num must be sensible
-    return() unless $num > 0;
+    return() unless (defined($num) and $num =~ /^\s*\d+\s*$/ and $num > 0);
     
     return(@_);
 }
@@ -462,9 +463,9 @@ sub collapse {
 =head1 OPTIONS
 
 This module accepts a number of options.  All options are read from
-environment variables.  These options can be set in the epylog config
-file (/etc/epylog/epylog.conf by default).  For example, to change the
-iptables pattern, put this in your epylog.conf file:
+environment variables.  These options can be set in the dulog config
+file (/etc/dulog/dulog.conf by default).  For example, to change the
+iptables pattern, put this in your dulog.conf file:
 
     export FIREWALL_IPTABLES_PATTERN='firewall (REJECT|DROP):'
 
@@ -473,9 +474,9 @@ or change the way your iptables rules log.
 
 Here are the options and their default values:
 
-=head2 GENERAL epylog OPTIONS
+=head2 GENERAL DULOG OPTIONS
 
-These options are officially sanctioned by epylog and are common to
+These options are officially sanctioned by dulog and are common to
 most modules.
 
 =over 5
@@ -494,20 +495,20 @@ loss.  QUIET mode overrides DEBUG mode.
 
 =item LOGCAT => unset (read from STDIN)
 
-This variable is set by epylog and is the file containing logs that
+This variable is set by dulog and is the file containing logs that
 should be read by the module.  If unset, this module reads logs from
 STDIN.
 
 =item LOGREPORT => unset (write to STDOUT)
 
-This variable is set by epylog and is the file to which the final
+This variable is set by dulog and is the file to which the final
 report should be written.  If unset, this module writes the report to
 STDOUT.
 
 =item LOGFILTER => unset (write to STDERR)
 
-This variable is set by epylog and is the file to which the lines
-processed by your module should be written. epylog will fgrep this
+This variable is set by dulog and is the file to which the lines
+processed by your module should be written. Dulog will fgrep this
 file against the log report before mailing it (if configured to do
 so). If unset, this module will output to STDERR.
 
@@ -515,7 +516,7 @@ so). If unset, this module will output to STDERR.
 
 Location where configuration files are looked for.  The only file used
 by this module is the list of known trojans.  NOTE: don't be alarmed
-by the default value.  It's that way for easy testing and epylog
+by the default value.  It's that way for easy testing and dulog
 overrides it.
 
 =back
