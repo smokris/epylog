@@ -132,9 +132,7 @@ class LogTracker:
                     log.set_range_param(0, 0, 0)
             else:
                 logger.put(5, 'Inodes match, setting offset to "%d"' % offset)
-                try: log.set_range_param(0, offset, 0)
-                except epylog.OutOfRangeError:
-                    logger.put(3, 'Uh-oh, not in range! Set to the last entry')
+                log.set_range_param(0, offset, 0)
         else:
             msg = 'No such log entry "%s"' % entry
             raise epylog.NoSuchLogError(msg, logger)
