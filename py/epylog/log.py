@@ -360,7 +360,7 @@ class Log:
                 raise epylog.OutOfRangeError(msg, logger)
             
         logger.put(3, 'Checking if offset makes sense')
-        if self.loglist[ix].end_offset < offset:
+        if self.loglist[ix].end_offset <= offset:
             msg = 'Offset is past the end of the log!'
             raise epylog.OutOfRangeError(msg, logger)
         if whence:
