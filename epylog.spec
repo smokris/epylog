@@ -8,7 +8,7 @@
 Summary: New logs analyzer and parser.
 Name: epylog
 Version: 0.8
-Release: 0.6
+Release: 1
 License: GPL
 Group: Applications/System
 Source: http://www.dulug.duke.edu/epylog/download/%{name}-%{version}.tar.gz
@@ -139,9 +139,7 @@ popd
 %{_sbindir}/%{name}
 %{_sysconfdir}/cron.daily/%{name}.cron
 %{_perldir}/%{name}.pm
-%{_mandir}/man3/*
-%{_mandir}/man5/*
-%{_mandir}/man8/*
+%{_mandir}/man*/*
 %config(noreplace) %{_sysconfdir}/%{name}
 %doc doc/*
 
