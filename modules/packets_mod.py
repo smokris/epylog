@@ -46,7 +46,7 @@ class packets_mod(InternalModule):
             rc('IN=\S*\sOUT=\S*\sMAC=\S*\sSRC=\S*\sDST=\S*\s'): self.iptables
             }
         ipchains_map = {
-            rc('kernel:\sPacket\slog:\s'): self.ipchains
+            rc('Packet\slog:\s.*PROTO.*'): self.ipchains
             }
         ipfilter_map = {
             rc('ipmon\[\d+\]:'): self.ipfilter
