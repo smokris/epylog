@@ -187,14 +187,15 @@ class packets_mod(InternalModule):
         return desc
 
     def _addfin(self, fin, packets, source, system, port, logtype):
-        if self.sortby == 'packets':
-            fin.append((packets, source, system, port, logtype))
-        elif self.sortby == 'source':
+        if self.sortby == 'source':
             fin.append((source, packets, system, port, logtype))
         elif self.sortby == 'system':
             fin.append((system, packets, source, port, logtype))
         elif self.sortby == 'port':
             fin.append((port, packets, source, system, logtype))
+        else:
+            fin.append((packets, source, system, port, logtype))
+            
     
     ##
     # Finalize!
@@ -276,14 +277,15 @@ class packets_mod(InternalModule):
         for entry in fin:
             if flipper: flipper = ''
             else: flipper = self.flip
-            if self.sortby == 'packets':
-                packets, source, system, port, logtype = entry
-            elif self.sortby == 'source':
+            if self.sortby == 'source':
                 source, packets, system, port, logtype = entry
             elif self.sortby == 'system':
                 system, packets, source, port, logtype = entry
             elif self.sortby == 'port':
                 port, packets, source, system, logtype = entry
+            else:
+                packets, source, system, port, logtype = entry
+
             if port[0] == -1:
                     port = self.collapsed_ports_rep % port[1]                
             else:
