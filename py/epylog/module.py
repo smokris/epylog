@@ -122,11 +122,13 @@ class Module:
                 # Do not die, but disable this module and complain loudly
                 #
                 logger.put(0, 'Could not init logfile for entry "%s"' % entry)
-                self.enabled = 0
-                logger.put(0, 'Module "%s" disabled' % self.name)
-                return
+                continue
             logger.put(5, 'Appending the log object to self.logs[]')
             self.logs.append(log)
+        if len(self.logs) == 0:
+            self.enabled = 0
+            logger.put(0, 'Module "%s" disabled' % self.name)
+            return
         logger.put(5, '<Module.__init__')
 
     def is_internal(self):

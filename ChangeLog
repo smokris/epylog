@@ -1,5 +1,6 @@
 Epylog-0.9.7-cvs
 	* Accepted Makefile patches from Will Newton
+	* Accepted patches for missing logs from Will Newton (#135)
 
 Epylog-0.9.6
 	* Small bugfix in repeated line lookup routines
