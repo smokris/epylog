@@ -51,7 +51,7 @@ VERSION = 'Epylog-1.0.3'
 CHUNK_SIZE = 8192
 GREP_LINES = 10000
 QUEUE_LIMIT = 500
-LOG_SPLIT_RE = re.compile(r'(.{15,15}) (\S+) (.*)$')
+LOG_SPLIT_RE = re.compile(r'(.{15,15})\s+(\S+)\s+(.*)$')
 SYSLOG_NG_STRIP = re.compile(r'.*[@/]')
 MESSAGE_REPEATED_RE = re.compile(r'last message repeated (\S+) times')
 
