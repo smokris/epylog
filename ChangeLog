@@ -1,3 +1,8 @@
+Epylog-1.0.4
+	* Be more lenient about syslog format (FC7 changes) (ticket #4)
+	* Add a "save_rawlogs" option to file publisher, and don't save them
+	  by default, since that's a tad too paranoid (via Seth Vidal) (ticket #2)	
+
 Epylog-1.0.3
 	* Preparing for the submission to Fedora Extras
 	* Ignore "su" performed by crond to cut down on noise

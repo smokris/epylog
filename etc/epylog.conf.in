@@ -26,6 +26,7 @@ method = file
 path = /var/www/html/epylog
 dirmask = %Y-%b-%d_%a
 filemask = %H%M
+save_rawlogs = no
 expire_in = 7
 notify = root@localhost
 smtpserv = /usr/sbin/sendmail -t

@@ -128,6 +128,10 @@ These are the masks to be used for the created directories and
 files. For format values look at strftime documentation here:
 http://www.python.org/doc/current/lib/module-time.html
 .TP
+.B save_rawlogs
+Whether to save the raw logs in a file in the same directory as the report. 
+The default is off, since you can easily look in the original log sources.
+.TP
 .B expire_in
 A digit specifying the number of days after which the old directories
 should be removed. Default is 7.

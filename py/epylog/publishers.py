@@ -501,6 +501,12 @@ class FilePublisher:
         self._prune_old(path, dirmask, expire)
         self.path = os.path.join(path, self.dirname)
 
+        logger.put(3, 'Looking if we should save rawlogs')
+        try: self.save_rawlogs = config.getboolean(sec, 'save_rawlogs')
+        except: self.save_rawlogs = 0
+        if self.save_rawlogs:
+            logger.put(3, 'Saving raw logs in the reports directory')
+        
         logger.put(3, 'Checking if notify is set')
         self.notify = []
         try:
@@ -609,11 +615,13 @@ class FilePublisher:
                 mail_smtp(self.smtpserv, fromaddr, self.notify, msg, logger)
             logger.put(1, 'Notification mailed to: %s' % tostr)
 
-        logfilen = '%s.log' % self.filename
-        logfile = os.path.join(self.path, '%s.gz' % logfilen)
-        logger.put(3, 'Gzipping logs and writing them to %s' % logfilen)
-        outfh = open(logfile, 'w+')
-        do_chunked_gzip(rawfh, outfh, logfilen, logger)
-        outfh.close()
-        logger.put(1, 'Gzipped logs saved in: %s' % self.path)
+        if self.save_rawlogs:
+            logfilen = '%s.log' % self.filename
+            logfile = os.path.join(self.path, '%s.gz' % logfilen)
+            logger.put(3, 'Gzipping logs and writing them to %s' % logfilen)
+            outfh = open(logfile, 'w+')
+            do_chunked_gzip(rawfh, outfh, logfilen, logger)
+            outfh.close()
+            logger.put(1, 'Gzipped logs saved in: %s' % self.path)
+        
         logger.put(5, '<FilePublisher.publish')
