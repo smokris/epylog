@@ -260,48 +260,52 @@ class MailPublisher:
                 self.gzlogs = outfh.read()
             outfh.close()
             
-        ##
-        # Using MimeWriter, since package 'email' doesn't come with rhl-7.3
-        # Suck-o.
-        #
         logger.puthang(3, 'Creating an email message')
-        import StringIO, MimeWriter
-        fh = StringIO.StringIO()
-        logger.put(5, 'Creating a main header')
-        mw = MimeWriter.MimeWriter(fh)
-        mw.addheader('Subject', title)
-        if len(self.mailto) > 1:
-            import string
-            tostr = string.join(self.mailto, ', ')
-        else:
-            tostr = self.mailto[0]
-        mw.addheader('To', tostr)
-        mw.addheader('X-Mailer', epylog.VERSION)
-        self.mw = mw
-        
-        if self.rawlogs > 0 and self.format == 'both':
-            logger.put(5, 'Making a html + plain + gzip message')
-            self._mk_both_rawlogs()
-        elif self.rawlogs > 0 and self.format == 'html':
-            logger.put(5, 'Making a html + gzip message')
-            self._mk_html_rawlogs()
-        elif self.rawlogs > 0 and self.format == 'plain':
-            logger.put(5, 'Making a plain + gzip message')
-            self._mk_plain_rawlogs()
-        elif self.rawlogs == 0 and self.format == 'both':
-            logger.put(5, 'Making a html + plain message')
-            self._mk_both_nologs()
-        elif self.rawlogs == 0 and self.format == 'html':
-            logger.put(5, 'Making a html message')
-            self._mk_html_nologs()
-        elif self.rawlogs == 0 and self.format == 'plain':
-            logger.put(5, 'Making a plain message')
-            self._mk_plain_nologs()
-        logger.endhang(3)
+        from email.mime.base      import MIMEBase
+        from email.mime.text      import MIMEText
+        from email.mime.multipart import MIMEMultipart
 
-        fh.seek(0)
-        msg = fh.read()
-        fh.close()
+        logger.put(5, 'Creating a main header')
+        root_part = MIMEMultipart('related')
+        root_part['Subject'] = title
+        root_part['To'] = ', '.join(self.mailto)
+        root_part['X-Mailer'] = epylog.VERSION
+        root_part.preamble = 'This is a multi-part message in MIME format.'
+
+        logger.put(5, 'Creating the text/plain part')
+        text_part = MIMEText(self.plainrep, 'plain', 'utf-8')
+        logger.put(5, 'Creating the text/html part')
+        html_part = MIMEText(self.htmlrep, 'html', 'utf-8')
+        
+        if self.rawlogs > 0:
+            logger.put(5, 'Creating the application/x-gzip part')
+            attach_part = MIMEBase('application', 'x-gzip')
+            attach_part.set_payload(self.gzlogs)
+            from email.encoders import encode_base64
+            logger.put(5, 'Encoding the gzipped raw logs with base64')
+            encode_base64(attach_part)
+            attach_part.add_header('Content-Disposition', 'attachment', 
+                                   filename='raw.log.gz')
+        
+        if self.format == 'both':
+            # create another multipart for text+html
+            alt_part = MIMEMultipart('alternative')
+            alt_part.attach(text_part)
+            alt_part.attach(html_part)
+            root_part.attach(alt_part)
+        elif self.format == 'html':
+            root_part.attach(html_part)
+        elif self.format == 'plain':
+            root_part.attach(text_part)
+
+        if self.rawlogs > 0:
+            root_part.attach(attach_part)
+
+        logger.endhang(3)
+        
+        logger.put(5, 'Creating the message as string')
+        msg = root_part.as_string()
+
         logger.put(5, 'Message follows')
         logger.put(5, msg)
         logger.put(5, 'End of message')
@@ -312,162 +316,8 @@ class MailPublisher:
         else:
             fromaddr = 'root@%s' % socket.gethostname()
             mail_smtp(self.smtpserv, fromaddr, self.mailto, msg, logger)
-        logger.put(1, 'Mailed the report to: %s' % tostr)
+        logger.put(1, 'Mailed the report to: %s' % ','.join(self.mailto))
         logger.put(5, '<MailPublisher.publish')
-
-    def _mk_both_rawlogs(self):
-        """
-        Make an email message that includes html, plaintext, and gzipped raw
-        logs sections. Most painful.
-        """
-        self.logger.put(5, '>MailPublisher._mk_both_rawlogs')
-        import base64
-        logger = self.logger
-        mixed_mw = self.mw
-        mixed_mw.addheader('Mime-Version', '1.0')
-        logger.put(5, 'Creating a multipart/mixed part')
-        mixed_mw.startmultipartbody('mixed')
-
-        logger.put(5, 'Creating a multipart/alternative part')
-        alt_mw = mixed_mw.nextpart()
-        alt_mw.startmultipartbody('alternative')
-
-        logger.put(5, 'Creating a text/plain part')
-        plain_mw = alt_mw.nextpart()
-        plain_mw.addheader('Content-Transfer-Encoding', '8bit')
-        plain_fh = plain_mw.startbody('text/plain; charset=iso-8859-1')
-        plain_fh.write(self.plainrep)
-
-        logger.put(5, 'Creating a text/html part')
-        html_mw = alt_mw.nextpart()
-        html_mw.addheader('Content-Transfer-Encoding', '8bit')
-        html_fh = html_mw.startbody('text/html; charset=iso-8859-1')
-        html_fh.write(self.htmlrep)
-
-        alt_mw.lastpart()
-        logger.put(5, 'Creating an application/gzip part')
-        gzip_mw = mixed_mw.nextpart()
-        gzip_mw.addheader('Content-Transfer-Encoding', 'base64')
-        gzip_mw.addheader('Content-Disposition',
-                          'attachment; filename=rawlogs.gz')
-        gzip_fh = gzip_mw.startbody('application/gzip; NAME=rawlogs.gz')
-        gzip_fh.write(base64.encodestring(self.gzlogs))
-        mixed_mw.lastpart()
-        self.logger.put(5, '<MailPublisher._mk_both_rawlogs')
-
-    def _mk_html_rawlogs(self):
-        """
-        Make an email message that includes html and gzipped raw logs sections.
-        """
-        self.logger.put(5, '>MailPublisher._mk_html_rawlogs')
-        import base64
-        logger = self.logger
-        mixed_mw = self.mw
-        mixed_mw.addheader('Mime-Version', '1.0')
-        logger.put(5, 'Creating a multipart/mixed part')
-        mixed_mw.startmultipartbody('mixed')
-
-        logger.put(5, 'Creating a text/html part')
-        html_mw = mixed_mw.nextpart()
-        html_mw.addheader('Content-Transfer-Encoding', '8bit')
-        html_fh = html_mw.startbody('text/html; charset=iso-8859-1')
-        html_fh.write(self.htmlrep)
-
-        logger.put(5, 'Creating an application/gzip part')
-        gzip_mw = mixed_mw.nextpart()
-        gzip_mw.addheader('Content-Transfer-Encoding', 'base64')
-        gzip_mw.addheader('Content-Disposition',
-                          'attachment; filename=rawlogs.gz')
-        gzip_fh = gzip_mw.startbody('application/gzip; NAME=rawlogs.gz')
-        gzip_fh.write(base64.encodestring(self.gzlogs))
-        mixed_mw.lastpart()
-        self.logger.put(5, '<MailPublisher._mk_html_rawlogs')
-
-    def _mk_plain_rawlogs(self):
-        """
-        Make an email message that includes plaintext and gzipped raw logs
-        sections.
-        """
-        self.logger.put(5, '>MailPublisher._mk_plain_rawlogs')
-        import base64
-        logger = self.logger
-        mixed_mw = self.mw
-        mixed_mw.addheader('Mime-Version', '1.0')
-        logger.put(5, 'Creating a multipart/mixed part')
-        mixed_mw.startmultipartbody('mixed')
-
-        logger.put(5, 'Creating a text/plain part')
-        plain_mw = mixed_mw.nextpart()
-        plain_mw.addheader('Content-Transfer-Encoding', '8bit')
-        plain_fh = plain_mw.startbody('text/plain; charset=iso-8859-1')
-        plain_fh.write(self.plainrep)
-
-        logger.put(5, 'Creating an application/gzip part')
-        gzip_mw = mixed_mw.nextpart()
-        gzip_mw.addheader('Content-Transfer-Encoding', 'base64')
-        gzip_mw.addheader('Content-Disposition',
-                          'attachment; filename=rawlogs.gz')
-        gzip_fh = gzip_mw.startbody('application/gzip; NAME=rawlogs.gz')
-        gzip_fh.write(base64.encodestring(self.gzlogs))
-        mixed_mw.lastpart()
-        self.logger.put(5, '<MailPublisher._mk_plain_rawlogs')
-
-    def _mk_both_nologs(self):
-        """
-        Make a message that just includes html and plaintext sections.
-        """
-        self.logger.put(5, '>MailPublisher._mk_both_nologs')
-        logger = self.logger
-        alt_mw = self.mw
-        alt_mw.addheader('Mime-Version', '1.0')
-        logger.put(5, 'Creating a multipart/alternative part')
-        alt_mw.startmultipartbody('alternative')
-
-        logger.put(5, 'Creating a text/plain part')
-        plain_mw = alt_mw.nextpart()
-        plain_mw.addheader('Content-Transfer-Encoding', '8bit')
-        plain_fh = plain_mw.startbody('text/plain; charset=iso-8859-1')
-        plain_fh.write(self.plainrep)
-
-        logger.put(5, 'Creating a text/html part')
-        html_mw = alt_mw.nextpart()
-        html_mw.addheader('Content-Transfer-Encoding', '8bit')
-        html_fh = html_mw.startbody('text/html; charset=iso-8859-1')
-        html_fh.write(self.htmlrep)
-
-        alt_mw.lastpart()
-        self.logger.put(5, '<MailPublisher._mk_both_nologs')
-
-    def _mk_html_nologs(self):
-        """
-        Make a message that just includes HTML-formatted section.
-        """
-        self.logger.put(5, '>MailPublisher._mk_html_nologs')
-        logger = self.logger
-        alt_mw = self.mw
-        alt_mw.addheader('Mime-Version', '1.0')
-        logger.put(5, 'Creating a multipart/alternative part')
-        alt_mw.startmultipartbody('alternative')
-        logger.put(5, 'Creating a text/html part')
-        html_mw = alt_mw.nextpart()
-        html_mw.addheader('Content-Transfer-Encoding', '8bit')
-        html_fh = html_mw.startbody('text/html; charset=iso-8859-1')
-        html_fh.write(self.htmlrep)
-        alt_mw.lastpart()
-        self.logger.put(5, '<MailPublisher._mk_html_nologs')
-
-    def _mk_plain_nologs(self):
-        """
-        Make a message that just includes a plaintext-formatted section.
-        """
-        self.logger.put(5, '>MailPublisher._mk_plain_nologs')
-        logger = self.logger
-        plain_mw = self.mw
-        logger.put(5, 'Creating a text/plain part')
-        plain_mw.addheader('Content-Transfer-Encoding', '8bit')
-        plain_fh = plain_mw.startbody('text/plain; charset=iso-8859-1')
-        plain_fh.write(self.plainrep)
-        self.logger.put(5, '<MailPublisher._mk_plain_nologs')
 
 
 class FilePublisher:
@@ -592,28 +442,23 @@ class FilePublisher:
         if self.notify:
             logger.puthang(3, 'Creating an email message')
             publoc = '%s/%s/%s' % (self.pubroot, self.dirname, filename)
-            msg = 'New Epylog report is available at:\r\n%s' % publoc
-            import StringIO, MimeWriter
-            fh = StringIO.StringIO()
-            logger.put(3, 'Creating a main header')
-            mw = MimeWriter.MimeWriter(fh)
-            mw.addheader('Subject', '%s (report notification)' % title)
-            tostr = ', '.join(self.notify)
-            mw.addheader('To', tostr)
-            mw.addheader('X-Mailer', epylog.VERSION)
-            mw.addheader('Content-Transfer-Encoding', '8bit')
-            bfh = mw.startbody('text/plain; charset=iso-8859-1')
-            bfh.write(msg)
-            fh.seek(0)
-            msg = fh.read()
-            fh.close()
+
+            from email.mime.text import MIMEText
+            eml = MIMEText('New Epylog report is available at:\r\n%s' % publoc)
+
+            eml['Subject'] = '%s (report notification)' % title
+            eml['To'] = ', '.join(self.notify)
+            eml['X-Mailer'] = epylog.VERSION
+
+            msg = eml.as_string()
+
             logger.put(3, 'Figuring out if we are using sendmail or smtplib')
             if re.compile('^/').search(self.smtpserv):
                 mail_sendmail(self.smtpserv, msg, logger)
             else:
                 fromaddr = 'root@%s' % socket.gethostname()
                 mail_smtp(self.smtpserv, fromaddr, self.notify, msg, logger)
-            logger.put(1, 'Notification mailed to: %s' % tostr)
+            logger.put(1, 'Notification mailed to: %s' % ','.join(self.notify))
 
         if self.save_rawlogs:
             logfilen = '%s.log' % self.filename
