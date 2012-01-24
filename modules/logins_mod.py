@@ -134,6 +134,13 @@ class logins_mod(InternalModule):
             rc('proftpd\[\S*:.*no such user found'): self.proftpd_failure,
             rc('proftpd\[\S*:.*Login failed'): self.proftpd_failure
         }
+        ##
+        # Systemd-Logind
+        #
+        systemd_map = {
+            rc('systemd-logind\[\S*: New user \S+ logged in'): self.systemd_open,
+            rc('systemd-logind\[\S*: New session \d+ of user \S'): self.systemd_open
+            }
 
         regex_map = {}
         if opts.get('enable_pam', "1") != "0": regex_map.update(pam_map)
@@ -153,6 +160,8 @@ class logins_mod(InternalModule):
             regex_map.update(proftpd_map)
             self.pam_ignore.append('ftp')
             self.xinetd_ignore.append('ftp')
+        if opts.get('enable_systemd', "1") != "0": 
+            regex_map.update(systemd_map)
 
         self.safe_domains = []
         safe_domains = opts.get('safe_domains', '.*')
@@ -199,6 +208,8 @@ class logins_mod(InternalModule):
         self.cyrus_open_re = rc('login:.*\[(\S*)\]\s(\S*)\s')
         self.cyrus_fail_re = rc('badlogin:.*\[(\S*)\]\s\S\s(\S*)\sSASL')
         self.cyrus_service_re = rc('^(\S*)\[\d*\]:')
+        self.systemd_new_user_re = rc('New\suser\s(\S+)\slogged\sin\.')
+        self.systemd_new_session_re = rc('New\ssession\s\d+\sof\suser\s(\S+)\.')
         
         self.sshd_methods = {'password': 'pw',
                              'publickey': 'pk',
@@ -445,6 +456,20 @@ class logins_mod(InternalModule):
         rhost = self.gethost(rhost)
         user = 'unknown'
         restuple = self._mk_restuple(action, system, service, user, '', rhost)
+        return {restuple: mult}
+
+    def systemd_open(self, linemap):
+        action = self.open
+        system, message, mult = self.get_smm(linemap)
+        mo = self.systemd_new_user_re.search(message)
+        if not mo:
+            mo = self.systemd_new_session_re.search(message)
+            if not mo:
+                self.logger.put(3, 'Odd systemd OPEN string: %s' % message)
+                return None
+        service = 'systemd-logind'
+        user = mo.group(1)
+        restuple = self._mk_restuple(action, system, service, user, '', '', linemap['stamp'])
         return {restuple: mult}
 
     def courier_open(self, linemap):

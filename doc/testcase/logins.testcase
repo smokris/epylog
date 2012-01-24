@@ -26,3 +26,6 @@ Sep 25 23:10:27 src@annapurna imap-login: Aborted login [66.57.254.90]
 Sep 25 23:10:08 src@annapurna imap-login: Login: icon [66.57.254.90]
 Sep 25 23:31:21 norbert pop3d-ssl: LOGIN, user=testman, ip=[::ffff:127.0.0.1]
 Sep 25 23:27:50 norbert pop3d: LOGIN FAILED, ip=[::ffff:127.0.0.1]
+Jan 23 10:55:03 i5 systemd-logind[1225]: New user mricon logged in.
+Jan 23 10:55:03 i5 systemd-logind[1225]: New session 2 of user mricon.
+
