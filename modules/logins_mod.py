@@ -469,7 +469,7 @@ class logins_mod(InternalModule):
                 return None
         service = 'systemd-logind'
         user = mo.group(1)
-        restuple = self._mk_restuple(action, system, service, user, '', '', linemap['stamp'])
+        restuple = self._mk_restuple(action, system, service, user, '', 'localhost')
         return {restuple: mult}
 
     def courier_open(self, linemap):
