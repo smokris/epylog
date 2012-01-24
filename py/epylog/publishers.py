@@ -207,25 +207,32 @@ class MailPublisher:
             self.gpg_encrypt = config.getboolean(self.section, 'gpg_encrypt')
 
             try:
-                # Copy the keyring specified into tmpprefix
-                gpg_keyring = config.get(self.section, 'gpg_keyring')
-                logger.put(5, 'Copying %s into %s' % (gpg_keyring, self.tmpprefix))
-                shutil.copyfile(gpg_keyring, os.path.join(self.tmpprefix, 'pubring.gpg'))
-                self.gpg_keyringdir = self.tmpprefix
+                self.gpg_keyringdir = config.get(self.section, 'gpg_keyringdir')
             except:
                 self.gpg_keyringdir = None
 
             try:
                 gpg_recipients = config.get(self.section, 'gpg_recipients')
-                addrs = gpg_recipients.split(',')
+                keyids = gpg_recipients.split(',')
                 self.gpg_recipients = []
-                for addr in addrs:
-                    addr = addr.strip()
-                    logger.put(5, 'adding gpg_recipient=%s' % addr)
-                    self.gpg_recipients.append(addr)
+                for keyid in keyids:
+                    keyid = keyid.strip()
+                    logger.put(5, 'adding gpg_recipient=%s' % keyid)
+                    self.gpg_recipients.append(keyid)
             except:
                 # Will use all recipients found in the keyring
                 self.gpg_recipients = None
+
+            try:
+                gpg_signers = config.get(self.section, 'gpg_signers')
+                keyids = gpg_signers.split(',')
+                self.gpg_signers = []
+                for keyid in keyids:
+                    keyid = keyid.strip()
+                    logger.put(5, 'adding gpg_signer=%s' % keyid)
+                    self.gpg_signers.append(keyid)
+            except:
+                self.gpg_signers = None
 
         except:
             self.gpg_encrypt = 0
@@ -351,24 +358,43 @@ class MailPublisher:
                 ctx.armor = True
 
                 recipients = []
+                signers = []
                 logger.put(5, 'self.gpg_recipients = %s' % self.gpg_recipients)
+                logger.put(5, 'self.gpg_signers = %s' % self.gpg_signers)
 
                 if self.gpg_recipients is not None:
                     for recipient in self.gpg_recipients:
-                        logger.puthang(5, 'Looking for a key for %s' % recipient)
+                        logger.puthang(5, 'Looking for an encryption key for %s' % recipient)
                         recipients.append(ctx.get_key(recipient))
                         logger.endhang(5)
                 else:
-                    logger.put(5, 'Looking for all keys in the keyring')
                     for key in ctx.keylist():
                         for subkey in key.subkeys:
                             if subkey.can_encrypt:
-                                logger.put(5, 'Found key=%s' % subkey.keyid)
+                                logger.put(5, 'Found can_encrypt key=%s' % subkey.keyid)
                                 recipients.append(key)
                                 break
 
-                ctx.encrypt(recipients, gpgme.ENCRYPT_ALWAYS_TRUST,
-                            cleartext, ciphertext)
+                if self.gpg_signers is not None:
+                    for signer in self.gpg_signers:
+                        logger.puthang(5, 'Looking for a signing key for %s' % signer)
+                        signers.append(ctx.get_key(signer))
+                        logger.endhang(5)
+
+                if len(signers) > 0:
+                    logger.puthang(3, 'Encrypting and signing the report')
+                    ctx.signers = signers
+                    ctx.encrypt_sign(recipients, gpgme.ENCRYPT_ALWAYS_TRUST,
+                                     cleartext, ciphertext)
+                    logger.endhang(3)
+
+                else:
+                    logger.puthang(3, 'Encrypting the report')
+                    ctx.encrypt(recipients, gpgme.ENCRYPT_ALWAYS_TRUST,
+                                cleartext, ciphertext)
+                    logger.endhang(3)
+
+                logger.puthang(5, 'Creating the MIME envelope for PGP')
 
                 gpg_envelope_part = MIMEMultipart('encrypted')
                 gpg_envelope_part.set_param('protocol', 'application/pgp-encrypted', 
@@ -391,7 +417,10 @@ class MailPublisher:
                 gpg_envelope_part.attach(gpg_mime_version_part)
                 gpg_envelope_part.attach(gpg_payload_part)
 
+                # envelope becomes the new root part
                 root_part = gpg_envelope_part
+
+                logger.endhang(5)
 
             except ImportError:
                 logger.endhang(3)

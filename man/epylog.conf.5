@@ -118,20 +118,34 @@ designated administrators. Set to "yes" to enable gpg-encryption of the
 mail report. You will need to install mygpgme (installed by default on
 all yum-managed systems).
 .TP
-.B gpg_keyring
-This is the gpg keyring containing the public keys of recipients. You can
-generate it using the following command:
+.B gpg_keyringdir
+If you don't want to use the default keyring (usually /root/.gnupg), you
+can set up a separate keyring directory for epylog's use. E.g.:
 .br
-> gpg --no-default-keyring --keyring=./epylog.gpg --search KEYID
-.br
-This will query the keyserver and display all matching keys, which you can
-then import into epylog's pubring. You can repeat this operation multiple
-times if you need to encrypt to several recipients.
+> mkdir -m 0700 /etc/epylog/gpg
 .TP
 .B gpg_recipients
 List of PGP key id's to use when encrypting the report. The keys must be in
-the keyring specified in gpg_keyring. If this option is omitted, epylog will
-encrypt to all keys found in the keyring.
+the pubring specified in gpg_keyringdir. If this option is omitted, epylog 
+will encrypt to all keys found in the pubring. To add a public key to a
+keyring, you can use the following command.
+.br
+> gpg [--homedir=/etc/epylog/gpg] --import pubkey.gpg
+.br
+You can generate the pubkey.gpg file by running "gpg --export KEYID" on your
+workstation, or you can use "gpg --search" to import the public keys from
+the keyserver.
+.TP
+.B gpg_signers
+To use the signing option, you will first need to generate a private key:
+.br
+> gpg [--homedir=/etc/epylog/gpg] --gen-key
+.br
+Create a \fBsign-only RSA key\fR and leave the passphrase empty. You can then
+use "gpg --export" to export the key you have generated and import it on the
+workstation where you read mail.
+.br
+If gpg_signers is not set, the report will not be signed.
 
 .SH "File Publisher"
 .TP
