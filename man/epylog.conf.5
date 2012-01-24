@@ -110,6 +110,28 @@ publisher, this may be a tad too paranoid.
 If the size of rawlogs.gz is more than this setting (in kilobytes),
 then raw logs will not be attached. Useful if you have a 50Mb log and
 check your mail over a slow uplink.
+.TP
+.B gpg_encrypt
+Logs routinely contain sensitive information, so you may want to
+encrypt the email report to ensure that nobody can read it other than
+designated administrators. Set to "yes" to enable gpg-encryption of the
+mail report. You will need to install mygpgme (installed by default on
+all yum-managed systems).
+.TP
+.B gpg_keyring
+This is the gpg keyring containing the public keys of recipients. You can
+generate it using the following command:
+.br
+> gpg --no-default-keyring --keyring=./epylog.gpg --search KEYID
+.br
+This will query the keyserver and display all matching keys, which you can
+then import into epylog's pubring. You can repeat this operation multiple
+times if you need to encrypt to several recipients.
+.TP
+.B gpg_recipients
+List of PGP key id's to use when encrypting the report. The keys must be in
+the keyring specified in gpg_keyring. If this option is omitted, epylog will
+encrypt to all keys found in the keyring.
 
 .SH "File Publisher"
 .TP

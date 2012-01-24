@@ -15,11 +15,21 @@ publishers = mail
 [mail]
 method = mail
 smtpserv = /usr/sbin/sendmail -t
-mailto = root@localhost
+mailto = root
 format = html
 lynx = %%LYNX_BIN%%
 include_rawlogs = no
 rawlogs_limit = 200
+##
+# GPG encryption requires pygpgme installed
+#
+gpg_encrypt = no
+# If gpg_keyring is omitted, we'll use the default ~/.gnupg for the
+# user running epylog (/root/.gnupg, usually).
+#gpg_keyring = %%pkgconfdir%%/pubring.gpg
+# List key ids, can be emails or fingerprints. If omitted, we'll
+# encrypt to all keys found in the keyring.
+#gpg_recipients = admin1@example.com, admin2@example.com
 
 [file]
 method = file

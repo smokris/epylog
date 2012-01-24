@@ -202,6 +202,33 @@ class MailPublisher:
         logger.put(5, 'format=%s' % self.format)
         logger.put(5, 'rawlogs=%d' % self.rawlogs)
         logger.put(5, 'smtpserv=%s' % self.smtpserv)
+
+        try:
+            self.gpg_encrypt = config.getboolean(self.section, 'gpg_encrypt')
+
+            try:
+                # Copy the keyring specified into tmpprefix
+                gpg_keyring = config.get(self.section, 'gpg_keyring')
+                logger.put(5, 'Copying %s into %s' % (gpg_keyring, self.tmpprefix))
+                shutil.copyfile(gpg_keyring, os.path.join(self.tmpprefix, 'pubring.gpg'))
+                self.gpg_keyringdir = self.tmpprefix
+            except:
+                self.gpg_keyringdir = None
+
+            try:
+                gpg_recipients = config.get(self.section, 'gpg_recipients')
+                addrs = gpg_recipients.split(',')
+                self.gpg_recipients = []
+                for addr in addrs:
+                    addr = addr.strip()
+                    logger.put(5, 'adding gpg_recipient=%s' % addr)
+                    self.gpg_recipients.append(addr)
+            except:
+                # Will use all recipients found in the keyring
+                self.gpg_recipients = None
+
+        except:
+            self.gpg_encrypt = 0
         
         logger.put(5, '<MailPublisher.__init__')
         
@@ -266,10 +293,8 @@ class MailPublisher:
         from email.mime.multipart import MIMEMultipart
 
         logger.put(5, 'Creating a main header')
-        root_part = MIMEMultipart('related')
-        root_part['Subject'] = title
-        root_part['To'] = ', '.join(self.mailto)
-        root_part['X-Mailer'] = epylog.VERSION
+
+        root_part = MIMEMultipart('mixed')
         root_part.preamble = 'This is a multi-part message in MIME format.'
 
         logger.put(5, 'Creating the text/plain part')
@@ -302,6 +327,83 @@ class MailPublisher:
             root_part.attach(attach_part)
 
         logger.endhang(3)
+
+        if self.gpg_encrypt:
+            logger.puthang(3, 'Encrypting the message')
+
+            from StringIO import StringIO
+            try:
+                import gpgme
+
+                if self.gpg_keyringdir and os.path.exists(self.gpg_keyringdir):
+                    logger.put(5, 'Setting keyring dir to %s' % self.gpg_keyringdir)
+                    os.environ['GNUPGHOME'] = self.gpg_keyringdir
+
+                msg = root_part.as_string()
+                logger.put(5, 'Cleartext follows')
+                logger.put(5, msg)
+                logger.put(5, 'Cleartext ends')
+
+                cleartext = StringIO(msg)
+                ciphertext = StringIO()
+
+                ctx = gpgme.Context()
+                ctx.armor = True
+
+                recipients = []
+                logger.put(5, 'self.gpg_recipients = %s' % self.gpg_recipients)
+
+                if self.gpg_recipients is not None:
+                    for recipient in self.gpg_recipients:
+                        logger.puthang(5, 'Looking for a key for %s' % recipient)
+                        recipients.append(ctx.get_key(recipient))
+                        logger.endhang(5)
+                else:
+                    logger.put(5, 'Looking for all keys in the keyring')
+                    for key in ctx.keylist():
+                        for subkey in key.subkeys:
+                            if subkey.can_encrypt:
+                                logger.put(5, 'Found key=%s' % subkey.keyid)
+                                recipients.append(key)
+                                break
+
+                ctx.encrypt(recipients, gpgme.ENCRYPT_ALWAYS_TRUST,
+                            cleartext, ciphertext)
+
+                gpg_envelope_part = MIMEMultipart('encrypted')
+                gpg_envelope_part.set_param('protocol', 'application/pgp-encrypted', 
+                                            header='Content-Type')
+                gpg_envelope_part.preamble = 'This is an OpenPGP/MIME encrypted message (RFC 2440 and 3156)'
+
+                gpg_mime_version_part = MIMEBase('application', 'pgp-encrypted')
+                gpg_mime_version_part.add_header('Content-Disposition', 
+                                                 'PGP/MIME version identification')
+                gpg_mime_version_part.set_payload('Version: 1')
+
+                gpg_payload_part = MIMEBase('application', 'octet-stream', 
+                                            name='encrypted.asc')
+                gpg_payload_part.add_header('Content-Disposition', 
+                                            'OpenPGP encrypted message')
+                gpg_payload_part.add_header('Content-Disposition', 'inline',
+                                            filename='encrypted.asc')
+                gpg_payload_part.set_payload(ciphertext.getvalue())
+
+                gpg_envelope_part.attach(gpg_mime_version_part)
+                gpg_envelope_part.attach(gpg_payload_part)
+
+                root_part = gpg_envelope_part
+
+            except ImportError:
+                logger.endhang(3)
+                logger.put(0, 'Install pygpgme for GPG encryption support.')
+                logger.put(0, 'Not mailing the report out of caution.')
+                return
+
+            logger.endhang(3)
+
+        root_part['Subject'] = title
+        root_part['To'] = ', '.join(self.mailto)
+        root_part['X-Mailer'] = epylog.VERSION
         
         logger.put(5, 'Creating the message as string')
         msg = root_part.as_string()
