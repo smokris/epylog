@@ -1,3 +1,7 @@
+Epylog-1.0.5
+	* Add systemd-logind support
+	* Add support for GPG encrypting and signing email reports.
+
 Epylog-1.0.4
 	* Be more lenient about syslog format (FC7 changes) (ticket #4)
 	* Add a "save_rawlogs" option to file publisher, and don't save them
