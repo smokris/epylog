@@ -1,3 +1,8 @@
+Epylog-1.0.6
+	* Back out the unfinished work to support timestamped rotation
+	  (will be implemented fully in 1.1). Fixes the cron-run problem
+	  in 1.0.5.
+
 Epylog-1.0.5
 	* Add systemd-logind support
 	* Add support for GPG encrypting and signing email reports.
