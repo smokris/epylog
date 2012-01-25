@@ -125,15 +125,6 @@ class NoSuchLogError(exceptions.Exception):
         logger.put(5, '!NoSuchLogError: %s' % message)
         self.args = message
 
-class EmptyLogError(exceptions.Exception):
-    """
-    This exception is raised when Epylog finds an empty logfile.
-    """
-    def __init__(self, message, logger):
-        exceptions.Exception.__init__(self)
-        logger.put(5, '!EmptyLogError: %s' % message)
-        self.args = message
-
 class GenericError(exceptions.Exception):
     """
     This exception is raised for all other Epylog conditions.

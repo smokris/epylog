@@ -145,18 +145,19 @@ class LogTracker:
         logger.put(5, '>LogTracker.get_offset_map')
         omap = []
         for log in self.logs:
-            start_stamp = log.loglist[0].start_stamp
+            entry = log.entry
+            inode = log.getinode()
             if log.orange.endix != 0:
                 offset = 0
             else:
                 offset = log.orange.end_offset
-            omap.append([log.entry, start_stamp, offset])
+            omap.append([entry, inode, offset])
         logger.put(5, 'omap follows')
         logger.put(5, omap)
         logger.put(5, '<LogTracker.get_offset_map')
         return omap
 
-    def set_start_offset_by_entry(self, entry, inode, start_stamp, offset):
+    def set_start_offset_by_entry(self, entry, inode, offset):
         """
         Takes an entry, inode, and suggested offset, and sets the omap
         entries accordingly. If the inode doesn't match the one in the
@@ -170,31 +171,16 @@ class LogTracker:
         logger.put(5, 'offset=%d' % offset)
         if entry in self.entries:
             log = self._get_log_by_entry(entry)
-            ##
-            # Deprecated. Here only for compatibility with 1.0.3. Kill after
-            # a bit
-            if inode:
-                if log.getinode() != inode:
-                    logger.put(3, 'Inodes do not match. Assuming logrotation')
-                    try:
-                        log.set_range_param(1, offset, 0)
-                    except epylog.OutOfRangeError:
-                        logger.put(3, 'No rotated file in place. Set offset to 0')
-                        log.set_range_param(0, 0, 0)
-                else:
-                    logger.put(3, 'Inodes match, setting offset to "%d"' % offset)
-                    log.set_range_param(0, offset, 0)
-            elif start_stamp:
+            if log.getinode() != inode:
+                logger.put(3, 'Inodes do not match. Assuming logrotation')
                 try:
-                    (logfile, ix) = log.get_logfile_by_start_stamp(start_stamp)
-                    logger.put(3, 'Stored offsets belong to %s' 
-                                   % logfile.filename)
-                    log.set_range_param(ix, offset, 0)
-                    
-                except epylog.NoSuchLogError:
-                    logger.put(3, 'Could not find a matching rotated file.')
-                    logger.put(3, 'Setting offsets to 0 on the most current')
+                    log.set_range_param(1, offset, 0)
+                except epylog.OutOfRangeError:
+                    logger.put(3, 'No rotated file in place. Set offset to 0')
                     log.set_range_param(0, 0, 0)
+            else:
+                logger.put(3, 'Inodes match, setting offset to "%d"' % offset)
+                log.set_range_param(0, offset, 0)
         else:
             msg = 'No such log entry "%s"' % entry
             raise epylog.NoSuchLogError(msg, logger)
@@ -450,19 +436,10 @@ class Log:
         self.entry = entry
         filename = self._get_filename()
         logger.puthang(3, 'Initializing the logfile "%s"' % filename)
-        self.loglist = []
-        self.cur_rot_ix = 0
-        try:
-            logfile = LogFile(filename, tmpprefix, monthmap, logger)
-            logger.put(3, 'Appending logfile to the loglist')
-            self.loglist.append(logfile)
-        except epylog.EmptyLogError:
-            logger.endhang(3)
-            logger.puthang(3, '%s is empty, using the previous rotated log' 
-                           % filename)
-            self._init_next_rotfile()
-            logfile = self.loglist[0]
+        logfile = LogFile(filename, tmpprefix, monthmap, logger)
         logger.endhang(3)
+        logger.put(3, 'Appending logfile to the loglist')
+        self.loglist = [logfile]
         self.orange = OffsetRange(0, 0, 0, logfile.end_offset, logger)
         logger.endhang(3)
         self.lp = None
@@ -511,25 +488,6 @@ class Log:
         logger.put(5, 'inode=%d' % inode)
         logger.put(5, '<Log.getinode')
         return inode
-    
-    def get_logfile_by_start_stamp(self, start_stamp):
-        logger = self.logger
-        logger.put(5, '>Log.get_logfile_by_start_stamp')
-        ix = 0
-        # this loop will either return or exit via a NoSuchLogError
-        while 1:
-            try:
-                logfile = self.loglist[ix]
-            except IndexError:
-                logfile = self._init_next_rotfile()
-            
-            logger.put(5, 'Looking at %s' % logfile.filename)
-            if logfile.start_stamp == start_stamp:
-                logger.put(5, '<Log.get_logfile_by_start_stamp')
-                return (logfile, ix)
-            ix += 1
-            
-            
 
     def nextline(self):
         """
@@ -847,24 +805,24 @@ class Log:
         """
         logger = self.logger
         logger.put(5, '>Log._init_next_rotfile')
-        self.cur_rot_ix += 1
-        rotname = self._get_rotname_by_ix(self.cur_rot_ix)
+        ix = len(self.loglist)
+        rotname = self._get_rotname_by_ix(ix)
         try:
             logger.put(3, 'Initializing log for rotated file "%s"' % rotname)
             rotlog = LogFile(rotname, self.tmpprefix, self.monthmap, logger)
-            self.loglist.append(rotlog)
         except epylog.AccessError:
             msg = 'No further rotated files for entry "%s"' % self.entry
             raise epylog.NoSuchLogError(msg, logger)
-        except epylog.EmptyLogError:
-            msg = 'Found an empty rotated log, ignoring it.'
-            rotlog = self._init_next_rotfile()
+        self.loglist.append(rotlog)
         logger.put(5, '<Log._init_next_rotfile')
         return rotlog
 
     def _get_rotname_by_ix(self, ix):
         """
-        Figure out the rotated file name by index passed.
+        The good thing about rotated files is that they are exactly at the same
+        position in the log list, as the identifier appended to them by
+        logrotate. E.g. messages.1 will be at position 1, messages.2 at
+        position 2, and just messages at position 0.
         """
         logger = self.logger
         logger.put(5, '>Log._get_rotname_by_ix')
@@ -1342,7 +1300,8 @@ class LogFile:
                 logger.put(3, 'Making it 0')
                 stamp = 0
         else:
-            raise epylog.EmptyLogError('%s is empty' % self.filename, logger)
+            logger.put(5, 'Nothing in the range')
+            stamp = 0
         logger.put(5, '<LogFile._get_stamp')
         return stamp
 

@@ -123,13 +123,6 @@ class Module:
                 #
                 logger.put(0, 'Could not init logfile for entry "%s"' % entry)
                 continue
-            except epylog.NoSuchLogError:
-                ##
-                # Looks like all logfiles for this log entry are empty.
-                # Ignore this log entry.
-                logger.put(1, ('No logs found for %s, or they are all empty, '+
-                               'ignoring.') % entry)
-                continue
             logger.put(5, 'Appending the log object to self.logs[]')
             self.logs.append(log)
         if len(self.logs) == 0:
