@@ -436,10 +436,19 @@ class Log:
         self.entry = entry
         filename = self._get_filename()
         logger.puthang(3, 'Initializing the logfile "%s"' % filename)
-        logfile = LogFile(filename, tmpprefix, monthmap, logger)
+        self.loglist = []
+        self.cur_rot_ix = 0
+        try:
+            logfile = LogFile(filename, tmpprefix, monthmap, logger)
+            logger.put(3, 'Appending logfile to the loglist')
+            self.loglist.append(logfile)
+        except epylog.EmptyLogError:
+            logger.endhang(3)
+            logger.puthang(3, '%s is empty, using the previous rotated log' 
+                           % filename)
+            self._init_next_rotfile()
+            logfile = self.loglist[0]
         logger.endhang(3)
-        logger.put(3, 'Appending logfile to the loglist')
-        self.loglist = [logfile]
         self.orange = OffsetRange(0, 0, 0, logfile.end_offset, logger)
         logger.endhang(3)
         self.lp = None
@@ -805,24 +814,24 @@ class Log:
         """
         logger = self.logger
         logger.put(5, '>Log._init_next_rotfile')
-        ix = len(self.loglist)
-        rotname = self._get_rotname_by_ix(ix)
+        self.cur_rot_ix += 1
+        rotname = self._get_rotname_by_ix(self.cur_rot_ix)
         try:
             logger.put(3, 'Initializing log for rotated file "%s"' % rotname)
             rotlog = LogFile(rotname, self.tmpprefix, self.monthmap, logger)
+            self.loglist.append(rotlog)
         except epylog.AccessError:
             msg = 'No further rotated files for entry "%s"' % self.entry
             raise epylog.NoSuchLogError(msg, logger)
-        self.loglist.append(rotlog)
+        except epylog.EmptyLogError:
+            msg = 'Found an empty rotated log, ignoring it.'
+            rotlog = self._init_next_rotfile()
         logger.put(5, '<Log._init_next_rotfile')
         return rotlog
 
     def _get_rotname_by_ix(self, ix):
         """
-        The good thing about rotated files is that they are exactly at the same
-        position in the log list, as the identifier appended to them by
-        logrotate. E.g. messages.1 will be at position 1, messages.2 at
-        position 2, and just messages at position 0.
+        Figure out the rotated file name by index passed.
         """
         logger = self.logger
         logger.put(5, '>Log._get_rotname_by_ix')
@@ -1300,8 +1309,7 @@ class LogFile:
                 logger.put(3, 'Making it 0')
                 stamp = 0
         else:
-            logger.put(5, 'Nothing in the range')
-            stamp = 0
+            raise epylog.EmptyLogError('%s is empty' % self.filename, logger)
         logger.put(5, '<LogFile._get_stamp')
         return stamp
 

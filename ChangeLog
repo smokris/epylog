@@ -1,3 +1,7 @@
+Epylog-1.0.7
+	* Re-apply a fix to not return an error with a 0-length log file.
+	* Remove unmaintained spec file.
+
 Epylog-1.0.6
 	* Back out the unfinished work to support timestamped rotation
 	  (will be implemented fully in 1.1). Fixes the cron-run problem
@@ -30,14 +34,14 @@ Epylog-1.0.1
 	  not work.
 	* Automatically detect python version during .spec building.
 	* Cleaned up trojans.list so it's less ugly
-	
+
 Epylog-1.0
 	* Out with 1.0 already!
 	* Handle ::ffff: fake ipv6 addresses for hostname resolution
 	* Do not depend on elinks in RPM.
 	* Default setting is to send html-only (so we don't depend on lynx)
 	* Packets module can now sort by port, system, and source.
-    
+
 Epylog-0.9.7
 	* Accepted Makefile patches from Will Newton
 	* Accepted patches for missing logs from Will Newton (#135)
@@ -57,7 +61,7 @@ Epylog-0.9.5
 	* Fix for bug #57
 	* Fix for bug #53
 	* Cron mode of operation added -- checks for a lockfile (bug #79)
-	
+
 Epylog-0.9.4
 	* Fix for bug #38 (incorrect offsets were causing backtrace)
 	* Normalized logger calls (bug #9)
