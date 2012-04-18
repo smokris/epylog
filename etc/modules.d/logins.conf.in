@@ -37,3 +37,9 @@ safe_domains = .*
 # If you have too many systems, wide-scale probing may turn ugly. This
 # will collapse the reports.
 systems_collapse = 10
+##
+# Failed logins reports tend to be long on systems with publicly listening
+# services. If you want to see only a summary of failed logins, then 
+# set this option to 1:
+#
+failed_summary_only = 0

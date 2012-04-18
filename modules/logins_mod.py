@@ -176,6 +176,8 @@ class logins_mod(InternalModule):
                     logger.put(0, 'Error compiling domain regex: %s' % domain)
                     logger.put(0, 'Check config for Logins module!')
 
+        self.failed_summary_only = opts.get('failed_summary_only', '0')
+
         self.regex_map = regex_map
         
         self.pam_service_re = rc('(\S+)\(pam_unix\)')
@@ -636,7 +638,12 @@ class logins_mod(InternalModule):
         if user == 'root' or user == 'ROOT':
             action += 10
             remote = self._mk_userat(byuser, rhost)
-            restuple = (action, system, service, remote)
+
+            if self.failed_summary_only != '0':
+                restuple = (action, service, 'total failed', 
+                            '%s%s' % (system, remote))
+            else:
+                restuple = (action, system, service, remote)
         else:
             if rhost:
                 match = 0
@@ -647,7 +654,17 @@ class logins_mod(InternalModule):
                 if not match:
                     tmp = {'system': system, 'rhost': rhost}
                     system = self.untrusted_host % tmp
-            restuple = (action, user, service, system)
+
+            if self.failed_summary_only != '0':
+                restuple = (action, service, 'total failed', system)
+            else:
+                # Sanitize user
+                user = user.replace('&', '&amp;')
+                user = user.replace('<', '&lt;')
+                user = user.replace('>', '&gt;')
+
+                restuple = (action, user, service, system)
+
         return restuple
 
     def _mk_dots(self, str, lim):
