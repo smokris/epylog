@@ -639,7 +639,7 @@ class logins_mod(InternalModule):
             action += 10
             remote = self._mk_userat(byuser, rhost)
 
-            if self.failed_summary_only != '0':
+            if action == self.root_failure and self.failed_summary_only != '0':
                 restuple = (action, service, 'total failed', 
                             '%s%s' % (system, remote))
             else:
@@ -655,7 +655,7 @@ class logins_mod(InternalModule):
                     tmp = {'system': system, 'rhost': rhost}
                     system = self.untrusted_host % tmp
 
-            if self.failed_summary_only != '0':
+            if action == self.failure and self.failed_summary_only != '0':
                 restuple = (action, service, 'total failed', system)
             else:
                 # Sanitize user
