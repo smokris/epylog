@@ -50,7 +50,8 @@ class dovecot_mod(InternalModule):
 
             # Other things: failures, etc.
             re.compile(r'authenticated user not found', re.I)           : self.user_notfound,
-            re.compile(r'auth error: userdb\(\)')
+            re.compile(r'auth: error: userdb\((?P<user>\w*),(?P<ip>\d*\.\d*\.\d*\.\d*),(?:.*)\)', re.I)
+                                                                        : self.user_mixedcase,
             re.compile(r'auth\sfail(?:ed)?', re.I)                      : self.auth_fail,
             re.compile(r'no\sauth\sattempt', re.I)                      : self.no_auth_atmpt,
             re.compile(r'(?:too\smany)?\s?invalid\simap', re.I)         : self.invalid_imap,
@@ -73,14 +74,14 @@ class dovecot_mod(InternalModule):
         Records successful IMAP logins.
         Log message: imap-login: Login: ...
         """
-        return {('IMAP Login'): linemap['multiplier']}
+        return {('connect', 'login_imap'): linemap['multiplier']}
 
     def login_pop(self, linemap):
         """
         Records successful POP logins.
         Log message: pop3-login: Login: ...
         """
-        return {('POP3 Login'): linemap['multiplier']}
+        return {('connect', 'login_pop'): linemap['multiplier']}
 
     ##
     # Logout routines
@@ -90,14 +91,14 @@ class dovecot_mod(InternalModule):
         Records success (i.e. no indication of failure) on IMAP logout.
         Log message: imap(<user>): Disconnected: Logged out
         """
-        return {('IMAP Logout'): linemap['multiplier']}
+        return {('disconnect', 'logout_imap'): linemap['multiplier']}
 
     def logout_pop(self, linemap):
         """
         Records success (i.e. no indication of failure) on POP3 logout.
         Log message: pop3(<user>): Disconnected: Logged out
         """
-        return {('POP Logout'): linemap['multiplier']}
+        return {('disconnect', 'logout_pop'): linemap['multiplier']}
 
     ##
     # Disconnects and connection closures
@@ -107,7 +108,7 @@ class dovecot_mod(InternalModule):
         Catches disconnects due to inactivity.
         Log message: (<user>): Disconnected for inactivity
         """
-        return {('disc_inactivity'): linemap['multiplier']}
+        return {('disconnect', 'disc_inactivity'): linemap['multiplier']}
 
     def disc_interr(self, linemap):
         """
@@ -115,80 +116,95 @@ class dovecot_mod(InternalModule):
         Log message:    imap(<user>): Disconnected: Internal error occurred.
                         Refer to server log for more information.
         """
-        return {('disc_interr'): linemap['multiplier']}
+        return {('disconnect', 'disc_interr'): linemap['multiplier']}
 
     def disc_server(self, linemap):
         """
         Catches disconnects by the server.
         Log message: Disconnected by server
         """
-        return {('disc_server'): linemap['multiplier']}
+        return {('disconnect', 'disc_server'): linemap['multiplier']}
 
     def disc_client(self, linemap):
         """
         Catches disconnects from the client side.
         Log message: Disconnected by client
         """
-        return {('disc_client'): linemap['multiplier']};
+        return {('disconnect', 'disc_client'): linemap['multiplier']};
 
     def disc_idle(self, linemap):
         """
         Catches disconnects due to idleness.
         Log message: Disconnected: disconnected in IDLE
         """
-        return {('disc_idle'): linemap['multiplier']}
+        return {('disconnect', 'disc_idle'): linemap['multiplier']}
 
     def disc_append(self, linemap):
         """
         Catches failed append errors.
         Log message: Disconnected in APPEND
         """
-        return {('disc_append'): linemap['multiplier']}
+        return {('disconnect', 'disc_append'): linemap['multiplier']}
 
     def close_imap(self, linemap):
         """
         Catches closed IMAP connections.
         Log message: imap(<user>): Connection closed
         """
-        return {('close_imap'): linemap['multiplier']}
+        return {('disconnect', 'close_imap'): linemap['multiplier']}
 
     def close_pop(self, linemap):
         """
         Catches closed POP3 connections.
         Log message: pop3(<user>): Connection closed
         """
-        return {('close_pop'): linemap['multiplier']}
+        return {('disconnect', 'close_pop'): linemap['multiplier']}
 
     ##
     # Other failures
     #
+    def user_notfound(self, linemap):
+        """
+        Occurs when a user attempts to log in, but isn't in the user database.
+        Log message: Authenticated uer not found from userdb
+        """
+        return {('disconnect', 'user_notfound'): linemap['multiplier']}
+
+    def user_mixedcase(self, linemap):
+        """
+        Strange errors happen when users with mixed case attempt to log in.
+        Log message: auth: Error: userdb(<user>, <ip>, ...)
+        """
+        # TODO capture groups for users
+        return {('mixedcase', 'user_mixedcase'): linemap['multiplier']}
+
     def auth_fail(self, linemap):
         """
         Occurs when disconnected due to an authentification failure.
         Log message: Disconnected (auth failed)
         """
-        return {('auth_fail'): linemap['multiplier']}
+        return {('disconnect', 'auth_fail'): linemap['multiplier']}
 
     def no_auth_atmpt(self, linemap):
         """
         Log message: Aborted login (no auth attempts in <num> secs)
         Or: Disconnected (no auth attempts in <num> secs)
         """
-        return {('no auth attempt'): linemap['multiplier']}
+        return {('disconnect', 'no_auth_atmpt'): linemap['multiplier']}
 
     def invalid_imap(self, linemap):
         """
         Catches disconnects due to invalid commands.
         Log message: imap(<user>): Disconnected: Too many invalid IMAP commands
         """
-        return {('invalid imap'): linemap['multiplier']}
+        return {('disconnect', 'invalid_imap'): linemap['multiplier']}
 
     def disallow_ptxt(self, linemap):
         """
         Occurs when someone tries something bad during auth.
         Log message: Aborted login (tried to use disallowed plaintext auth)
         """
-        return {('disallow ptxt'): linemap['multiplier']}
+        return {('disconnect', 'disallow_ptxt'): linemap['multiplier']}
 
     def unex_eof(self, linemap):
         """
@@ -196,18 +212,17 @@ class dovecot_mod(InternalModule):
         Log message: Unexpected eof
         """
         # TODO what the hell is the real unexpected eof message
-        return {('unex eof'): linemap['multiplier']}
-
+        return {('disconnect', 'unex_eof'): linemap['multiplier']}
 
     ##
-    # Happens
+    # We just want to ignore these.
     #
     def ignore(self, linemap):
         """
         We purposely want to ignore these messages.
         Currently ignored log messages: Director errors
         """
-        return {('Ignored'): linemap['multiplier']}
+        return {}
 
     ##
     # Returns the final report.
