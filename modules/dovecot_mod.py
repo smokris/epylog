@@ -30,21 +30,35 @@ class dovecot_mod(InternalModule):
         logger.put(5, 'Mod instantiated!');
 
         self.regex_map = {
-            re.compile(r'imap-login', re.I)                                : self.imap_login,
-            re.compile(r'pop[3s]?-login', re.I)                         : self.pop_login,
-            re.compile(r'disconnected:?\s(?:for)?\sinactivity', re.I)    : self.inactivity,
-            re.compile(r'disconnected:\sinternal\serror', re.I)         : self.internal_err,
-            re.compile(r'auth\sfail(?:ed)?', re.I)                         : self.auth_fail,
-            re.compile(r'disconnected:\slog(?:ged)?\sout', re.I)        : self.logout,
-            re.compile(r'no\sauth\sattempt', re.I)                         : self.no_auth_atmpt,
-            re.compile(r'disconnected\sby\sserver', re.I)                 : self.server_disc,
+            # Logins
+            re.compile(r'imap-login:\slogin:', re.I)                    : self.login_imap,
+            re.compile(r'pop3-login:\slogin:', re.I)                    : self.login_pop,
+
+            # Logouts
+            re.compile(r'imap\(\w*\): disconnected: logged out', re.I)  : self.logout_imap,
+            re.compile(r'pop3\(\w*\): disconnected: logged out', re.I)  : self.logout_pop,
+
+            # Disconnects and closed connections
+            re.compile(r'disconnected:?\s(?:for)?\sinactivity', re.I)   : self.disc_inactivity,
+            re.compile(r'disconnected:\sinternal\serror', re.I)         : self.disc_interr,
+            re.compile(r'disconnected\sby\sserver', re.I)               : self.disc_server,
+            re.compile(r'disconnected\sby\sclient', re.I)               : self.disc_client,
+            re.compile(r'disconnected\sin\sidle', re.I)                 : self.disc_idle,
+            re.compile(r'disconnected\sin\sappend', re.I)               : self.disc_append,
+            re.compile(r'imap\(\w*\):\sconnection\sclosed', re.I)       : self.close_imap,
+            re.compile(r'pop3\(\w*\):\sconnection\sclosed', re.I)       : self.close_pop,
+
+            # Other things: failures, etc.
+            re.compile(r'authenticated user not found', re.I)           : self.user_notfound,
+            re.compile(r'auth error: userdb\(\)')
+            re.compile(r'auth\sfail(?:ed)?', re.I)                      : self.auth_fail,
+            re.compile(r'no\sauth\sattempt', re.I)                      : self.no_auth_atmpt,
             re.compile(r'(?:too\smany)?\s?invalid\simap', re.I)         : self.invalid_imap,
-            re.compile(r'(?:disallowed)?\s?plaintext\sauth', re.I)         : self.disallow_ptxt,
+            re.compile(r'(?:disallowed)?\s?plaintext\sauth', re.I)      : self.disallow_ptxt,
             re.compile(r'\seof\s', re.I)                                : self.unex_eof,
-            re.compile(r'\((?P<user>\w*)\):\sconnection\sclosed', re.I)    : self.imap_close,
-            re.compile(r'\((?P<user>\w*)\):\sdisconnected:\sdisconnected\s(?:in\sidle)?', re.I) : self.disc_idle,
-            re.compile(r'disconnected\sin\sappend', re.I)                : self.fail_append,
-            re.compile(r'director:\serror', re.I)                        : self.direc_error
+
+            # Lines we choose to forcefully ignore
+            re.compile(r'director:\serror', re.I)                       : self.ignore
         }
 
         # Useful strings for formatting the output
@@ -52,51 +66,108 @@ class dovecot_mod(InternalModule):
         self.report_line = '<tr><td id="msg" width="90%%">%s</td><td id="mult">%s</td></tr><br/>'
 
     ##
-    # Line-matching routines.
-    # Available methods inherited from __init__.py.InternalModule:
-    # - getuname(self, uid): returns a username for the given id
-    # - gethost(self, ip_addr): reverse lookup on an IP address
-    # - get_smm(self, lm): return a systemname, message, and multiplier from
-    #        a linemap
-    # - mk_size_unit(self, size): make a human-readable size unit from a size
-    #         in bytes
+    # Login routines
     #
-    def imap_login(self, linemap):
-        return {('imap login'): linemap['multiplier']}
+    def login_imap(self, linemap):
+        """
+        Records successful IMAP logins.
+        Log message: imap-login: Login: ...
+        """
+        return {('IMAP Login'): linemap['multiplier']}
 
-    def pop_login(self, linemap):
-        return {('pop login'): linemap['multiplier']}
+    def login_pop(self, linemap):
+        """
+        Records successful POP logins.
+        Log message: pop3-login: Login: ...
+        """
+        return {('POP3 Login'): linemap['multiplier']}
 
-    def inactivity(self, linemap):
+    ##
+    # Logout routines
+    #
+    def logout_imap(self, linemap): 
+        """
+        Records success (i.e. no indication of failure) on IMAP logout.
+        Log message: imap(<user>): Disconnected: Logged out
+        """
+        return {('IMAP Logout'): linemap['multiplier']}
+
+    def logout_pop(self, linemap):
+        """
+        Records success (i.e. no indication of failure) on POP3 logout.
+        Log message: pop3(<user>): Disconnected: Logged out
+        """
+        return {('POP Logout'): linemap['multiplier']}
+
+    ##
+    # Disconnects and connection closures
+    #
+    def disc_inactivity(self, linemap):
         """
         Catches disconnects due to inactivity.
-
-        Log message: imap(<user>): Disconnected for inactivity
+        Log message: (<user>): Disconnected for inactivity
         """
-        return {('inactivity'): linemap['multiplier']}
+        return {('disc_inactivity'): linemap['multiplier']}
 
-    def internal_err(self, linemap):
+    def disc_interr(self, linemap):
         """
         Catches unknown internal errors.
-
-        Log message: imap(<user>): Disconnected: Internal error occurred.
-        Refer to server log for more information.
+        Log message:    imap(<user>): Disconnected: Internal error occurred.
+                        Refer to server log for more information.
         """
-        return {('internal error'): linemap['multiplier']}
+        return {('disc_interr'): linemap['multiplier']}
 
+    def disc_server(self, linemap):
+        """
+        Catches disconnects by the server.
+        Log message: Disconnected by server
+        """
+        return {('disc_server'): linemap['multiplier']}
+
+    def disc_client(self, linemap):
+        """
+        Catches disconnects from the client side.
+        Log message: Disconnected by client
+        """
+        return {('disc_client'): linemap['multiplier']};
+
+    def disc_idle(self, linemap):
+        """
+        Catches disconnects due to idleness.
+        Log message: Disconnected: disconnected in IDLE
+        """
+        return {('disc_idle'): linemap['multiplier']}
+
+    def disc_append(self, linemap):
+        """
+        Catches failed append errors.
+        Log message: Disconnected in APPEND
+        """
+        return {('disc_append'): linemap['multiplier']}
+
+    def close_imap(self, linemap):
+        """
+        Catches closed IMAP connections.
+        Log message: imap(<user>): Connection closed
+        """
+        return {('close_imap'): linemap['multiplier']}
+
+    def close_pop(self, linemap):
+        """
+        Catches closed POP3 connections.
+        Log message: pop3(<user>): Connection closed
+        """
+        return {('close_pop'): linemap['multiplier']}
+
+    ##
+    # Other failures
+    #
     def auth_fail(self, linemap):
         """
         Occurs when disconnected due to an authentification failure.
-
         Log message: Disconnected (auth failed)
         """
-        return {('auth fail'): linemap['multiplier']}
-
-    def logout(self, linemap):
-        """
-        Disconnect due to normal logout.
-        """
-        return {('logout'): linemap['multiplier']}
+        return {('auth_fail'): linemap['multiplier']}
 
     def no_auth_atmpt(self, linemap):
         """
@@ -104,9 +175,6 @@ class dovecot_mod(InternalModule):
         Or: Disconnected (no auth attempts in <num> secs)
         """
         return {('no auth attempt'): linemap['multiplier']}
-
-    def server_disc(self, linemap):
-        return {('server disc'): linemap['multiplier']}
 
     def invalid_imap(self, linemap):
         """
@@ -124,24 +192,22 @@ class dovecot_mod(InternalModule):
 
     def unex_eof(self, linemap):
         """
-        TODO
+        Catches eof errors.
+        Log message: Unexpected eof
         """
+        # TODO what the hell is the real unexpected eof message
         return {('unex eof'): linemap['multiplier']}
 
-    def imap_close(self, linemap):
-        return {('imap close'): linemap['multiplier']}
 
-    def disc_idle(self, linemap):
-        return {('disc idle'): linemap['multiplier']}
-    
-    def fail_append(self, linemap):
+    ##
+    # Happens
+    #
+    def ignore(self, linemap):
         """
-        TODO
+        We purposely want to ignore these messages.
+        Currently ignored log messages: Director errors
         """
-        return {('fail append'): linemap['multiplier']}
-
-    def direc_error(self, linemap):
-        return {('direc error'): linemap['multiplier']}
+        return {('Ignored'): linemap['multiplier']}
 
     ##
     # Returns the final report.
