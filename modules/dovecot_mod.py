@@ -61,7 +61,20 @@ class dovecot_mod(InternalModule):
             re.compile(r'director:\serror', re.I)                       : self.ignore
         }
 
-    longnames = []
+    longnames = {
+        'login_imap': 'Total IMAP logins',
+        'login_pop': 'Total POP3 logins',
+        'disc_inactivity': 'Inactivity',
+        'disc_interr': 'Internal error occurred. Refer to server log for more information.',
+        'auth_fail': 'auth failed',
+        'disc_append': 'failed append',
+        'logout_imap': 'logged out: IMAP',
+        'logout_pop': 'logged out: POP3',
+        'no_auth_atmpt': 'no auth attempt',
+        'invalid_imap': 'too many invalid IMAP commands',
+        'disallow_ptxt': 'tried to use disallowed plaintext auth',
+        'unex_eof': 'unexpected eof'
+    }
 
     ##
     # Login routines
@@ -213,22 +226,28 @@ class dovecot_mod(InternalModule):
     #
     def finalize(self, resultset):
         report = []
-        report.extend(dovecot_mod.blockformat('Dovecot IMAP and POP3 Connection Totals'))
+        titles = ['Dovecot IMAP and POP3 Connection Totals', 'Dovecot Disconnects']
+        for title in titles:
+            block = []
+            for key in resultset.keys():
+                if key[0] == 'connect':
+                    block.append([longnames[key[1]], resultset[key]])
+            block.insert(0, title)
+            report.extend(blockformat(block))
 
-        final_report = ''.join(report)
-        final_report = self.report_table % final_report
+        final_report = '\n'.join(report)
         return final_report
 
     @staticmethod
-    def blockformat(*args):
+    def blockformat(block):
         ret = []
-        ret.append(args[0] + ':')
-        ret.append('='*len(args[0]))
-        for arg in args[1:]:
+        ret.append(block[0] + ':')
+        ret.append('='*len(block[0]))
+        for arg in block[1:]:
             if len(arg) == 1:
-                ret.append('\t{0}: {1} Time(s)'.format(dovecot_mod.longnames[arg[0]], arg[1]))
+                ret.append('\t{0}: {1} time(s)'.format(arg[0], arg[1]))
             else:
-                ret.append('\t{0} ({1}): {2} time(s)'.format(dovecot_mod.longnames[arg[0]], arg[1], arg[2]))
+                ret.append('\t{0} ({1}): {2} time(s)'.format(arg[0], arg[1], arg[2]))
         return ret
 
 ##
