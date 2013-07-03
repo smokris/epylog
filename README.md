@@ -1,5 +1,5 @@
 Epylog
-------
+======
 Epylog is a new log notifier and parser which runs periodically out of
 cron, looks at your logs, processes the entries in order to present
 them in a more comprehensive format, and then provides you with the
