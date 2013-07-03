@@ -36,8 +36,8 @@ class dovecot_mod(InternalModule):
             re.compile(r'disconnected:\sinternal\serror', re.I)         : self.internal_err,
             re.compile(r'auth\sfail(?:ed)?', re.I)                         : self.auth_fail,
             re.compile(r'disconnected:\slog(?:ged)?\sout', re.I)        : self.logout,
-            re.compile(r'no\sauth\sattempt', re.I)                         : self.no_auth_atmt,
-            re.compile(r'disconnected\sby\sserver', re.I)                 : self.sever_disc,
+            re.compile(r'no\sauth\sattempt', re.I)                         : self.no_auth_atmpt,
+            re.compile(r'disconnected\sby\sserver', re.I)                 : self.server_disc,
             re.compile(r'(?:too\smany)?\s?invalid\simap', re.I)         : self.invalid_imap,
             re.compile(r'(?:disallowed)?\s?plaintext\sauth', re.I)         : self.disallow_ptxt,
             re.compile(r'\seof\s', re.I)                                : self.unex_eof,
@@ -62,10 +62,10 @@ class dovecot_mod(InternalModule):
     #         in bytes
     #
     def imap_login(self, linemap):
-        return {('imap login'): linemap['mult']}
+        return {('imap login'): linemap['multiplier']}
 
     def pop_login(self, linemap):
-        return {('pop login'): linemap['mult']}
+        return {('pop login'): linemap['multiplier']}
 
     def inactivity(self, linemap):
         """
@@ -73,7 +73,7 @@ class dovecot_mod(InternalModule):
 
         Log message: imap(<user>): Disconnected for inactivity
         """
-        return {('inactivity'): linemap['mult']}
+        return {('inactivity'): linemap['multiplier']}
 
     def internal_err(self, linemap):
         """
