@@ -47,9 +47,7 @@ class dovecot_mod(InternalModule):
             re.compile(r'director:\serror', re.I)                        : self.direc_error
         }
 
-        # Useful strings for formatting the output
-        self.report_table = '<table width="100%%" cellpadding="2">%s</table>'
-        self.report_line = '<tr><td id="msg" width="90%%">%s</td><td id="mult">%s</td></tr><br/>'
+    longnames = []
 
     ##
     # Line-matching routines.
@@ -149,17 +147,23 @@ class dovecot_mod(InternalModule):
     #
     def finalize(self, resultset):
         report = []
-
-        while True:
-            try:
-                key, mult = resultset.popitem()
-                report.append(self.report_line % (key, mult))
-            except KeyError:
-                break
+        report.extend(dovecot_mod.blockformat('Dovecot IMAP and POP3 Connection Totals'))
 
         final_report = ''.join(report)
         final_report = self.report_table % final_report
         return final_report
+
+    @staticmethod
+    def blockformat(*args):
+        ret = []
+        ret.append(args[0] + ':')
+        ret.append('='*len(args[0]))
+        for arg in args[1:]:
+            if len(arg) == 1:
+                ret.append('\t{0}: {1} Time(s)'.format(dovecot_mod.longnames[arg[0]], arg[1]))
+            else:
+                ret.append('\t{0} ({1}): {2} time(s)'.format(dovecot_mod.longnames[arg[0]], arg[1], arg[2]))
+        return ret
 
 ##
 # This is useful when testing your module out.
