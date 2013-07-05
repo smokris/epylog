@@ -1,7 +1,6 @@
 #!/usr/bin/python -tt
 """
 This module watches Dovecot 2, recording information about logins, disconnects,
-This module watches Dovecot, recording information about logins, disconnects,
 and the like. Output gives a high-level view of all the disconnects and login
 failures.
 """
