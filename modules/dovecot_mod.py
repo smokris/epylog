@@ -7,6 +7,7 @@ failures.
 
 import sys
 import re
+from itertools import izip
 
 ##
 # This is for testing purposes, so you can invoke this from the
@@ -242,13 +243,18 @@ class dovecot_mod(InternalModule):
     def finalize(self, resultset):
         report = []
         titles = ['Dovecot IMAP and POP3 Connection Totals', 'Dovecot Disconnects']
-        for title in titles:
-            block = []
+        categories = ['connect', 'disconnect']
+        for title, category in izip(titles, categories):
+            block = [title]
             for key in resultset.keys():
-                if key[0] == 'connect':
-                    block.append([longnames[key[1]], resultset[key]])
-            block.insert(0, title)
-            report.extend(blockformat(block))
+                if key[0] == category:
+                    block.append([self.longnames[key[1]], resultset[key]])
+            report.extend(dovecot_mod.blockformat(block))
+        block = ['Login failures with mixed case']
+        for ket in resultset.keys():
+            if key[0] == 'mixedcase':
+                block.append([key[1], key[2], resultset[key]])
+        report.extend(dovecot_mod.blockformat(block))
 
         final_report = '\n'.join(report)
         return final_report
@@ -259,7 +265,7 @@ class dovecot_mod(InternalModule):
         ret.append(block[0] + ':')
         ret.append('='*len(block[0]))
         for arg in block[1:]:
-            if len(arg) == 1:
+            if len(arg) == 2:
                 ret.append('\t{0}: {1} time(s)'.format(arg[0], arg[1]))
             else:
                 ret.append('\t{0} ({1}): {2} time(s)'.format(arg[0], arg[1], arg[2]))
