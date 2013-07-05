@@ -68,12 +68,19 @@ class dovecot_mod(InternalModule):
     longnames = {
         'login_imap': 'Total IMAP logins',
         'login_pop': 'Total POP3 logins',
-        'disc_inactivity': 'Inactivity',
-        'disc_interr': 'Internal error occurred. Refer to server log for more information.',
-        'auth_fail': 'auth failed',
-        'disc_append': 'failed append',
         'logout_imap': 'logged out: IMAP',
         'logout_pop': 'logged out: POP3',
+        'disc_inactivity': 'Inactivity',
+        'disc_interr': 'Internal error occurred. Refer to server log for more information.',
+        'disc_server': 'Disconnected due to server error',
+        'disc_client': 'Disconnected by client',
+        'disc_idle': 'Disconnected due to being idle',
+        'disc_append': 'failed append',
+        'close_imap': 'Connection closed: IMAP',
+        'close_pop': 'Connection closed: POP3',
+        'user_notfound': 'User not found',
+        'user_mixedcase': 'Strange disconnect due to mixed case username',
+        'auth_fail': 'auth failed',
         'no_auth_atmpt': 'no auth attempt',
         'invalid_imap': 'too many invalid IMAP commands',
         'disallow_ptxt': 'tried to use disallowed plaintext auth',
@@ -274,9 +281,10 @@ class dovecot_mod(InternalModule):
             for key in resultset.keys():
                 if key[0] == category:
                     block.append([self.longnames[key[1]], resultset[key]])
+            self.logger.put(5, block)
             report.extend(dovecot_mod.blockformat(block))
         block = ['Login failures with mixed case']
-        for ket in resultset.keys():
+        for key in resultset.keys():
             if key[0] == 'mixedcase':
                 block.append([key[1], key[2], resultset[key]])
         report.extend(dovecot_mod.blockformat(block))
