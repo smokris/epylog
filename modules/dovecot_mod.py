@@ -1,5 +1,6 @@
 #!/usr/bin/python -tt
 """
+This module watches Dovecot 2, recording information about logins, disconnects,
 This module watches Dovecot, recording information about logins, disconnects,
 and the like. Output gives a high-level view of all the disconnects and login
 failures.
@@ -191,7 +192,13 @@ class dovecot_mod(InternalModule):
         """
         # Run it through the regex again to get the capturing groups.
         # (TODO: there has to be a better way to do this)
-        matchobj = self.re_mix.match(linemap['line'])
+        matchobj = self.re_mix.search(linemap['line'])
+
+        # This should never happen. But better safe than sorry, right?
+        if not matchobj:
+            self.logger.put(5, 'ERROR: No regex match')
+            self.logger.put(5, 'Offending line: ' + linemap['line'])
+            return {('mixedcase', '[Unknown]', '[Unknown]') : linemap['multiplier']}
 
         user, ip = matchobj.group('user'), matchobj.group('ip')
 
