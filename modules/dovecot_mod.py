@@ -29,6 +29,9 @@ class dovecot_mod(InternalModule):
         # statements and the like
         logger.put(5, 'Mod instantiated!');
 
+        # Save this for use later. (Captures usernames for login failures)
+        self.re_mix = re.compile(r'auth: error: userdb\((?P<user>\w*),(?P<ip>\d*\.\d*\.\d*\.\d*),(?:.*)\)', re.I)
+
         self.regex_map = {
             # Logins
             re.compile(r'imap-login:\slogin:', re.I)                    : self.login_imap,
@@ -50,8 +53,7 @@ class dovecot_mod(InternalModule):
 
             # Other things: failures, etc.
             re.compile(r'authenticated user not found', re.I)           : self.user_notfound,
-            re.compile(r'auth: error: userdb\((?P<user>\w*),(?P<ip>\d*\.\d*\.\d*\.\d*),(?:.*)\)', re.I)
-                                                                        : self.user_mixedcase,
+            self.re_mix                                                 : self.user_mixedcase,
             re.compile(r'auth\sfail(?:ed)?', re.I)                      : self.auth_fail,
             re.compile(r'no\sauth\sattempt', re.I)                      : self.no_auth_atmpt,
             re.compile(r'(?:too\smany)?\s?invalid\simap', re.I)         : self.invalid_imap,
@@ -186,8 +188,25 @@ class dovecot_mod(InternalModule):
         Strange errors happen when users with mixed case attempt to log in.
         Log message: auth: Error: userdb(<user>, <ip>, ...)
         """
-        # TODO capture groups for users
-        return {('mixedcase', 'user_mixedcase'): linemap['multiplier']}
+        # Run it through the regex again to get the capturing groups.
+        # (TODO: there has to be a better way to do this)
+        matchobj = self.re_mix.match(linemap['line'])
+
+        user, ip = matchobj.group('user'), matchobj.group('ip')
+
+        # Some sanity checks. Hopefully this never happens
+        if not user:
+            self.logger.put(5, 'WARNING: Mixed-case login failure detected, \
+                    but no username could be found in the regex.')
+            self.logger.put(5, 'Line: ' + linemap['line'])
+            user = '[Unknown]'
+        if not ip:
+            self.logger.put(5, 'WARNING: Mixed-case login failure detected, \
+                    but no IP address could be found in the regex.')
+            self.logger.put(5, 'Line: ' + linemap['line'])
+            ip = '[Unknown]'
+
+        return {('mixedcase', user, ip): linemap['multiplier']}
 
     def auth_fail(self, linemap):
         """
