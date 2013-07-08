@@ -285,7 +285,9 @@ class dovecot_mod(InternalModule):
         categories = ['connect', 'disconnect']
         for title, category in izip(titles, categories):
             block = [title]
-            for key in resultset.keys():
+            allkeys = [i for i in resultset.keys()]
+            allkeys = sorted(allkeys)
+            for key in allkeys:
                 if key[0] == category:
                     block.append([self.longnames[key[1]], resultset[key]])
             self.logger.put(5, block)
