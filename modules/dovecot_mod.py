@@ -28,10 +28,11 @@ class dovecot_mod(InternalModule):
 
         # For this mod, we'll use 5 as the default log level for general debug
         # statements and the like
-        logger.put(5, 'Mod instantiated!');
+        logger.put(5, 'Dovecot dod instantiated! Ready for action.');
 
-        # Save this for use later. (Captures usernames for login failures)
-        self.re_mix = re.compile(r'auth: error: userdb\((?P<user>\w*),(?P<ip>\d*\.\d*\.\d*\.\d*),(?:.*)\)', re.I)
+        # Save these for use later. (Captures usernames for login failures)
+        self.logfail = re.compile(r'auth: error: userdb\((?P<user>\w*),(?P<ip>\d*\.\d*\.\d*\.\d*),(?:.*)\)', re.I)
+        self.mixedcase = re.compile(r'\w*[A-Z]+\w*')
 
         self.regex_map = {
             # Logins
@@ -53,8 +54,8 @@ class dovecot_mod(InternalModule):
             re.compile(r'pop3\(\w*\):\sconnection\sclosed', re.I)       : self.close_pop,
 
             # Other things: failures, etc.
-            re.compile(r'authenticated user not found', re.I)           : self.user_notfound,
-            self.re_mix                                                 : self.user_mixedcase,
+            re.compile(r'authenticated\suser\snot\sfound', re.I)        : self.user_notfound,
+            self.logfail                                                : self.user_logfail,
             re.compile(r'auth\sfail(?:ed)?', re.I)                      : self.auth_fail,
             re.compile(r'no\sauth\sattempt', re.I)                      : self.no_auth_atmpt,
             re.compile(r'(?:too\smany)?\s?invalid\simap', re.I)         : self.invalid_imap,
@@ -71,7 +72,7 @@ class dovecot_mod(InternalModule):
         'logout_imap': 'logged out: IMAP',
         'logout_pop': 'logged out: POP3',
         'disc_inactivity': 'Inactivity',
-        'disc_interr': 'Internal error occurred. Refer to server log for more information.',
+        'disc_interr': 'Internal error occurred. Refer to server log for more information',
         'disc_server': 'Disconnected due to server error',
         'disc_client': 'Disconnected by client',
         'disc_idle': 'Disconnected due to being idle',
@@ -79,7 +80,7 @@ class dovecot_mod(InternalModule):
         'close_imap': 'Connection closed: IMAP',
         'close_pop': 'Connection closed: POP3',
         'user_notfound': 'User not found',
-        'user_mixedcase': 'Strange disconnect due to mixed case username',
+        'user_logfail': 'Strange disconnect due to mixed case username',
         'auth_fail': 'auth failed',
         'no_auth_atmpt': 'no auth attempt',
         'invalid_imap': 'too many invalid IMAP commands',
@@ -191,24 +192,27 @@ class dovecot_mod(InternalModule):
         """
         return {('disconnect', 'user_notfound'): linemap['multiplier']}
 
-    def user_mixedcase(self, linemap):
+    def user_logfail(self, linemap):
         """
         Strange errors happen when users with mixed case attempt to log in.
+
+        For some reason, users with a username containing at least one capital
+        letter tend to experience errors. This captures the name of the user
+        and logs it in a special section. It also does a check to see if it's
+        really a mixed case username, or some other error occured.
         Log message: auth: Error: userdb(<user>, <ip>, ...)
         """
         # Run it through the regex again to get the capturing groups.
-        # (TODO: there has to be a better way to do this)
-        matchobj = self.re_mix.search(linemap['line'])
+        matchobj = self.logfail.search(linemap['line'])
 
-        # This should never happen. But better safe than sorry, right?
+        # This should never happen. But better safe than sorry
         if not matchobj:
             self.logger.put(5, 'ERROR: No regex match')
             self.logger.put(5, 'Offending line: ' + linemap['line'])
-            return {('mixedcase', '[Unknown]', '[Unknown]') : linemap['multiplier']}
+            return None     # Indicates line can't be processed
 
+        # Grab the user and ip, then run sanity checks
         user, ip = matchobj.group('user'), matchobj.group('ip')
-
-        # Some sanity checks. Hopefully this never happens
         if not user:
             self.logger.put(5, 'WARNING: Mixed-case login failure detected, \
                     but no username could be found in the regex.')
@@ -220,7 +224,11 @@ class dovecot_mod(InternalModule):
             self.logger.put(5, 'Line: ' + linemap['line'])
             ip = '[Unknown]'
 
-        return {('mixedcase', user, ip): linemap['multiplier']}
+        # Check if it contains at least one uppercase.
+        if self.mixedcase.search(user):
+            return {('mixedcase', user, ip) : linemap['multiplier']}
+        else:
+            return {('nomixedcase', user, ip) : linemap['multiplier']}
 
     def auth_fail(self, linemap):
         """
@@ -270,7 +278,6 @@ class dovecot_mod(InternalModule):
 
     ##
     # Returns the final report.
-    # TODO. Let's hope that Epylog does its math correctly.
     #
     def finalize(self, resultset):
         report = []
@@ -286,6 +293,11 @@ class dovecot_mod(InternalModule):
         block = ['Login failures with mixed case']
         for key in resultset.keys():
             if key[0] == 'mixedcase':
+                block.append([key[1], key[2], resultset[key]])
+        report.extend(dovecot_mod.blockformat(block))
+        block = ['Login failures without mixed case']
+        for key in resultset.keys():
+            if key[0] == 'nomixedcase':
                 block.append([key[1], key[2], resultset[key]])
         report.extend(dovecot_mod.blockformat(block))
 
