@@ -28,7 +28,7 @@ class dovecot_mod(InternalModule):
 
         # For this mod, we'll use 5 as the default log level for general debug
         # statements and the like
-        logger.put(5, 'Dovecot dod instantiated! Ready for action.');
+        logger.put(5, 'Dovecot mod instantiated! Ready for action.');
 
         # Save these for use later. (Captures usernames for login failures)
         self.logfail = re.compile(r'auth: error: userdb\((?P<user>\w*),(?P<ip>\d*\.\d*\.\d*\.\d*),(?:.*)\)', re.I)
@@ -69,23 +69,23 @@ class dovecot_mod(InternalModule):
     longnames = {
         'login_imap': 'Total IMAP logins',
         'login_pop': 'Total POP3 logins',
-        'logout_imap': 'logged out: IMAP',
-        'logout_pop': 'logged out: POP3',
+        'logout_imap': 'Logged out: IMAP',
+        'logout_pop': 'Logged out: POP3',
         'disc_inactivity': 'Inactivity',
         'disc_interr': 'Internal error occurred. Refer to server log for more information',
         'disc_server': 'Disconnected due to server error',
         'disc_client': 'Disconnected by client',
         'disc_idle': 'Disconnected due to being idle',
-        'disc_append': 'failed append',
+        'disc_append': 'Failed append',
         'close_imap': 'Connection closed: IMAP',
         'close_pop': 'Connection closed: POP3',
         'user_notfound': 'User not found',
         'user_logfail': 'Strange disconnect due to mixed case username',
-        'auth_fail': 'auth failed',
-        'no_auth_atmpt': 'no auth attempt',
-        'invalid_imap': 'too many invalid IMAP commands',
-        'disallow_ptxt': 'tried to use disallowed plaintext auth',
-        'unex_eof': 'unexpected eof'
+        'auth_fail': 'Auth failed',
+        'no_auth_atmpt': 'No auth attempt',
+        'invalid_imap': 'Too many invalid IMAP commands',
+        'disallow_ptxt': 'Tried to use disallowed plaintext auth',
+        'unex_eof': 'Unexpected eof'
     }
 
     ##
@@ -209,7 +209,7 @@ class dovecot_mod(InternalModule):
         if not matchobj:
             self.logger.put(5, 'ERROR: No regex match')
             self.logger.put(5, 'Offending line: ' + linemap['line'])
-            return None     # Indicates line can't be processed
+            return None
 
         # Grab the user and ip, then run sanity checks
         user, ip = matchobj.group('user'), matchobj.group('ip')
@@ -272,7 +272,7 @@ class dovecot_mod(InternalModule):
     def ignore(self, linemap):
         """
         We purposely want to ignore these messages.
-        Currently ignored log messages: Director errors
+        Currently ignored log messages: Director handshake errors
         """
         return {}
 
@@ -280,28 +280,37 @@ class dovecot_mod(InternalModule):
     # Returns the final report.
     #
     def finalize(self, resultset):
-        report = []
+        """
+        Prints out the final report.
+
+        The report contains information about IMAP/POP3 connections,
+        disconnects, and login failures (in that order). Note that we use plain
+        text output rather than HTML, which is easier for our own purposes.
+        """
+        # First, start with the logins and disconencts
+        report = [] 
         titles = ['Dovecot IMAP and POP3 Connection Totals', 'Dovecot Disconnects']
         categories = ['connect', 'disconnect']
         for title, category in izip(titles, categories):
             block = [title]
-            allkeys = [i for i in resultset.keys()]
+            allkeys = [i for i in resultset.keys()]   # TODO fix mediocre sort
             allkeys = sorted(allkeys)
             for key in allkeys:
                 if key[0] == category:
                     block.append([self.longnames[key[1]], resultset[key]])
             self.logger.put(5, block)
             report.extend(dovecot_mod.blockformat(block))
-        block = ['Login failures with mixed case']
+
+        # Now list specific login failures
+        mixedblock = ['Login failures with mixed case']
+        nomixedblock = ['Login failures without mixed case']
         for key in resultset.keys():
             if key[0] == 'mixedcase':
-                block.append([key[1], key[2], resultset[key]])
-        report.extend(dovecot_mod.blockformat(block))
-        block = ['Login failures without mixed case']
-        for key in resultset.keys():
-            if key[0] == 'nomixedcase':
-                block.append([key[1], key[2], resultset[key]])
-        report.extend(dovecot_mod.blockformat(block))
+                mixedblock.append([key[1], key[2], resultset[key]])
+            elif key[0] == 'nomixedcase':
+                nomixedblock.append([key[1], key[2], resultset[key]])
+        report.extend(dovecot_mod.blockformat(mixedblock))
+        report.extend(dovecot_mod.blockformat(nomixedblock))
 
         final_report = '\n'.join(report)
         return final_report
