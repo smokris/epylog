@@ -66,6 +66,7 @@ class dovecot_mod(InternalModule):
             re.compile(r'director:\serror', re.I)                       : self.ignore
         }
 
+    # A mapping from function names to useful descriptions.
     longnames = {
         'login_imap': 'Total IMAP logins',
         'login_pop': 'Total POP3 logins',
@@ -293,13 +294,12 @@ class dovecot_mod(InternalModule):
         categories = ['connect', 'disconnect']
         for title, category in izip(titles, categories):
             block = [title]
-            allkeys = [i for i in resultset.keys()]   # TODO fix mediocre sort
-            allkeys = sorted(allkeys)
-            for key in allkeys:
+            for key in resultset.keys():
                 if key[0] == category:
                     block.append([self.longnames[key[1]], resultset[key]])
             self.logger.put(5, block)
             report.extend(dovecot_mod.blockformat(block))
+            report.append('')
 
         # Now list specific login failures
         mixedblock = ['Login failures with mixed case']
@@ -310,6 +310,7 @@ class dovecot_mod(InternalModule):
             elif key[0] == 'nomixedcase':
                 nomixedblock.append([key[1], key[2], resultset[key]])
         report.extend(dovecot_mod.blockformat(mixedblock))
+        report.append('')
         report.extend(dovecot_mod.blockformat(nomixedblock))
 
         final_report = '\n'.join(report)
@@ -317,14 +318,21 @@ class dovecot_mod(InternalModule):
 
     @staticmethod
     def blockformat(block):
+        """
+        Convenient method for formatting blocks of strings.
+        """
         ret = []
         ret.append(block[0] + ':')
         ret.append('='*len(block[0]))
-        for arg in block[1:]:
-            if len(arg) == 2:
-                ret.append('\t{0}: {1} time(s)'.format(arg[0], arg[1]))
-            else:
-                ret.append('\t{0} ({1}): {2} time(s)'.format(arg[0], arg[1], arg[2]))
+        block = sorted(block[1:], key=lambda x: x[0].lower())
+        if not block:
+            ret.append('\tNone')
+        else:
+            for arg in block:
+                if len(arg) == 2:
+                    ret.append('\t{0}: {1} time(s)'.format(arg[0], arg[1]))
+                else:
+                    ret.append('\t{0} ({1}): {2} time(s)'.format(arg[0], arg[1], arg[2]))
         return ret
 
 ##
