@@ -43,8 +43,8 @@ class spamd_mod(InternalModule):
         self.logger = logger
         rc = re.compile
         self.regex_map = {
-            rc('spamd\[\d+\]: clean message'): self.spamd,
-            rc('spamd\[\d+\]: identified spam'): self.spamd
+            rc('spamd(\[\d+\])?: clean message'): self.spamd,
+            rc('spamd(\[\d+\])?: identified spam'): self.spamd
         }
 
         self.top = int(opts.get('report_top', '10'))

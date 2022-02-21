@@ -54,10 +54,10 @@ class logins_mod(InternalModule):
         # PAM reports
         #
         pam_map = {
-            rc('\(pam_unix\)\S*:.*authentication\s*failure'): self.pam_failure,
-            rc('\(pam_unix\)\S*:\ssession\sopened\sfor'): self.pam_open,
-            rc('\(pam_unix\)\S*:\sbad\susername'): self.pam_baduser,
-            rc('\(pam_unix\)\S*:\sauth\scould\snot'): self.pam_chelper_failure,
+            rc('\(?pam_unix\)?\S*:.*authentication\s*failure'): self.pam_failure,
+            rc('\(?pam_unix\)?\S*:\ssession\sopened\sfor'): self.pam_open,
+            rc('\(?pam_unix\)?\S*:\sbad\susername'): self.pam_baduser,
+            rc('\(?pam_unix\)?\S*:\sauth\scould\snot'): self.pam_chelper_failure,
             rc('pam_krb5\S*:\s\S+\ssucceeds\sfor'): self.pam_krb5_open,
             rc('pam_krb5\S*:\s\S+\sfails\sfor'): self.pam_krb5_failure
             }
