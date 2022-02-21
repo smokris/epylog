@@ -162,8 +162,8 @@ class notices_mod(InternalModule):
             for system in rs.get_distinct((urg,)):
                 mymap = rs.get_submap((urg, system,))
                 messages = []
-                for message in mymap.keys():
-                    messages.append('%s(%d)' % (message[0], mymap[message]))
+                for message in sorted(mymap.iterkeys()):
+                    messages.append('%s(%d)' % (message[0].decode('unicode_escape').encode('ascii', 'xmlcharrefreplace'), mymap[message]))
                 reports[urg] += self.report_line % (system,
                                                     '<br>'.join(messages))
             
